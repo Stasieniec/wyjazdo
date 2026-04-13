@@ -5,3 +5,4 @@ STRIPE_WEBHOOK_SECRET=whsec_replace
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_replace
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_replace
 NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
+CRON_SECRET=replace-with-random-32-chars
