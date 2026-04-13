@@ -60,3 +60,23 @@ export async function createOrganizer(input: {
     updatedAt: now,
   });
 }
+
+export async function updateOrganizer(
+  organizerId: string,
+  patch: Partial<{
+    displayName: string;
+    description: string | null;
+    logoUrl: string | null;
+    coverUrl: string | null;
+    brandColor: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    socialLinks: string | null;
+  }>,
+) {
+  const db = getDb();
+  await db
+    .update(schema.organizers)
+    .set({ ...patch, updatedAt: Date.now() })
+    .where(eq(schema.organizers.id, organizerId));
+}
