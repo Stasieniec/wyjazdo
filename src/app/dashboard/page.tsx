@@ -1,21 +1,50 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { listEventsForOrganizer } from "@/lib/db/queries/events-dashboard";
 
 export default async function DashboardHome() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
-
   const organizer = await getOrganizerByClerkUserId(userId);
   if (!organizer) redirect("/dashboard/onboarding");
 
+  const events = await listEventsForOrganizer(organizer.id);
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Wydarzenia</h1>
-      <p className="mt-4 text-neutral-600">Witaj, {organizer.displayName}.</p>
-      <p className="mt-2 text-sm text-neutral-500">
-        Twoja strona: <code>{organizer.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN}</code>
-      </p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Wydarzenia</h1>
+        <Link href="/dashboard/events/new" className="rounded-md bg-neutral-900 px-4 py-2 text-white">
+          + Nowe wydarzenie
+        </Link>
+      </div>
+
+      {events.length === 0 ? (
+        <p className="mt-8 text-neutral-500">Nie masz jeszcze żadnych wydarzeń.</p>
+      ) : (
+        <ul className="mt-8 divide-y rounded-lg border">
+          {events.map((e) => (
+            <li key={e.id} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <Link href={`/dashboard/events/${e.id}`} className="font-medium hover:underline">
+                  {e.title}
+                </Link>
+                <div className="text-sm text-neutral-500">
+                  {new Date(e.startsAt).toLocaleDateString("pl-PL")} &middot; {e.status}
+                </div>
+              </div>
+              <Link
+                href={`/dashboard/events/${e.id}`}
+                className="text-sm text-neutral-600 hover:underline"
+              >
+                Edytuj &rarr;
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
