@@ -1,0 +1,3410 @@
+# wyjazdo.pl MVP Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Build the MVP of wyjazdo.pl — a multi-tenant platform for Polish trip/retreat/workshop organizers covering profile creation, event publishing, participant signup, Stripe payment, waitlist, and a dashboard with CSV export.
+
+**Architecture:** Next.js 15 App Router deployed to Cloudflare Workers via `@opennextjs/cloudflare`. Multi-tenancy via subdomain rewrites in middleware to an internal `_sites/[subdomain]` route tree. Cloudflare D1 (SQLite) accessed via Drizzle ORM. Auth via Clerk. Payments via Stripe Checkout (hosted). Webhook is the source of truth for payment status. See `docs/superpowers/specs/2026-04-13-wyjazdo-mvp-design.md` for the full design.
+
+**Tech Stack:** Next.js 15, TypeScript, Tailwind CSS, `@opennextjs/cloudflare`, Cloudflare D1 + Drizzle ORM, Clerk (`@clerk/nextjs`), Stripe (`stripe` SDK, Checkout mode), Zod for validation, ULID for IDs, Vitest for unit tests, `wrangler` CLI.
+
+**Testing philosophy:** TDD with Vitest for business logic (tenant resolution, capacity, webhook handler, CSV export). UI/route pages get manual smoke-testing only — automated E2E is out of MVP scope per the spec.
+
+**Commit convention:** Conventional commits (`feat:`, `chore:`, `test:`, `fix:`, `docs:`). Commit after every task.
+
+---
+
+## Task 1: Scaffold Next.js 15 + TypeScript + Tailwind
+
+**Files:**
+- Create: entire Next.js app structure under project root
+
+- [ ] **Step 1: Scaffold Next.js**
+
+Run:
+```bash
+cd /home/stas/Desktop/wyjazdo
+npx --yes create-next-app@latest . \
+  --typescript --tailwind --eslint \
+  --app --src-dir --turbopack \
+  --import-alias "@/*" \
+  --use-npm --no-git
+```
+
+Expected: creates `src/app/`, `package.json`, `tsconfig.json`, `next.config.ts`, `tailwind.config.ts`, etc.
+
+- [ ] **Step 2: Verify the dev server boots**
+
+Run:
+```bash
+npm run dev
+```
+Expected: starts on `http://localhost:3000`. Kill with Ctrl+C once verified.
+
+- [ ] **Step 3: Replace default landing page with placeholder**
+
+Overwrite `src/app/page.tsx`:
+```tsx
+export default function MarketingPage() {
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-20">
+      <h1 className="text-4xl font-bold tracking-tight">wyjazdo.pl</h1>
+      <p className="mt-4 text-lg text-neutral-600">
+        Platforma dla organizatorów wyjazdów, warsztatów i retreatów.
+      </p>
+    </main>
+  );
+}
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add -A
+git commit -m "chore: scaffold Next.js 15 + TypeScript + Tailwind"
+```
+
+---
+
+## Task 2: Add OpenNext Cloudflare adapter + wrangler config
+
+**Files:**
+- Create: `open-next.config.ts`
+- Create: `wrangler.jsonc`
+- Modify: `package.json` (scripts + devDeps)
+- Modify: `next.config.ts`
+- Create: `.dev.vars.example`
+
+- [ ] **Step 1: Install OpenNext Cloudflare adapter + wrangler**
+
+Run:
+```bash
+npm install --save-dev @opennextjs/cloudflare wrangler
+```
+
+- [ ] **Step 2: Create `open-next.config.ts`**
+
+```ts
+import { defineCloudflareConfig } from "@opennextjs/cloudflare";
+
+export default defineCloudflareConfig();
+```
+
+- [ ] **Step 3: Create `wrangler.jsonc`**
+
+```jsonc
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wyjazdo",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-09-15",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  "vars": {
+    "NEXT_PUBLIC_ROOT_DOMAIN": "wyjazdo.pl"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wyjazdo",
+      "database_id": "REPLACE_AFTER_CREATE"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  }
+}
+```
+
+- [ ] **Step 4: Create `.dev.vars.example`**
+
+```
+# Copy to .dev.vars and fill in values for local `wrangler dev`
+CLERK_SECRET_KEY=sk_test_replace
+STRIPE_SECRET_KEY=sk_test_replace
+STRIPE_WEBHOOK_SECRET=whsec_replace
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_replace
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_replace
+NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
+```
+
+- [ ] **Step 5: Add `.dev.vars` and OpenNext build artifacts to `.gitignore`**
+
+Append to `.gitignore`:
+```
+.dev.vars
+.open-next/
+.wrangler/
+```
+
+- [ ] **Step 6: Add scripts to `package.json`**
+
+Under `"scripts"`, add:
+```json
+"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+"cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+```
+
+- [ ] **Step 7: Initialize Cloudflare env types**
+
+Create `cloudflare-env.d.ts` at repo root (placeholder — regenerated by `cf-typegen` later):
+```ts
+interface CloudflareEnv {}
+```
+
+- [ ] **Step 8: Initialize OpenNext bindings dev helper**
+
+Modify `next.config.ts`:
+```ts
+import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+const nextConfig: NextConfig = {};
+
+initOpenNextCloudflareForDev();
+
+export default nextConfig;
+```
+
+- [ ] **Step 9: Verify build compiles**
+
+Run:
+```bash
+npm run build
+```
+Expected: Next.js build succeeds (OpenNext build is deferred to preview/deploy).
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add -A
+git commit -m "chore: add OpenNext Cloudflare adapter + wrangler config"
+```
+
+---
+
+## Task 3: Create D1 database and wire the binding
+
+**Files:**
+- Modify: `wrangler.jsonc` (fill `database_id`)
+
+- [ ] **Step 1: Create the D1 database**
+
+Run:
+```bash
+npx wrangler d1 create wyjazdo
+```
+
+Expected: prints a `database_id`. Copy it.
+
+- [ ] **Step 2: Paste the `database_id` into `wrangler.jsonc`**
+
+Replace `"REPLACE_AFTER_CREATE"` in the `d1_databases[0].database_id` field with the printed UUID.
+
+- [ ] **Step 3: Regenerate Cloudflare env types**
+
+Run:
+```bash
+npm run cf-typegen
+```
+Expected: updates `cloudflare-env.d.ts` with `DB: D1Database` and other bindings.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add wrangler.jsonc cloudflare-env.d.ts
+git commit -m "chore: create D1 database and bind DB"
+```
+
+---
+
+## Task 4: Add Drizzle ORM with D1 schema
+
+**Files:**
+- Create: `drizzle.config.ts`
+- Create: `src/lib/db/schema.ts`
+- Create: `src/lib/db/client.ts`
+- Modify: `package.json` (scripts)
+
+- [ ] **Step 1: Install Drizzle**
+
+Run:
+```bash
+npm install drizzle-orm
+npm install --save-dev drizzle-kit
+```
+
+- [ ] **Step 2: Create `src/lib/db/schema.ts`**
+
+```ts
+import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+
+export const organizers = sqliteTable("organizers", {
+  id: text("id").primaryKey(),
+  clerkUserId: text("clerk_user_id").notNull().unique(),
+  subdomain: text("subdomain").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  logoUrl: text("logo_url"),
+  coverUrl: text("cover_url"),
+  brandColor: text("brand_color"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  socialLinks: text("social_links"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export const events = sqliteTable(
+  "events",
+  {
+    id: text("id").primaryKey(),
+    organizerId: text("organizer_id")
+      .notNull()
+      .references(() => organizers.id),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    location: text("location"),
+    startsAt: integer("starts_at").notNull(),
+    endsAt: integer("ends_at").notNull(),
+    priceCents: integer("price_cents").notNull(),
+    currency: text("currency").notNull().default("PLN"),
+    capacity: integer("capacity").notNull(),
+    coverUrl: text("cover_url"),
+    status: text("status", { enum: ["draft", "published", "archived"] })
+      .notNull()
+      .default("draft"),
+    customQuestions: text("custom_questions"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => ({
+    organizerIdx: index("events_organizer_idx").on(t.organizerId),
+    organizerSlugUniq: uniqueIndex("events_organizer_slug_uniq").on(t.organizerId, t.slug),
+  }),
+);
+
+export const participants = sqliteTable(
+  "participants",
+  {
+    id: text("id").primaryKey(),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => events.id),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    customAnswers: text("custom_answers"),
+    status: text("status", {
+      enum: ["pending", "paid", "cancelled", "refunded", "waitlisted"],
+    }).notNull(),
+    expiresAt: integer("expires_at"),
+    stripeSessionId: text("stripe_session_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    amountPaidCents: integer("amount_paid_cents"),
+    paidAt: integer("paid_at"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => ({
+    eventStatusIdx: index("participants_event_status_idx").on(t.eventId, t.status),
+    stripeSessionIdx: index("participants_stripe_session_idx").on(t.stripeSessionId),
+  }),
+);
+
+export type Organizer = typeof organizers.$inferSelect;
+export type NewOrganizer = typeof organizers.$inferInsert;
+export type Event = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;
+export type Participant = typeof participants.$inferSelect;
+export type NewParticipant = typeof participants.$inferInsert;
+```
+
+- [ ] **Step 3: Create `src/lib/db/client.ts`**
+
+```ts
+import { drizzle } from "drizzle-orm/d1";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import * as schema from "./schema";
+
+export function getDb() {
+  const { env } = getCloudflareContext();
+  return drizzle(env.DB, { schema });
+}
+
+export type Db = ReturnType<typeof getDb>;
+export { schema };
+```
+
+- [ ] **Step 4: Create `drizzle.config.ts`**
+
+```ts
+import type { Config } from "drizzle-kit";
+
+export default {
+  schema: "./src/lib/db/schema.ts",
+  out: "./src/lib/db/migrations",
+  dialect: "sqlite",
+} satisfies Config;
+```
+
+- [ ] **Step 5: Add migration scripts to `package.json`**
+
+Under `"scripts"`:
+```json
+"db:generate": "drizzle-kit generate",
+"db:migrate:local": "wrangler d1 migrations apply wyjazdo --local",
+"db:migrate:remote": "wrangler d1 migrations apply wyjazdo --remote"
+```
+
+- [ ] **Step 6: Create the migrations directory structure for wrangler**
+
+wrangler's `d1 migrations apply` expects migrations under `migrations/` by default. Point it at Drizzle's output by adding to `wrangler.jsonc`:
+
+```jsonc
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wyjazdo",
+      "database_id": "...",
+      "migrations_dir": "src/lib/db/migrations"
+    }
+  ],
+```
+
+- [ ] **Step 7: Generate initial migration**
+
+Run:
+```bash
+npm run db:generate
+```
+Expected: writes `0000_*.sql` under `src/lib/db/migrations/`.
+
+- [ ] **Step 8: Apply migration to local D1**
+
+Run:
+```bash
+npm run db:migrate:local
+```
+Expected: prints "Migrations applied" with 3 tables created.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add Drizzle schema and initial D1 migration"
+```
+
+---
+
+## Task 5: Add ULID helper + test
+
+**Files:**
+- Create: `src/lib/ids.ts`
+- Create: `src/lib/ids.test.ts`
+- Modify: `package.json` (Vitest)
+
+- [ ] **Step 1: Install Vitest**
+
+Run:
+```bash
+npm install --save-dev vitest @vitest/ui
+```
+
+- [ ] **Step 2: Install ulid**
+
+Run:
+```bash
+npm install ulid
+```
+
+- [ ] **Step 3: Add test script to `package.json`**
+
+Under `"scripts"`:
+```json
+"test": "vitest run",
+"test:watch": "vitest"
+```
+
+- [ ] **Step 4: Write the failing test**
+
+Create `src/lib/ids.test.ts`:
+```ts
+import { describe, it, expect } from "vitest";
+import { newId } from "./ids";
+
+describe("newId", () => {
+  it("returns a 26-char ULID", () => {
+    const id = newId();
+    expect(id).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
+  });
+
+  it("returns sortable IDs across time", async () => {
+    const a = newId();
+    await new Promise((r) => setTimeout(r, 2));
+    const b = newId();
+    expect(a < b).toBe(true);
+  });
+});
+```
+
+- [ ] **Step 5: Run and verify failure**
+
+Run: `npx vitest run src/lib/ids.test.ts`
+Expected: FAIL — module not found.
+
+- [ ] **Step 6: Implement**
+
+Create `src/lib/ids.ts`:
+```ts
+import { ulid } from "ulid";
+
+export function newId(): string {
+  return ulid();
+}
+```
+
+- [ ] **Step 7: Run and verify pass**
+
+Run: `npx vitest run src/lib/ids.test.ts`
+Expected: PASS (2 tests).
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add ULID helper"
+```
+
+---
+
+## Task 6: Tenant resolution helper
+
+**Files:**
+- Create: `src/lib/tenant.ts`
+- Create: `src/lib/tenant.test.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+Create `src/lib/tenant.test.ts`:
+```ts
+import { describe, it, expect } from "vitest";
+import { resolveTenant } from "./tenant";
+
+const ROOT = "wyjazdo.pl";
+
+describe("resolveTenant", () => {
+  it("apex domain returns kind=apex", () => {
+    expect(resolveTenant("wyjazdo.pl", ROOT)).toEqual({ kind: "apex" });
+  });
+
+  it("www is treated as apex", () => {
+    expect(resolveTenant("www.wyjazdo.pl", ROOT)).toEqual({ kind: "apex" });
+  });
+
+  it("reserved subdomain is treated as apex", () => {
+    expect(resolveTenant("api.wyjazdo.pl", ROOT)).toEqual({ kind: "apex" });
+    expect(resolveTenant("app.wyjazdo.pl", ROOT)).toEqual({ kind: "apex" });
+  });
+
+  it("organizer subdomain returns kind=tenant with subdomain", () => {
+    expect(resolveTenant("acme.wyjazdo.pl", ROOT)).toEqual({
+      kind: "tenant",
+      subdomain: "acme",
+    });
+  });
+
+  it("subdomain is lowercased", () => {
+    expect(resolveTenant("ACME.wyjazdo.pl", ROOT)).toEqual({
+      kind: "tenant",
+      subdomain: "acme",
+    });
+  });
+
+  it("port is stripped", () => {
+    expect(resolveTenant("acme.localhost:3000", "localhost:3000")).toEqual({
+      kind: "tenant",
+      subdomain: "acme",
+    });
+    expect(resolveTenant("localhost:3000", "localhost:3000")).toEqual({ kind: "apex" });
+  });
+
+  it("host not matching root returns kind=unknown", () => {
+    expect(resolveTenant("evil.example.com", ROOT)).toEqual({ kind: "unknown" });
+  });
+});
+```
+
+- [ ] **Step 2: Run and verify failure**
+
+Run: `npx vitest run src/lib/tenant.test.ts`
+Expected: FAIL — module not found.
+
+- [ ] **Step 3: Implement**
+
+Create `src/lib/tenant.ts`:
+```ts
+export type TenantResolution =
+  | { kind: "apex" }
+  | { kind: "tenant"; subdomain: string }
+  | { kind: "unknown" };
+
+const RESERVED = new Set(["www", "app", "api", "dashboard", "admin", "assets", "static"]);
+
+export function resolveTenant(host: string, rootDomain: string): TenantResolution {
+  const normalized = host.toLowerCase();
+  const rootNormalized = rootDomain.toLowerCase();
+
+  if (normalized === rootNormalized) return { kind: "apex" };
+
+  const suffix = "." + rootNormalized;
+  if (!normalized.endsWith(suffix)) return { kind: "unknown" };
+
+  const sub = normalized.slice(0, -suffix.length);
+  // reject multi-level subdomains in MVP
+  if (sub.includes(".")) return { kind: "unknown" };
+  if (RESERVED.has(sub)) return { kind: "apex" };
+  return { kind: "tenant", subdomain: sub };
+}
+```
+
+- [ ] **Step 4: Run and verify pass**
+
+Run: `npx vitest run src/lib/tenant.test.ts`
+Expected: PASS (7 tests).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add tenant resolution from host"
+```
+
+---
+
+## Task 7: Subdomain middleware
+
+**Files:**
+- Create: `src/middleware.ts`
+
+- [ ] **Step 1: Implement middleware**
+
+Create `src/middleware.ts`:
+```ts
+import { NextRequest, NextResponse } from "next/server";
+import { resolveTenant } from "@/lib/tenant";
+
+const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
+
+export function middleware(req: NextRequest) {
+  const host = req.headers.get("host") ?? "";
+  const tenant = resolveTenant(host, ROOT);
+  const url = req.nextUrl.clone();
+
+  if (tenant.kind === "tenant") {
+    // Don't rewrite API routes or static files on subdomains
+    if (url.pathname.startsWith("/api") || url.pathname.startsWith("/_next")) {
+      return NextResponse.next();
+    }
+    url.pathname = `/_sites/${tenant.subdomain}${url.pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  // Run on all pages except static assets and image optimization
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+};
+```
+
+- [ ] **Step 2: Manual verification**
+
+Run:
+```bash
+npm run dev
+```
+
+Visit `http://localhost:3000` in the browser — should show the marketing page.
+Visit `http://acme.localhost:3000` — should 404 (the `_sites/[subdomain]` route does not exist yet). This 404 is expected and correct; it proves the rewrite is firing.
+
+Kill the dev server.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add subdomain middleware with _sites rewrite"
+```
+
+---
+
+## Task 8: Public organizer profile page (stub)
+
+**Files:**
+- Create: `src/app/_sites/[subdomain]/page.tsx`
+- Create: `src/lib/db/queries/organizers.ts`
+
+- [ ] **Step 1: Create organizer queries module**
+
+Create `src/lib/db/queries/organizers.ts`:
+```ts
+import { eq } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db/client";
+
+export async function getOrganizerBySubdomain(subdomain: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.organizers)
+    .where(eq(schema.organizers.subdomain, subdomain))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPublishedEventsByOrganizer(organizerId: string) {
+  const db = getDb();
+  return db
+    .select()
+    .from(schema.events)
+    .where(eq(schema.events.organizerId, organizerId))
+    .all()
+    .then((rows) => rows.filter((e) => e.status === "published"));
+}
+```
+
+- [ ] **Step 2: Create organizer profile page**
+
+Create `src/app/_sites/[subdomain]/page.tsx`:
+```tsx
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { getOrganizerBySubdomain, getPublishedEventsByOrganizer } from "@/lib/db/queries/organizers";
+
+export default async function OrganizerProfilePage({
+  params,
+}: {
+  params: Promise<{ subdomain: string }>;
+}) {
+  const { subdomain } = await params;
+  const organizer = await getOrganizerBySubdomain(subdomain);
+  if (!organizer) notFound();
+
+  const events = await getPublishedEventsByOrganizer(organizer.id);
+
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-12">
+      {organizer.coverUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={organizer.coverUrl} alt="" className="mb-6 h-48 w-full rounded-xl object-cover" />
+      )}
+      <div className="flex items-center gap-4">
+        {organizer.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={organizer.logoUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
+        )}
+        <h1 className="text-3xl font-bold">{organizer.displayName}</h1>
+      </div>
+      {organizer.description && (
+        <p className="mt-4 whitespace-pre-wrap text-neutral-700">{organizer.description}</p>
+      )}
+
+      <h2 className="mt-10 text-xl font-semibold">Nadchodzące wydarzenia</h2>
+      {events.length === 0 ? (
+        <p className="mt-4 text-neutral-500">Brak nadchodzących wydarzeń.</p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {events.map((e) => (
+            <li key={e.id} className="rounded-lg border p-4 hover:bg-neutral-50">
+              <Link href={`/${e.slug}`} className="block">
+                <div className="font-medium">{e.title}</div>
+                <div className="text-sm text-neutral-500">
+                  {new Date(e.startsAt).toLocaleDateString("pl-PL")} &middot; {e.location}
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add public organizer profile page"
+```
+
+---
+
+## Task 9: Public event page (stub)
+
+**Files:**
+- Create: `src/app/_sites/[subdomain]/[eventSlug]/page.tsx`
+- Create: `src/lib/db/queries/events.ts`
+- Create: `src/lib/capacity.ts`
+- Create: `src/lib/capacity.test.ts`
+
+- [ ] **Step 1: Write the failing capacity test**
+
+Create `src/lib/capacity.test.ts`:
+```ts
+import { describe, it, expect } from "vitest";
+import { computeSpotsTaken, type CountableParticipant } from "./capacity";
+
+const now = 1_700_000_000_000;
+
+const p = (
+  status: CountableParticipant["status"],
+  expiresAt: number | null = null,
+): CountableParticipant => ({ status, expiresAt });
+
+describe("computeSpotsTaken", () => {
+  it("counts paid", () => {
+    expect(computeSpotsTaken([p("paid"), p("paid")], now)).toBe(2);
+  });
+
+  it("counts pending that hasn't expired", () => {
+    expect(computeSpotsTaken([p("pending", now + 10_000)], now)).toBe(1);
+  });
+
+  it("ignores expired pending", () => {
+    expect(computeSpotsTaken([p("pending", now - 10_000)], now)).toBe(0);
+  });
+
+  it("ignores cancelled and waitlisted", () => {
+    expect(computeSpotsTaken([p("cancelled"), p("waitlisted"), p("refunded")], now)).toBe(0);
+  });
+
+  it("mixed example", () => {
+    expect(
+      computeSpotsTaken(
+        [
+          p("paid"),
+          p("pending", now + 1000),
+          p("pending", now - 1000),
+          p("waitlisted"),
+          p("cancelled"),
+        ],
+        now,
+      ),
+    ).toBe(2);
+  });
+});
+```
+
+- [ ] **Step 2: Run and verify failure**
+
+Run: `npx vitest run src/lib/capacity.test.ts`
+Expected: FAIL — module not found.
+
+- [ ] **Step 3: Implement capacity module**
+
+Create `src/lib/capacity.ts`:
+```ts
+import { and, eq, or, gt, sql } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db/client";
+
+export type CountableParticipant = {
+  status: "pending" | "paid" | "cancelled" | "refunded" | "waitlisted";
+  expiresAt: number | null;
+};
+
+export function computeSpotsTaken(participants: CountableParticipant[], nowMs: number): number {
+  return participants.filter(
+    (p) =>
+      p.status === "paid" ||
+      (p.status === "pending" && p.expiresAt !== null && p.expiresAt > nowMs),
+  ).length;
+}
+
+export async function countTakenSpots(eventId: string, nowMs: number): Promise<number> {
+  const db = getDb();
+  const rows = await db
+    .select({ c: sql<number>`count(*)` })
+    .from(schema.participants)
+    .where(
+      and(
+        eq(schema.participants.eventId, eventId),
+        or(
+          eq(schema.participants.status, "paid"),
+          and(
+            eq(schema.participants.status, "pending"),
+            gt(schema.participants.expiresAt, nowMs),
+          ),
+        ),
+      ),
+    );
+  return Number(rows[0]?.c ?? 0);
+}
+```
+
+- [ ] **Step 4: Run and verify pass**
+
+Run: `npx vitest run src/lib/capacity.test.ts`
+Expected: PASS (5 tests).
+
+- [ ] **Step 5: Create event queries module**
+
+Create `src/lib/db/queries/events.ts`:
+```ts
+import { and, eq } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db/client";
+
+export async function getPublishedEventBySlug(organizerId: string, slug: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.events)
+    .where(
+      and(
+        eq(schema.events.organizerId, organizerId),
+        eq(schema.events.slug, slug),
+        eq(schema.events.status, "published"),
+      ),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+```
+
+- [ ] **Step 6: Create event page**
+
+Create `src/app/_sites/[subdomain]/[eventSlug]/page.tsx`:
+```tsx
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
+import { getPublishedEventBySlug } from "@/lib/db/queries/events";
+import { countTakenSpots } from "@/lib/capacity";
+
+export default async function EventPage({
+  params,
+}: {
+  params: Promise<{ subdomain: string; eventSlug: string }>;
+}) {
+  const { subdomain, eventSlug } = await params;
+  const organizer = await getOrganizerBySubdomain(subdomain);
+  if (!organizer) notFound();
+  const event = await getPublishedEventBySlug(organizer.id, eventSlug);
+  if (!event) notFound();
+
+  const taken = await countTakenSpots(event.id, Date.now());
+  const spotsLeft = Math.max(0, event.capacity - taken);
+  const isFull = spotsLeft === 0;
+  const priceFormatted = new Intl.NumberFormat("pl-PL", {
+    style: "currency",
+    currency: event.currency,
+  }).format(event.priceCents / 100);
+
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-12">
+      <Link href="/" className="text-sm text-neutral-500 hover:underline">
+        &larr; {organizer.displayName}
+      </Link>
+      <h1 className="mt-4 text-3xl font-bold">{event.title}</h1>
+
+      <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <dt className="text-xs uppercase text-neutral-500">Termin</dt>
+          <dd>
+            {new Date(event.startsAt).toLocaleDateString("pl-PL")} &ndash;{" "}
+            {new Date(event.endsAt).toLocaleDateString("pl-PL")}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase text-neutral-500">Miejsce</dt>
+          <dd>{event.location ?? "—"}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase text-neutral-500">Cena</dt>
+          <dd>{priceFormatted}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase text-neutral-500">Dostępność</dt>
+          <dd>{isFull ? "Brak miejsc — lista rezerwowa" : `${spotsLeft} wolnych miejsc`}</dd>
+        </div>
+      </dl>
+
+      {event.description && (
+        <p className="mt-8 whitespace-pre-wrap text-neutral-700">{event.description}</p>
+      )}
+
+      <div className="mt-10">
+        <Link
+          href={`/${event.slug}/register`}
+          className="inline-block rounded-lg bg-neutral-900 px-6 py-3 font-medium text-white hover:bg-neutral-800"
+        >
+          {isFull ? "Dołącz do listy rezerwowej" : "Zapisz się"}
+        </Link>
+      </div>
+    </main>
+  );
+}
+```
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add public event page and capacity logic"
+```
+
+---
+
+## Task 10: Add Clerk auth + protect dashboard
+
+**Files:**
+- Modify: `src/middleware.ts`
+- Create: `src/app/layout.tsx` (or modify existing)
+- Create: `src/app/dashboard/layout.tsx`
+- Create: `src/app/dashboard/page.tsx`
+- Create: `src/app/sign-in/[[...rest]]/page.tsx`
+- Create: `src/app/sign-up/[[...rest]]/page.tsx`
+
+- [ ] **Step 1: Install Clerk**
+
+Run:
+```bash
+npm install @clerk/nextjs
+```
+
+- [ ] **Step 2: Fill Clerk keys in `.dev.vars`**
+
+Create `.dev.vars` by copying from `.dev.vars.example` and fill in Clerk test keys from the Clerk dashboard (https://dashboard.clerk.com → API Keys). Set `NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000`.
+
+Also add Clerk publishable key to `.env.local` (Next.js reads `NEXT_PUBLIC_*` from `.env.local` at build time — `.dev.vars` is only read by `wrangler dev`):
+
+`.env.local`:
+```
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
+CLERK_SECRET_KEY=sk_test_...
+```
+
+Add `.env.local` to `.gitignore` (should already be there from the Next.js scaffold — verify).
+
+- [ ] **Step 3: Wrap root layout with ClerkProvider**
+
+Modify `src/app/layout.tsx` (the Next scaffold already created this file — replace its contents):
+```tsx
+import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "wyjazdo.pl",
+  description: "Platforma dla organizatorów wyjazdów i wydarzeń",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ClerkProvider>
+      <html lang="pl">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  );
+}
+```
+
+- [ ] **Step 4: Update middleware to compose with Clerk**
+
+Replace `src/middleware.ts`:
+```ts
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { resolveTenant } from "@/lib/tenant";
+
+const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
+const isDashboardRoute = createRouteMatcher(["/dashboard(.*)"]);
+
+export default clerkMiddleware(async (auth, req) => {
+  const host = req.headers.get("host") ?? "";
+  const tenant = resolveTenant(host, ROOT);
+  const url = req.nextUrl.clone();
+
+  if (tenant.kind === "tenant") {
+    if (url.pathname.startsWith("/api") || url.pathname.startsWith("/_next")) {
+      return NextResponse.next();
+    }
+    url.pathname = `/_sites/${tenant.subdomain}${url.pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
+  if (isDashboardRoute(req)) {
+    await auth.protect();
+  }
+  return NextResponse.next();
+});
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)", "/(api|trpc)(.*)"],
+};
+```
+
+- [ ] **Step 5: Create Clerk sign-in / sign-up catch-all routes**
+
+Create `src/app/sign-in/[[...rest]]/page.tsx`:
+```tsx
+import { SignIn } from "@clerk/nextjs";
+export default function SignInPage() {
+  return (
+    <main className="flex min-h-screen items-center justify-center">
+      <SignIn />
+    </main>
+  );
+}
+```
+
+Create `src/app/sign-up/[[...rest]]/page.tsx`:
+```tsx
+import { SignUp } from "@clerk/nextjs";
+export default function SignUpPage() {
+  return (
+    <main className="flex min-h-screen items-center justify-center">
+      <SignUp />
+    </main>
+  );
+}
+```
+
+Add to `.env.local`:
+```
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+```
+
+- [ ] **Step 6: Create dashboard layout + placeholder page**
+
+Create `src/app/dashboard/layout.tsx`:
+```tsx
+import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div>
+      <header className="border-b">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <Link href="/dashboard" className="text-lg font-semibold">wyjazdo.pl</Link>
+          <nav className="flex items-center gap-6 text-sm">
+            <Link href="/dashboard">Wydarzenia</Link>
+            <Link href="/dashboard/settings">Ustawienia</Link>
+            <UserButton />
+          </nav>
+        </div>
+      </header>
+      <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+    </div>
+  );
+}
+```
+
+Create `src/app/dashboard/page.tsx`:
+```tsx
+export default function DashboardHome() {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <p className="mt-4 text-neutral-600">Placeholder — event list comes next.</p>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 7: Manual verification**
+
+Run `npm run dev`, visit `http://localhost:3000/dashboard`. Should redirect to Clerk sign-in. After creating a test user, should land on the placeholder dashboard.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add Clerk auth and protect dashboard routes"
+```
+
+---
+
+## Task 11: Organizer onboarding flow
+
+**Files:**
+- Create: `src/app/dashboard/onboarding/page.tsx`
+- Create: `src/app/dashboard/onboarding/actions.ts`
+- Modify: `src/app/dashboard/page.tsx` (redirect to onboarding if no organizer row)
+- Create: `src/lib/db/queries/organizers.ts` (extend)
+- Create: `src/lib/validators/organizer.ts`
+
+- [ ] **Step 1: Create organizer validator**
+
+Create `src/lib/validators/organizer.ts`:
+```ts
+import { z } from "zod";
+
+export const subdomainSchema = z
+  .string()
+  .min(3)
+  .max(32)
+  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, "Dozwolone małe litery, cyfry i myślniki");
+
+export const RESERVED_SUBDOMAINS = new Set([
+  "www", "app", "api", "dashboard", "admin", "assets", "static",
+  "help", "support", "mail", "blog",
+]);
+
+export const organizerProfileSchema = z.object({
+  subdomain: subdomainSchema.refine((s) => !RESERVED_SUBDOMAINS.has(s), "Ta nazwa jest zarezerwowana"),
+  displayName: z.string().min(1).max(100),
+  description: z.string().max(2000).optional(),
+});
+```
+
+- [ ] **Step 2: Install zod**
+
+Run:
+```bash
+npm install zod
+```
+
+- [ ] **Step 3: Extend organizer queries**
+
+Append to `src/lib/db/queries/organizers.ts`:
+```ts
+import { eq } from "drizzle-orm";
+
+export async function getOrganizerByClerkUserId(clerkUserId: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.organizers)
+    .where(eq(schema.organizers.clerkUserId, clerkUserId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function isSubdomainTaken(subdomain: string) {
+  const db = getDb();
+  const rows = await db
+    .select({ id: schema.organizers.id })
+    .from(schema.organizers)
+    .where(eq(schema.organizers.subdomain, subdomain))
+    .limit(1);
+  return rows.length > 0;
+}
+
+export async function createOrganizer(input: {
+  id: string;
+  clerkUserId: string;
+  subdomain: string;
+  displayName: string;
+  description?: string | null;
+}) {
+  const db = getDb();
+  const now = Date.now();
+  await db.insert(schema.organizers).values({
+    id: input.id,
+    clerkUserId: input.clerkUserId,
+    subdomain: input.subdomain,
+    displayName: input.displayName,
+    description: input.description ?? null,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+```
+
+- [ ] **Step 4: Create onboarding server action**
+
+Create `src/app/dashboard/onboarding/actions.ts`:
+```ts
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { organizerProfileSchema } from "@/lib/validators/organizer";
+import { newId } from "@/lib/ids";
+import {
+  createOrganizer,
+  getOrganizerByClerkUserId,
+  isSubdomainTaken,
+} from "@/lib/db/queries/organizers";
+
+export async function createOrganizerAction(formData: FormData) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const existing = await getOrganizerByClerkUserId(userId);
+  if (existing) redirect("/dashboard");
+
+  const parsed = organizerProfileSchema.safeParse({
+    subdomain: String(formData.get("subdomain") ?? "").toLowerCase(),
+    displayName: String(formData.get("displayName") ?? ""),
+    description: (formData.get("description") as string) || undefined,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message };
+  }
+
+  if (await isSubdomainTaken(parsed.data.subdomain)) {
+    return { error: "Ta nazwa jest już zajęta" };
+  }
+
+  await createOrganizer({
+    id: newId(),
+    clerkUserId: userId,
+    subdomain: parsed.data.subdomain,
+    displayName: parsed.data.displayName,
+    description: parsed.data.description ?? null,
+  });
+
+  redirect("/dashboard");
+}
+```
+
+- [ ] **Step 5: Create onboarding page**
+
+Create `src/app/dashboard/onboarding/page.tsx`:
+```tsx
+"use client";
+
+import { useActionState } from "react";
+import { createOrganizerAction } from "./actions";
+
+export default function OnboardingPage() {
+  const [state, formAction, pending] = useActionState<{ error?: string } | null, FormData>(
+    async (_prev, formData) => {
+      return (await createOrganizerAction(formData)) ?? null;
+    },
+    null,
+  );
+
+  return (
+    <div className="max-w-lg">
+      <h1 className="text-2xl font-semibold">Utwórz profil organizatora</h1>
+      <p className="mt-2 text-neutral-600">
+        Twój profil będzie dostępny pod adresem{" "}
+        <code>twoja-nazwa.wyjazdo.pl</code>.
+      </p>
+
+      <form action={formAction} className="mt-8 space-y-4">
+        <label className="block">
+          <span className="text-sm font-medium">Nazwa w URL (subdomena)</span>
+          <input
+            name="subdomain"
+            required
+            pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
+            minLength={3}
+            maxLength={32}
+            className="mt-1 w-full rounded-md border px-3 py-2"
+            placeholder="np. gorskie-wyjazdy"
+          />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium">Wyświetlana nazwa</span>
+          <input
+            name="displayName"
+            required
+            maxLength={100}
+            className="mt-1 w-full rounded-md border px-3 py-2"
+          />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium">Krótki opis</span>
+          <textarea
+            name="description"
+            maxLength={2000}
+            rows={4}
+            className="mt-1 w-full rounded-md border px-3 py-2"
+          />
+        </label>
+
+        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md bg-neutral-900 px-4 py-2 text-white disabled:opacity-50"
+        >
+          {pending ? "Tworzenie..." : "Utwórz profil"}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 6: Gate dashboard home on organizer existence**
+
+Replace `src/app/dashboard/page.tsx`:
+```tsx
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+
+export default async function DashboardHome() {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) redirect("/dashboard/onboarding");
+
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold">Wydarzenia</h1>
+      <p className="mt-4 text-neutral-600">Witaj, {organizer.displayName}.</p>
+      <p className="mt-2 text-sm text-neutral-500">
+        Twoja strona: <code>{organizer.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN}</code>
+      </p>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 7: Manual verification**
+
+Run `npm run dev`. Sign in with a fresh Clerk user. Should redirect to `/dashboard/onboarding`. Submit the form. Should land on `/dashboard` with organizer greeting. Visit `http://yoursubdomain.localhost:3000` — should show the organizer profile page with no events.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add -A
+git commit -m "feat: organizer onboarding flow"
+```
+
+---
+
+## Task 12: Organizer settings page (edit profile)
+
+**Files:**
+- Create: `src/app/dashboard/settings/page.tsx`
+- Create: `src/app/dashboard/settings/actions.ts`
+
+- [ ] **Step 1: Extend organizer queries with update**
+
+Append to `src/lib/db/queries/organizers.ts`:
+```ts
+export async function updateOrganizer(
+  organizerId: string,
+  patch: Partial<{
+    displayName: string;
+    description: string | null;
+    logoUrl: string | null;
+    coverUrl: string | null;
+    brandColor: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    socialLinks: string | null;
+  }>,
+) {
+  const db = getDb();
+  await db
+    .update(schema.organizers)
+    .set({ ...patch, updatedAt: Date.now() })
+    .where(eq(schema.organizers.id, organizerId));
+}
+```
+
+- [ ] **Step 2: Create settings action**
+
+Create `src/app/dashboard/settings/actions.ts`:
+```ts
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { getOrganizerByClerkUserId, updateOrganizer } from "@/lib/db/queries/organizers";
+
+const schema = z.object({
+  displayName: z.string().min(1).max(100),
+  description: z.string().max(2000).optional(),
+  logoUrl: z.string().url().optional().or(z.literal("")),
+  coverUrl: z.string().url().optional().or(z.literal("")),
+  brandColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional()
+    .or(z.literal("")),
+  contactEmail: z.string().email().optional().or(z.literal("")),
+  contactPhone: z.string().max(32).optional(),
+  website: z.string().url().optional().or(z.literal("")),
+  instagram: z.string().max(64).optional(),
+  facebook: z.string().max(128).optional(),
+});
+
+function emptyToNull(v: string | undefined | null) {
+  return v && v.length > 0 ? v : null;
+}
+
+export async function updateSettingsAction(formData: FormData) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("No organizer");
+
+  const parsed = schema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const d = parsed.data;
+
+  const socialLinks = JSON.stringify({
+    website: emptyToNull(d.website),
+    instagram: emptyToNull(d.instagram),
+    facebook: emptyToNull(d.facebook),
+  });
+
+  await updateOrganizer(organizer.id, {
+    displayName: d.displayName,
+    description: emptyToNull(d.description),
+    logoUrl: emptyToNull(d.logoUrl),
+    coverUrl: emptyToNull(d.coverUrl),
+    brandColor: emptyToNull(d.brandColor),
+    contactEmail: emptyToNull(d.contactEmail),
+    contactPhone: emptyToNull(d.contactPhone),
+    socialLinks,
+  });
+
+  revalidatePath("/dashboard/settings");
+  return { ok: true };
+}
+```
+
+- [ ] **Step 3: Create settings page**
+
+Create `src/app/dashboard/settings/page.tsx`:
+```tsx
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { updateSettingsAction } from "./actions";
+
+export default async function SettingsPage() {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) redirect("/dashboard/onboarding");
+
+  const social = organizer.socialLinks
+    ? (JSON.parse(organizer.socialLinks) as Record<string, string | null>)
+    : {};
+
+  const field = (name: string, label: string, value: string | null, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+    <label className="block">
+      <span className="text-sm font-medium">{label}</span>
+      <input
+        name={name}
+        defaultValue={value ?? ""}
+        className="mt-1 w-full rounded-md border px-3 py-2"
+        {...props}
+      />
+    </label>
+  );
+
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold">Ustawienia</h1>
+      <form action={updateSettingsAction} className="mt-8 max-w-xl space-y-4">
+        {field("displayName", "Wyświetlana nazwa", organizer.displayName, { required: true, maxLength: 100 })}
+        <label className="block">
+          <span className="text-sm font-medium">Opis</span>
+          <textarea
+            name="description"
+            defaultValue={organizer.description ?? ""}
+            rows={4}
+            maxLength={2000}
+            className="mt-1 w-full rounded-md border px-3 py-2"
+          />
+        </label>
+        {field("logoUrl", "URL logo", organizer.logoUrl, { type: "url" })}
+        {field("coverUrl", "URL okładki", organizer.coverUrl, { type: "url" })}
+        {field("brandColor", "Kolor marki (hex, np. #1e40af)", organizer.brandColor, { pattern: "#[0-9a-fA-F]{6}" })}
+        {field("contactEmail", "Email kontaktowy", organizer.contactEmail, { type: "email" })}
+        {field("contactPhone", "Telefon", organizer.contactPhone)}
+        {field("website", "Strona WWW", social.website ?? "", { type: "url" })}
+        {field("instagram", "Instagram", social.instagram ?? "")}
+        {field("facebook", "Facebook", social.facebook ?? "")}
+
+        <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-white">
+          Zapisz
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Manual verification**
+
+Run `npm run dev`. Edit settings, save, reload, verify values persist.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "feat: organizer settings page"
+```
+
+---
+
+## Task 13: Event CRUD — list + create
+
+**Files:**
+- Create: `src/lib/validators/event.ts`
+- Create: `src/lib/db/queries/events-dashboard.ts`
+- Modify: `src/app/dashboard/page.tsx`
+- Create: `src/app/dashboard/events/new/page.tsx`
+- Create: `src/app/dashboard/events/new/actions.ts`
+
+- [ ] **Step 1: Create event validator**
+
+Create `src/lib/validators/event.ts`:
+```ts
+import { z } from "zod";
+
+export const customQuestionSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1).max(200),
+  type: z.enum(["short_text", "long_text", "select"]),
+  required: z.boolean(),
+  options: z.array(z.string().min(1)).optional(),
+});
+export type CustomQuestion = z.infer<typeof customQuestionSchema>;
+
+export const eventBaseSchema = z.object({
+  slug: z
+    .string()
+    .min(3)
+    .max(64)
+    .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, "Dozwolone małe litery, cyfry i myślniki"),
+  title: z.string().min(1).max(200),
+  description: z.string().max(10_000).optional(),
+  location: z.string().max(200).optional(),
+  startsAt: z.number().int().positive(),
+  endsAt: z.number().int().positive(),
+  priceCents: z.number().int().nonnegative(),
+  currency: z.literal("PLN"),
+  capacity: z.number().int().min(1).max(10_000),
+  coverUrl: z.string().url().optional().or(z.literal("")),
+  customQuestions: z.array(customQuestionSchema).max(20).default([]),
+});
+export type EventBase = z.infer<typeof eventBaseSchema>;
+```
+
+- [ ] **Step 2: Create dashboard event queries**
+
+Create `src/lib/db/queries/events-dashboard.ts`:
+```ts
+import { and, eq, sql } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db/client";
+
+export async function listEventsForOrganizer(organizerId: string) {
+  const db = getDb();
+  return db
+    .select()
+    .from(schema.events)
+    .where(eq(schema.events.organizerId, organizerId))
+    .orderBy(sql`${schema.events.createdAt} desc`)
+    .all();
+}
+
+export async function getEventForOrganizer(organizerId: string, eventId: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.events)
+    .where(and(eq(schema.events.organizerId, organizerId), eq(schema.events.id, eventId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function isSlugTakenForOrganizer(organizerId: string, slug: string) {
+  const db = getDb();
+  const rows = await db
+    .select({ id: schema.events.id })
+    .from(schema.events)
+    .where(and(eq(schema.events.organizerId, organizerId), eq(schema.events.slug, slug)))
+    .limit(1);
+  return rows.length > 0;
+}
+
+export async function insertEvent(row: typeof schema.events.$inferInsert) {
+  const db = getDb();
+  await db.insert(schema.events).values(row);
+}
+
+export async function updateEvent(
+  organizerId: string,
+  eventId: string,
+  patch: Partial<typeof schema.events.$inferInsert>,
+) {
+  const db = getDb();
+  await db
+    .update(schema.events)
+    .set({ ...patch, updatedAt: Date.now() })
+    .where(and(eq(schema.events.organizerId, organizerId), eq(schema.events.id, eventId)));
+}
+```
+
+- [ ] **Step 3: Replace dashboard home with event list**
+
+Replace `src/app/dashboard/page.tsx`:
+```tsx
+import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { listEventsForOrganizer } from "@/lib/db/queries/events-dashboard";
+
+export default async function DashboardHome() {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) redirect("/dashboard/onboarding");
+
+  const events = await listEventsForOrganizer(organizer.id);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Wydarzenia</h1>
+        <Link href="/dashboard/events/new" className="rounded-md bg-neutral-900 px-4 py-2 text-white">
+          + Nowe wydarzenie
+        </Link>
+      </div>
+
+      {events.length === 0 ? (
+        <p className="mt-8 text-neutral-500">Nie masz jeszcze żadnych wydarzeń.</p>
+      ) : (
+        <ul className="mt-8 divide-y rounded-lg border">
+          {events.map((e) => (
+            <li key={e.id} className="flex items-center justify-between px-4 py-3">
+              <div>
+                <Link href={`/dashboard/events/${e.id}`} className="font-medium hover:underline">
+                  {e.title}
+                </Link>
+                <div className="text-sm text-neutral-500">
+                  {new Date(e.startsAt).toLocaleDateString("pl-PL")} &middot; {e.status}
+                </div>
+              </div>
+              <Link
+                href={`/dashboard/events/${e.id}`}
+                className="text-sm text-neutral-600 hover:underline"
+              >
+                Edytuj &rarr;
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Create event action**
+
+Create `src/app/dashboard/events/new/actions.ts`:
+```ts
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { eventBaseSchema } from "@/lib/validators/event";
+import { newId } from "@/lib/ids";
+import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { insertEvent, isSlugTakenForOrganizer } from "@/lib/db/queries/events-dashboard";
+
+export async function createEventAction(formData: FormData) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("No organizer");
+
+  const raw = {
+    slug: String(formData.get("slug") ?? "").toLowerCase(),
+    title: String(formData.get("title") ?? ""),
+    description: (formData.get("description") as string) || undefined,
+    location: (formData.get("location") as string) || undefined,
+    startsAt: Number(new Date(String(formData.get("startsAt") ?? "")).getTime()),
+    endsAt: Number(new Date(String(formData.get("endsAt") ?? "")).getTime()),
+    priceCents: Math.round(Number(formData.get("price") ?? 0) * 100),
+    currency: "PLN" as const,
+    capacity: Number(formData.get("capacity") ?? 0),
+    coverUrl: (formData.get("coverUrl") as string) || undefined,
+    customQuestions: [],
+  };
+
+  const parsed = eventBaseSchema.safeParse(raw);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (parsed.data.endsAt < parsed.data.startsAt) return { error: "Data końca przed datą początku" };
+  if (await isSlugTakenForOrganizer(organizer.id, parsed.data.slug)) {
+    return { error: "Ta nazwa w URL jest już zajęta" };
+  }
+
+  const id = newId();
+  const now = Date.now();
+  await insertEvent({
+    id,
+    organizerId: organizer.id,
+    slug: parsed.data.slug,
+    title: parsed.data.title,
+    description: parsed.data.description ?? null,
+    location: parsed.data.location ?? null,
+    startsAt: parsed.data.startsAt,
+    endsAt: parsed.data.endsAt,
+    priceCents: parsed.data.priceCents,
+    currency: "PLN",
+    capacity: parsed.data.capacity,
+    coverUrl: parsed.data.coverUrl || null,
+    status: "draft",
+    customQuestions: JSON.stringify([]),
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  redirect(`/dashboard/events/${id}`);
+}
+```
+
+- [ ] **Step 5: Create new event page**
+
+Create `src/app/dashboard/events/new/page.tsx`:
+```tsx
+"use client";
+
+import { useActionState } from "react";
+import { createEventAction } from "./actions";
+
+export default function NewEventPage() {
+  const [state, formAction, pending] = useActionState<{ error?: string } | null, FormData>(
+    async (_prev, formData) => (await createEventAction(formData)) ?? null,
+    null,
+  );
+
+  return (
+    <div className="max-w-xl">
+      <h1 className="text-2xl font-semibold">Nowe wydarzenie</h1>
+      <form action={formAction} className="mt-8 space-y-4">
+        <label className="block">
+          <span className="text-sm font-medium">Tytuł</span>
+          <input name="title" required maxLength={200} className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium">Nazwa w URL</span>
+          <input
+            name="slug"
+            required
+            pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
+            minLength={3}
+            maxLength={64}
+            className="mt-1 w-full rounded-md border px-3 py-2"
+            placeholder="np. warsztaty-kwietniowe"
+          />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium">Opis</span>
+          <textarea name="description" rows={4} className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium">Miejsce</span>
+          <input name="location" className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium">Start</span>
+            <input type="datetime-local" name="startsAt" required className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">Koniec</span>
+            <input type="datetime-local" name="endsAt" required className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium">Cena (PLN)</span>
+            <input type="number" name="price" step="0.01" min="0" required className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">Liczba miejsc</span>
+            <input type="number" name="capacity" min="1" required className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-sm font-medium">URL okładki (opcjonalnie)</span>
+          <input type="url" name="coverUrl" className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+
+        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+
+        <button type="submit" disabled={pending} className="rounded-md bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+          {pending ? "Zapisywanie..." : "Utwórz jako szkic"}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 6: Manual verification**
+
+Run `npm run dev`. From `/dashboard`, click "Nowe wydarzenie", fill form, submit. Should redirect to `/dashboard/events/[id]` (404 — edit page comes next, expected).
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "feat: event list and create flow"
+```
+
+---
+
+## Task 14: Event edit page (including publish + custom questions)
+
+**Files:**
+- Create: `src/app/dashboard/events/[id]/page.tsx`
+- Create: `src/app/dashboard/events/[id]/actions.ts`
+- Create: `src/components/dashboard/CustomQuestionsEditor.tsx`
+
+- [ ] **Step 1: Create custom questions editor component**
+
+Create `src/components/dashboard/CustomQuestionsEditor.tsx`:
+```tsx
+"use client";
+
+import { useState } from "react";
+import type { CustomQuestion } from "@/lib/validators/event";
+import { newId } from "@/lib/ids";
+
+export default function CustomQuestionsEditor({
+  initial,
+  name,
+}: {
+  initial: CustomQuestion[];
+  name: string;
+}) {
+  const [questions, setQuestions] = useState<CustomQuestion[]>(initial);
+
+  function update(i: number, patch: Partial<CustomQuestion>) {
+    setQuestions((q) => q.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  }
+  function remove(i: number) {
+    setQuestions((q) => q.filter((_, idx) => idx !== i));
+  }
+  function add() {
+    setQuestions((q) => [...q, { id: newId(), label: "", type: "short_text", required: false }]);
+  }
+
+  return (
+    <div>
+      <input type="hidden" name={name} value={JSON.stringify(questions)} />
+      <div className="space-y-3">
+        {questions.map((q, i) => (
+          <div key={q.id} className="rounded-md border p-3">
+            <div className="flex gap-2">
+              <input
+                placeholder="Pytanie"
+                value={q.label}
+                onChange={(e) => update(i, { label: e.target.value })}
+                className="flex-1 rounded border px-2 py-1"
+              />
+              <select
+                value={q.type}
+                onChange={(e) => update(i, { type: e.target.value as CustomQuestion["type"] })}
+                className="rounded border px-2 py-1"
+              >
+                <option value="short_text">Krótki tekst</option>
+                <option value="long_text">Długi tekst</option>
+                <option value="select">Wybór</option>
+              </select>
+              <label className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={q.required}
+                  onChange={(e) => update(i, { required: e.target.checked })}
+                />
+                wymagane
+              </label>
+              <button type="button" onClick={() => remove(i)} className="text-sm text-red-600">
+                Usuń
+              </button>
+            </div>
+            {q.type === "select" && (
+              <input
+                placeholder="Opcje po przecinku (np. Tak, Nie, Może)"
+                value={q.options?.join(", ") ?? ""}
+                onChange={(e) =>
+                  update(i, {
+                    options: e.target.value
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  })
+                }
+                className="mt-2 w-full rounded border px-2 py-1"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={add} className="mt-3 text-sm text-neutral-700 hover:underline">
+        + Dodaj pytanie
+      </button>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: Create edit actions**
+
+Create `src/app/dashboard/events/[id]/actions.ts`:
+```ts
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { eventBaseSchema, customQuestionSchema } from "@/lib/validators/event";
+import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
+
+export async function saveEventAction(eventId: string, formData: FormData) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("No organizer");
+  const existing = await getEventForOrganizer(organizer.id, eventId);
+  if (!existing) throw new Error("Not found");
+
+  const questionsRaw = String(formData.get("customQuestions") ?? "[]");
+  const questionsParsed = z.array(customQuestionSchema).safeParse(JSON.parse(questionsRaw));
+  if (!questionsParsed.success) return { error: "Błąd w pytaniach niestandardowych" };
+
+  const raw = {
+    slug: existing.slug, // slug is not editable after creation in MVP
+    title: String(formData.get("title") ?? ""),
+    description: (formData.get("description") as string) || undefined,
+    location: (formData.get("location") as string) || undefined,
+    startsAt: new Date(String(formData.get("startsAt") ?? "")).getTime(),
+    endsAt: new Date(String(formData.get("endsAt") ?? "")).getTime(),
+    priceCents: Math.round(Number(formData.get("price") ?? 0) * 100),
+    currency: "PLN" as const,
+    capacity: Number(formData.get("capacity") ?? 0),
+    coverUrl: (formData.get("coverUrl") as string) || undefined,
+    customQuestions: questionsParsed.data,
+  };
+  const parsed = eventBaseSchema.safeParse(raw);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (parsed.data.endsAt < parsed.data.startsAt) return { error: "Data końca przed datą początku" };
+
+  await updateEvent(organizer.id, eventId, {
+    title: parsed.data.title,
+    description: parsed.data.description ?? null,
+    location: parsed.data.location ?? null,
+    startsAt: parsed.data.startsAt,
+    endsAt: parsed.data.endsAt,
+    priceCents: parsed.data.priceCents,
+    capacity: parsed.data.capacity,
+    coverUrl: parsed.data.coverUrl || null,
+    customQuestions: JSON.stringify(parsed.data.customQuestions),
+  });
+
+  revalidatePath(`/dashboard/events/${eventId}`);
+  return { ok: true };
+}
+
+const statusSchema = z.enum(["draft", "published", "archived"]);
+
+export async function changeStatusAction(eventId: string, status: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("No organizer");
+  const parsed = statusSchema.safeParse(status);
+  if (!parsed.success) throw new Error("Invalid status");
+  await updateEvent(organizer.id, eventId, { status: parsed.data });
+  revalidatePath(`/dashboard/events/${eventId}`);
+}
+```
+
+- [ ] **Step 3: Create edit page**
+
+Create `src/app/dashboard/events/[id]/page.tsx`:
+```tsx
+import { auth } from "@clerk/nextjs/server";
+import { notFound, redirect } from "next/navigation";
+import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
+import type { CustomQuestion } from "@/lib/validators/event";
+import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
+import { saveEventAction, changeStatusAction } from "./actions";
+
+function toLocalInput(ts: number) {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export default async function EventEditPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) redirect("/dashboard/onboarding");
+  const event = await getEventForOrganizer(organizer.id, id);
+  if (!event) notFound();
+
+  const questions: CustomQuestion[] = event.customQuestions
+    ? JSON.parse(event.customQuestions)
+    : [];
+
+  const saveBound = saveEventAction.bind(null, id);
+  const publishBound = changeStatusAction.bind(null, id, "published");
+  const unpublishBound = changeStatusAction.bind(null, id, "draft");
+  const archiveBound = changeStatusAction.bind(null, id, "archived");
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">{event.title}</h1>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="rounded-full bg-neutral-100 px-2 py-1">{event.status}</span>
+          {event.status !== "published" && (
+            <form action={publishBound}>
+              <button className="rounded bg-green-600 px-3 py-1 text-white">Opublikuj</button>
+            </form>
+          )}
+          {event.status === "published" && (
+            <form action={unpublishBound}>
+              <button className="rounded bg-neutral-200 px-3 py-1">Ukryj</button>
+            </form>
+          )}
+          <form action={archiveBound}>
+            <button className="rounded bg-neutral-200 px-3 py-1">Archiwizuj</button>
+          </form>
+        </div>
+      </div>
+
+      <form action={saveBound} className="mt-8 max-w-xl space-y-4">
+        <label className="block">
+          <span className="text-sm font-medium">Tytuł</span>
+          <input name="title" defaultValue={event.title} required maxLength={200} className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium">Opis</span>
+          <textarea name="description" defaultValue={event.description ?? ""} rows={6} className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium">Miejsce</span>
+          <input name="location" defaultValue={event.location ?? ""} className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium">Start</span>
+            <input type="datetime-local" name="startsAt" defaultValue={toLocalInput(event.startsAt)} required className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">Koniec</span>
+            <input type="datetime-local" name="endsAt" defaultValue={toLocalInput(event.endsAt)} required className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium">Cena (PLN)</span>
+            <input type="number" name="price" step="0.01" min="0" defaultValue={event.priceCents / 100} required className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">Liczba miejsc</span>
+            <input type="number" name="capacity" min="1" defaultValue={event.capacity} required className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-sm font-medium">URL okładki</span>
+          <input type="url" name="coverUrl" defaultValue={event.coverUrl ?? ""} className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+
+        <fieldset className="mt-4">
+          <legend className="text-sm font-medium">Pytania do uczestnika</legend>
+          <p className="text-xs text-neutral-500">Odpowiedzi zostaną zapisane razem ze zgłoszeniem.</p>
+          <div className="mt-2">
+            <CustomQuestionsEditor initial={questions} name="customQuestions" />
+          </div>
+        </fieldset>
+
+        <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-white">Zapisz</button>
+      </form>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Manual verification**
+
+Run `npm run dev`. Create an event, edit title/description, add a custom question, save. Publish. Visit `http://<subdomain>.localhost:3000/<slug>` — should render the public event page with correct data.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "feat: event edit + publish + custom questions"
+```
+
+---
+
+## Task 15: Registration form page (public)
+
+**Files:**
+- Create: `src/app/_sites/[subdomain]/[eventSlug]/register/page.tsx`
+
+- [ ] **Step 1: Create registration form page**
+
+Create `src/app/_sites/[subdomain]/[eventSlug]/register/page.tsx`:
+```tsx
+import { notFound } from "next/navigation";
+import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
+import { getPublishedEventBySlug } from "@/lib/db/queries/events";
+import { countTakenSpots } from "@/lib/capacity";
+import type { CustomQuestion } from "@/lib/validators/event";
+
+export default async function RegisterPage({
+  params,
+}: {
+  params: Promise<{ subdomain: string; eventSlug: string }>;
+}) {
+  const { subdomain, eventSlug } = await params;
+  const organizer = await getOrganizerBySubdomain(subdomain);
+  if (!organizer) notFound();
+  const event = await getPublishedEventBySlug(organizer.id, eventSlug);
+  if (!event) notFound();
+
+  const taken = await countTakenSpots(event.id, Date.now());
+  const isFull = taken >= event.capacity;
+  const questions: CustomQuestion[] = event.customQuestions
+    ? JSON.parse(event.customQuestions)
+    : [];
+
+  return (
+    <main className="mx-auto max-w-xl px-6 py-10">
+      <h1 className="text-2xl font-semibold">{event.title}</h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        {isFull ? "Zapis na listę rezerwową" : "Formularz zapisu"}
+      </p>
+
+      <form action="/api/register" method="POST" className="mt-8 space-y-4">
+        <input type="hidden" name="eventId" value={event.id} />
+        <input type="hidden" name="organizerSubdomain" value={subdomain} />
+        <input type="hidden" name="eventSlug" value={eventSlug} />
+
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium">Imię</span>
+            <input name="firstName" required maxLength={100} className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">Nazwisko</span>
+            <input name="lastName" required maxLength={100} className="mt-1 w-full rounded-md border px-3 py-2" />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-sm font-medium">Email</span>
+          <input type="email" name="email" required className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium">Telefon</span>
+          <input name="phone" className="mt-1 w-full rounded-md border px-3 py-2" />
+        </label>
+
+        {questions.map((q) => (
+          <label key={q.id} className="block">
+            <span className="text-sm font-medium">
+              {q.label}
+              {q.required && " *"}
+            </span>
+            {q.type === "long_text" ? (
+              <textarea name={`q_${q.id}`} required={q.required} rows={3} className="mt-1 w-full rounded-md border px-3 py-2" />
+            ) : q.type === "select" ? (
+              <select name={`q_${q.id}`} required={q.required} className="mt-1 w-full rounded-md border px-3 py-2">
+                <option value="">—</option>
+                {q.options?.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : (
+              <input name={`q_${q.id}`} required={q.required} maxLength={500} className="mt-1 w-full rounded-md border px-3 py-2" />
+            )}
+          </label>
+        ))}
+
+        <button type="submit" className="rounded-md bg-neutral-900 px-6 py-3 font-medium text-white">
+          {isFull ? "Dołącz do listy rezerwowej" : "Przejdź do płatności"}
+        </button>
+      </form>
+    </main>
+  );
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add -A
+git commit -m "feat: public registration form"
+```
+
+---
+
+## Task 16: Stripe client helper
+
+**Files:**
+- Create: `src/lib/stripe.ts`
+
+- [ ] **Step 1: Install Stripe SDK**
+
+Run:
+```bash
+npm install stripe
+```
+
+- [ ] **Step 2: Create client factory**
+
+Create `src/lib/stripe.ts`:
+```ts
+import Stripe from "stripe";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
+export function getStripe(): Stripe {
+  const { env } = getCloudflareContext();
+  const key = env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("STRIPE_SECRET_KEY not set");
+  return new Stripe(key, {
+    // Use fetch-based HTTP client (required on Workers, no Node http)
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+}
+
+export function getWebhookSecret(): string {
+  const { env } = getCloudflareContext();
+  const s = env.STRIPE_WEBHOOK_SECRET;
+  if (!s) throw new Error("STRIPE_WEBHOOK_SECRET not set");
+  return s;
+}
+```
+
+- [ ] **Step 3: Update `cloudflare-env.d.ts` with Stripe + Clerk secrets**
+
+This is normally generated by `wrangler types`, but we can also hand-augment. Since we're using `.dev.vars` (and later `wrangler secret put` for prod), these will be typed. Run:
+
+```bash
+npm run cf-typegen
+```
+
+If `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `CLERK_SECRET_KEY` do not appear in `cloudflare-env.d.ts`, open the generated file and manually add them to `CloudflareEnv`:
+
+```ts
+interface CloudflareEnv {
+  DB: D1Database;
+  ASSETS: Fetcher;
+  STRIPE_SECRET_KEY: string;
+  STRIPE_WEBHOOK_SECRET: string;
+  CLERK_SECRET_KEY: string;
+  NEXT_PUBLIC_ROOT_DOMAIN: string;
+}
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add Stripe client factory (fetch-based for Workers)"
+```
+
+---
+
+## Task 17: POST /api/register — capacity check + Checkout Session
+
+**Files:**
+- Create: `src/lib/db/queries/participants.ts`
+- Create: `src/app/api/register/route.ts`
+- Create: `src/lib/validators/registration.ts`
+
+- [ ] **Step 1: Create participant queries**
+
+Create `src/lib/db/queries/participants.ts`:
+```ts
+import { and, eq } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db/client";
+
+export async function insertParticipant(row: typeof schema.participants.$inferInsert) {
+  const db = getDb();
+  await db.insert(schema.participants).values(row);
+}
+
+export async function setStripeSessionId(participantId: string, sessionId: string) {
+  const db = getDb();
+  await db
+    .update(schema.participants)
+    .set({ stripeSessionId: sessionId, updatedAt: Date.now() })
+    .where(eq(schema.participants.id, participantId));
+}
+
+export async function getParticipantById(id: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.participants)
+    .where(eq(schema.participants.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getParticipantBySessionId(sessionId: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.participants)
+    .where(eq(schema.participants.stripeSessionId, sessionId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listParticipantsForEvent(eventId: string) {
+  const db = getDb();
+  return db
+    .select()
+    .from(schema.participants)
+    .where(eq(schema.participants.eventId, eventId))
+    .all();
+}
+
+export async function markPaidIfPending(params: {
+  participantId: string;
+  paymentIntentId: string;
+  amountCents: number;
+  paidAt: number;
+}) {
+  const db = getDb();
+  await db
+    .update(schema.participants)
+    .set({
+      status: "paid",
+      stripePaymentIntentId: params.paymentIntentId,
+      amountPaidCents: params.amountCents,
+      paidAt: params.paidAt,
+      expiresAt: null,
+      updatedAt: Date.now(),
+    })
+    .where(
+      and(
+        eq(schema.participants.id, params.participantId),
+        eq(schema.participants.status, "pending"),
+      ),
+    );
+}
+
+export async function cancelIfPending(participantId: string) {
+  const db = getDb();
+  await db
+    .update(schema.participants)
+    .set({ status: "cancelled", updatedAt: Date.now() })
+    .where(
+      and(
+        eq(schema.participants.id, participantId),
+        eq(schema.participants.status, "pending"),
+      ),
+    );
+}
+```
+
+- [ ] **Step 2: Create registration validator**
+
+Create `src/lib/validators/registration.ts`:
+```ts
+import { z } from "zod";
+
+export const registrationBaseSchema = z.object({
+  eventId: z.string().min(1),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  email: z.string().email(),
+  phone: z.string().max(32).optional(),
+});
+```
+
+- [ ] **Step 3: Create register route handler**
+
+Create `src/app/api/register/route.ts`:
+```ts
+import { NextRequest, NextResponse } from "next/server";
+import { registrationBaseSchema } from "@/lib/validators/registration";
+import type { CustomQuestion } from "@/lib/validators/event";
+import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
+import { getPublishedEventBySlug } from "@/lib/db/queries/events";
+import { countTakenSpots } from "@/lib/capacity";
+import {
+  insertParticipant,
+  setStripeSessionId,
+} from "@/lib/db/queries/participants";
+import { newId } from "@/lib/ids";
+import { getStripe } from "@/lib/stripe";
+
+const PENDING_TTL_MS = 30 * 60 * 1000;
+
+export async function POST(req: NextRequest) {
+  const form = await req.formData();
+
+  const parsed = registrationBaseSchema.safeParse({
+    eventId: form.get("eventId"),
+    firstName: form.get("firstName"),
+    lastName: form.get("lastName"),
+    email: form.get("email"),
+    phone: form.get("phone") || undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  }
+
+  const subdomain = String(form.get("organizerSubdomain") ?? "");
+  const slug = String(form.get("eventSlug") ?? "");
+  const organizer = await getOrganizerBySubdomain(subdomain);
+  if (!organizer) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const event = await getPublishedEventBySlug(organizer.id, slug);
+  if (!event || event.id !== parsed.data.eventId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Collect custom answers
+  const questions: CustomQuestion[] = event.customQuestions
+    ? JSON.parse(event.customQuestions)
+    : [];
+  const answers: Record<string, string> = {};
+  for (const q of questions) {
+    const v = form.get(`q_${q.id}`);
+    if (q.required && (!v || String(v).trim() === "")) {
+      return NextResponse.json({ error: `Pole "${q.label}" jest wymagane` }, { status: 400 });
+    }
+    if (v) answers[q.id] = String(v);
+  }
+
+  const now = Date.now();
+  const taken = await countTakenSpots(event.id, now);
+  const isFull = taken >= event.capacity;
+
+  const participantId = newId();
+  const rootHost = subdomain + "." + (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000");
+  const proto = req.nextUrl.protocol; // includes trailing ':'
+  const origin = `${proto}//${rootHost}`;
+
+  if (isFull) {
+    await insertParticipant({
+      id: participantId,
+      eventId: event.id,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      email: parsed.data.email,
+      phone: parsed.data.phone ?? null,
+      customAnswers: JSON.stringify(answers),
+      status: "waitlisted",
+      expiresAt: null,
+      stripeSessionId: null,
+      stripePaymentIntentId: null,
+      amountPaidCents: null,
+      paidAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return NextResponse.redirect(`${origin}/${slug}/thanks?waitlisted=1`, 303);
+  }
+
+  // Create pending participant, then create Stripe Checkout Session
+  await insertParticipant({
+    id: participantId,
+    eventId: event.id,
+    firstName: parsed.data.firstName,
+    lastName: parsed.data.lastName,
+    email: parsed.data.email,
+    phone: parsed.data.phone ?? null,
+    customAnswers: JSON.stringify(answers),
+    status: "pending",
+    expiresAt: now + PENDING_TTL_MS,
+    stripeSessionId: null,
+    stripePaymentIntentId: null,
+    amountPaidCents: null,
+    paidAt: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    payment_method_types: ["card", "blik", "p24"],
+    customer_email: parsed.data.email,
+    line_items: [
+      {
+        price_data: {
+          currency: "pln",
+          unit_amount: event.priceCents,
+          product_data: { name: event.title },
+        },
+        quantity: 1,
+      },
+    ],
+    metadata: { participant_id: participantId },
+    success_url: `${origin}/${slug}/thanks?pid=${participantId}`,
+    cancel_url: `${origin}/${slug}/register`,
+    expires_at: Math.floor((now + PENDING_TTL_MS) / 1000),
+  });
+
+  await setStripeSessionId(participantId, session.id);
+
+  return NextResponse.redirect(session.url!, 303);
+}
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add -A
+git commit -m "feat: POST /api/register creates pending + Stripe Checkout Session"
+```
+
+---
+
+## Task 18: Stripe webhook handler with tests
+
+**Files:**
+- Create: `src/app/api/stripe/webhook/route.ts`
+- Create: `src/lib/webhook-handler.ts`
+- Create: `src/lib/webhook-handler.test.ts`
+
+- [ ] **Step 1: Write failing webhook handler test**
+
+Create `src/lib/webhook-handler.test.ts`:
+```ts
+import { describe, it, expect, vi } from "vitest";
+import { handleStripeEvent, type WebhookDeps } from "./webhook-handler";
+
+function makeDeps(overrides: Partial<WebhookDeps> = {}): WebhookDeps {
+  return {
+    markPaid: vi.fn(async () => {}),
+    cancel: vi.fn(async () => {}),
+    now: () => 1_700_000_000_000,
+    ...overrides,
+  };
+}
+
+describe("handleStripeEvent", () => {
+  it("marks paid on checkout.session.completed with metadata.participant_id", async () => {
+    const deps = makeDeps();
+    await handleStripeEvent(
+      {
+        type: "checkout.session.completed",
+        data: {
+          object: {
+            metadata: { participant_id: "P1" },
+            payment_intent: "pi_1",
+            amount_total: 12345,
+          },
+        },
+      } as any,
+      deps,
+    );
+    expect(deps.markPaid).toHaveBeenCalledWith({
+      participantId: "P1",
+      paymentIntentId: "pi_1",
+      amountCents: 12345,
+      paidAt: 1_700_000_000_000,
+    });
+    expect(deps.cancel).not.toHaveBeenCalled();
+  });
+
+  it("cancels on checkout.session.expired", async () => {
+    const deps = makeDeps();
+    await handleStripeEvent(
+      {
+        type: "checkout.session.expired",
+        data: { object: { metadata: { participant_id: "P2" } } },
+      } as any,
+      deps,
+    );
+    expect(deps.cancel).toHaveBeenCalledWith("P2");
+  });
+
+  it("cancels on payment_intent.payment_failed via session lookup metadata", async () => {
+    const deps = makeDeps();
+    await handleStripeEvent(
+      {
+        type: "payment_intent.payment_failed",
+        data: { object: { metadata: { participant_id: "P3" } } },
+      } as any,
+      deps,
+    );
+    expect(deps.cancel).toHaveBeenCalledWith("P3");
+  });
+
+  it("ignores unknown event types", async () => {
+    const deps = makeDeps();
+    await handleStripeEvent(
+      { type: "customer.created", data: { object: {} } } as any,
+      deps,
+    );
+    expect(deps.markPaid).not.toHaveBeenCalled();
+    expect(deps.cancel).not.toHaveBeenCalled();
+  });
+
+  it("no-op when participant_id is missing", async () => {
+    const deps = makeDeps();
+    await handleStripeEvent(
+      {
+        type: "checkout.session.completed",
+        data: { object: { metadata: {}, payment_intent: "pi", amount_total: 100 } },
+      } as any,
+      deps,
+    );
+    expect(deps.markPaid).not.toHaveBeenCalled();
+  });
+});
+```
+
+- [ ] **Step 2: Run and verify failure**
+
+Run: `npx vitest run src/lib/webhook-handler.test.ts`
+Expected: FAIL — module not found.
+
+- [ ] **Step 3: Implement webhook handler**
+
+Create `src/lib/webhook-handler.ts`:
+```ts
+import type Stripe from "stripe";
+
+export type WebhookDeps = {
+  markPaid(params: {
+    participantId: string;
+    paymentIntentId: string;
+    amountCents: number;
+    paidAt: number;
+  }): Promise<void>;
+  cancel(participantId: string): Promise<void>;
+  now(): number;
+};
+
+export async function handleStripeEvent(event: Stripe.Event, deps: WebhookDeps): Promise<void> {
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const s = event.data.object as Stripe.Checkout.Session;
+      const pid = s.metadata?.participant_id;
+      if (!pid) return;
+      await deps.markPaid({
+        participantId: pid,
+        paymentIntentId:
+          typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id ?? "",
+        amountCents: s.amount_total ?? 0,
+        paidAt: deps.now(),
+      });
+      return;
+    }
+    case "checkout.session.expired": {
+      const s = event.data.object as Stripe.Checkout.Session;
+      const pid = s.metadata?.participant_id;
+      if (!pid) return;
+      await deps.cancel(pid);
+      return;
+    }
+    case "payment_intent.payment_failed": {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      const pid = pi.metadata?.participant_id;
+      if (!pid) return;
+      await deps.cancel(pid);
+      return;
+    }
+    default:
+      return;
+  }
+}
+```
+
+- [ ] **Step 4: Run and verify pass**
+
+Run: `npx vitest run src/lib/webhook-handler.test.ts`
+Expected: PASS (5 tests).
+
+- [ ] **Step 5: Create webhook route**
+
+Create `src/app/api/stripe/webhook/route.ts`:
+```ts
+import { NextRequest } from "next/server";
+import { getStripe, getWebhookSecret } from "@/lib/stripe";
+import { handleStripeEvent } from "@/lib/webhook-handler";
+import { markPaidIfPending, cancelIfPending } from "@/lib/db/queries/participants";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest) {
+  const sig = req.headers.get("stripe-signature");
+  if (!sig) return new Response("Missing signature", { status: 400 });
+  const body = await req.text();
+
+  const stripe = getStripe();
+  let event;
+  try {
+    event = await stripe.webhooks.constructEventAsync(body, sig, getWebhookSecret());
+  } catch (err) {
+    console.error("webhook signature verification failed", err);
+    return new Response("Bad signature", { status: 400 });
+  }
+
+  try {
+    await handleStripeEvent(event, {
+      markPaid: markPaidIfPending,
+      cancel: cancelIfPending,
+      now: () => Date.now(),
+    });
+  } catch (err) {
+    console.error("webhook processing error", err);
+    // Return 200 to prevent retry storms on malformed data; log for investigation
+    return new Response("ok", { status: 200 });
+  }
+
+  return new Response("ok", { status: 200 });
+}
+```
+
+Also add `participant_id` to the PaymentIntent metadata when creating the session. Modify `src/app/api/register/route.ts`, in the `stripe.checkout.sessions.create({...})` call, add:
+
+```ts
+    payment_intent_data: {
+      metadata: { participant_id: participantId },
+    },
+```
+
+This ensures `payment_intent.payment_failed` events can be mapped back to a participant.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "feat: Stripe webhook handler with idempotent status updates"
+```
+
+---
+
+## Task 19: Thanks page with status polling
+
+**Files:**
+- Create: `src/app/_sites/[subdomain]/[eventSlug]/thanks/page.tsx`
+
+- [ ] **Step 1: Implement thanks page**
+
+Create `src/app/_sites/[subdomain]/[eventSlug]/thanks/page.tsx`:
+```tsx
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
+import { getPublishedEventBySlug } from "@/lib/db/queries/events";
+import { getParticipantById } from "@/lib/db/queries/participants";
+
+export const dynamic = "force-dynamic";
+
+export default async function ThanksPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ subdomain: string; eventSlug: string }>;
+  searchParams: Promise<{ pid?: string; waitlisted?: string }>;
+}) {
+  const { subdomain, eventSlug } = await params;
+  const { pid, waitlisted } = await searchParams;
+  const organizer = await getOrganizerBySubdomain(subdomain);
+  if (!organizer) notFound();
+  const event = await getPublishedEventBySlug(organizer.id, eventSlug);
+  if (!event) notFound();
+
+  if (waitlisted === "1") {
+    return (
+      <main className="mx-auto max-w-xl px-6 py-16 text-center">
+        <h1 className="text-2xl font-semibold">Jesteś na liście rezerwowej</h1>
+        <p className="mt-4 text-neutral-600">
+          Powiadomimy Cię, gdy zwolni się miejsce na wydarzenie <strong>{event.title}</strong>.
+        </p>
+        <Link href="/" className="mt-8 inline-block text-sm text-neutral-500 hover:underline">
+          &larr; Wróć
+        </Link>
+      </main>
+    );
+  }
+
+  const participant = pid ? await getParticipantById(pid) : null;
+  const status = participant?.status ?? "unknown";
+
+  return (
+    <main className="mx-auto max-w-xl px-6 py-16 text-center">
+      {status === "paid" ? (
+        <>
+          <h1 className="text-2xl font-semibold">Dziękujemy za zapis!</h1>
+          <p className="mt-4 text-neutral-600">
+            Twoje miejsce na <strong>{event.title}</strong> zostało potwierdzone.
+          </p>
+        </>
+      ) : status === "pending" ? (
+        <>
+          <h1 className="text-2xl font-semibold">Przetwarzamy płatność...</h1>
+          <p className="mt-4 text-neutral-600">Ta strona odświeży się automatycznie.</p>
+          <meta httpEquiv="refresh" content="5" />
+        </>
+      ) : status === "cancelled" ? (
+        <>
+          <h1 className="text-2xl font-semibold">Płatność nie powiodła się</h1>
+          <p className="mt-4 text-neutral-600">
+            Możesz spróbować zapisać się ponownie.
+          </p>
+          <Link href={`/${eventSlug}/register`} className="mt-8 inline-block rounded bg-neutral-900 px-4 py-2 text-white">
+            Spróbuj ponownie
+          </Link>
+        </>
+      ) : (
+        <>
+          <h1 className="text-2xl font-semibold">Status nieznany</h1>
+          <p className="mt-4 text-neutral-600">Skontaktuj się z organizatorem.</p>
+        </>
+      )}
+    </main>
+  );
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add -A
+git commit -m "feat: post-payment thanks page with status polling"
+```
+
+---
+
+## Task 20: Dashboard participants table
+
+**Files:**
+- Modify: `src/app/dashboard/events/[id]/page.tsx` (add participants section)
+- Create: `src/components/dashboard/ParticipantsTable.tsx`
+
+- [ ] **Step 1: Create participants table component**
+
+Create `src/components/dashboard/ParticipantsTable.tsx`:
+```tsx
+import type { Participant } from "@/lib/db/schema";
+import type { CustomQuestion } from "@/lib/validators/event";
+
+export default function ParticipantsTable({
+  participants,
+  questions,
+}: {
+  participants: Participant[];
+  questions: CustomQuestion[];
+}) {
+  if (participants.length === 0) {
+    return <p className="mt-4 text-neutral-500">Brak zgłoszeń.</p>;
+  }
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="border-b text-left text-xs uppercase text-neutral-500">
+          <tr>
+            <th className="py-2 pr-4">Status</th>
+            <th className="py-2 pr-4">Imię i nazwisko</th>
+            <th className="py-2 pr-4">Email</th>
+            <th className="py-2 pr-4">Telefon</th>
+            <th className="py-2 pr-4">Zapłacono</th>
+            {questions.map((q) => (
+              <th key={q.id} className="py-2 pr-4">{q.label}</th>
+            ))}
+            <th className="py-2 pr-4">Data zapisu</th>
+          </tr>
+        </thead>
+        <tbody>
+          {participants.map((p) => {
+            const answers: Record<string, string> = p.customAnswers
+              ? JSON.parse(p.customAnswers)
+              : {};
+            return (
+              <tr key={p.id} className="border-b last:border-0">
+                <td className="py-2 pr-4">
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${statusColor(p.status)}`}>
+                    {p.status}
+                  </span>
+                </td>
+                <td className="py-2 pr-4">{p.firstName} {p.lastName}</td>
+                <td className="py-2 pr-4">{p.email}</td>
+                <td className="py-2 pr-4">{p.phone ?? "—"}</td>
+                <td className="py-2 pr-4">
+                  {p.amountPaidCents != null ? (p.amountPaidCents / 100).toFixed(2) + " PLN" : "—"}
+                </td>
+                {questions.map((q) => (
+                  <td key={q.id} className="py-2 pr-4 max-w-[16rem] truncate">
+                    {answers[q.id] ?? "—"}
+                  </td>
+                ))}
+                <td className="py-2 pr-4">
+                  {new Date(p.createdAt).toLocaleString("pl-PL")}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function statusColor(status: string): string {
+  switch (status) {
+    case "paid": return "bg-green-100 text-green-800";
+    case "pending": return "bg-yellow-100 text-yellow-800";
+    case "waitlisted": return "bg-blue-100 text-blue-800";
+    case "cancelled": return "bg-neutral-100 text-neutral-600";
+    case "refunded": return "bg-purple-100 text-purple-800";
+    default: return "bg-neutral-100 text-neutral-600";
+  }
+}
+```
+
+- [ ] **Step 2: Add participants section to event edit page**
+
+Modify `src/app/dashboard/events/[id]/page.tsx` — append before the closing `</div>` of the outer wrapper (below the edit form):
+
+```tsx
+        {/* Participants section — below the form */}
+        <section className="mt-12">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Uczestnicy</h2>
+            <a
+              href={`/dashboard/events/${event.id}/export`}
+              className="text-sm text-neutral-700 hover:underline"
+            >
+              Eksport CSV
+            </a>
+          </div>
+          <ParticipantsSection eventId={event.id} questions={questions} />
+        </section>
+```
+
+Add server component `ParticipantsSection` at the bottom of the same file:
+
+```tsx
+async function ParticipantsSection({
+  eventId,
+  questions,
+}: {
+  eventId: string;
+  questions: CustomQuestion[];
+}) {
+  const { listParticipantsForEvent } = await import("@/lib/db/queries/participants");
+  const all = await listParticipantsForEvent(eventId);
+
+  const active = all.filter((p) => p.status !== "waitlisted");
+  const waitlist = all.filter((p) => p.status === "waitlisted");
+
+  return (
+    <div>
+      <ParticipantsTable participants={active} questions={questions} />
+      {waitlist.length > 0 && (
+        <>
+          <h3 className="mt-8 text-sm font-semibold uppercase text-neutral-500">
+            Lista rezerwowa ({waitlist.length})
+          </h3>
+          <ParticipantsTable participants={waitlist} questions={questions} />
+        </>
+      )}
+    </div>
+  );
+}
+```
+
+Also add to the imports at top of the file:
+```tsx
+import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
+```
+
+- [ ] **Step 3: Manual verification**
+
+Run `npm run dev`. Create an event, publish it, go through the registration form with Stripe test mode (use card `4242 4242 4242 4242`). After webhook fires, the participants table should show the row as `paid`.
+
+For local webhook testing, run in a separate terminal:
+```bash
+npx stripe listen --forward-to http://localhost:3000/api/stripe/webhook
+```
+Copy the printed `whsec_*` into `.env.local` as `STRIPE_WEBHOOK_SECRET`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add -A
+git commit -m "feat: dashboard participants + waitlist tables"
+```
+
+---
+
+## Task 21: CSV export endpoint
+
+**Files:**
+- Create: `src/app/dashboard/events/[id]/export/route.ts`
+- Create: `src/lib/csv.ts`
+- Create: `src/lib/csv.test.ts`
+
+- [ ] **Step 1: Write failing CSV test**
+
+Create `src/lib/csv.test.ts`:
+```ts
+import { describe, it, expect } from "vitest";
+import { toCsvRow } from "./csv";
+
+describe("toCsvRow", () => {
+  it("joins simple fields with commas", () => {
+    expect(toCsvRow(["a", "b", "c"])).toBe("a,b,c");
+  });
+
+  it("quotes fields containing commas", () => {
+    expect(toCsvRow(["a,b", "c"])).toBe('"a,b",c');
+  });
+
+  it("escapes embedded quotes by doubling them", () => {
+    expect(toCsvRow(['she said "hi"'])).toBe('"she said ""hi"""');
+  });
+
+  it("quotes fields containing newlines", () => {
+    expect(toCsvRow(["line1\nline2"])).toBe('"line1\nline2"');
+  });
+
+  it("converts null/undefined to empty string", () => {
+    expect(toCsvRow([null, undefined, "x"])).toBe(",,x");
+  });
+
+  it("converts numbers to strings", () => {
+    expect(toCsvRow([1, 2.5])).toBe("1,2.5");
+  });
+});
+```
+
+- [ ] **Step 2: Run and verify failure**
+
+Run: `npx vitest run src/lib/csv.test.ts`
+Expected: FAIL — module not found.
+
+- [ ] **Step 3: Implement CSV helper**
+
+Create `src/lib/csv.ts`:
+```ts
+export function toCsvRow(fields: ReadonlyArray<string | number | null | undefined>): string {
+  return fields
+    .map((f) => {
+      if (f === null || f === undefined) return "";
+      const s = String(f);
+      if (/[",\n\r]/.test(s)) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    })
+    .join(",");
+}
+```
+
+- [ ] **Step 4: Run and verify pass**
+
+Run: `npx vitest run src/lib/csv.test.ts`
+Expected: PASS (6 tests).
+
+- [ ] **Step 5: Implement export route**
+
+Create `src/app/dashboard/events/[id]/export/route.ts`:
+```ts
+import { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
+import { listParticipantsForEvent } from "@/lib/db/queries/participants";
+import type { CustomQuestion } from "@/lib/validators/event";
+import { toCsvRow } from "@/lib/csv";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const { userId } = await auth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) return new Response("No organizer", { status: 403 });
+  const event = await getEventForOrganizer(organizer.id, id);
+  if (!event) return new Response("Not found", { status: 404 });
+
+  const questions: CustomQuestion[] = event.customQuestions
+    ? JSON.parse(event.customQuestions)
+    : [];
+  const participants = await listParticipantsForEvent(event.id);
+
+  const headers = [
+    "status",
+    "first_name",
+    "last_name",
+    "email",
+    "phone",
+    "created_at",
+    "paid_at",
+    "amount_paid_pln",
+    ...questions.map((q) => q.label),
+  ];
+
+  const lines: string[] = [toCsvRow(headers)];
+  for (const p of participants) {
+    const answers: Record<string, string> = p.customAnswers
+      ? JSON.parse(p.customAnswers)
+      : {};
+    lines.push(
+      toCsvRow([
+        p.status,
+        p.firstName,
+        p.lastName,
+        p.email,
+        p.phone,
+        new Date(p.createdAt).toISOString(),
+        p.paidAt ? new Date(p.paidAt).toISOString() : null,
+        p.amountPaidCents != null ? (p.amountPaidCents / 100).toFixed(2) : null,
+        ...questions.map((q) => answers[q.id] ?? ""),
+      ]),
+    );
+  }
+
+  const filename = `${event.slug}-participants-${new Date().toISOString().slice(0, 10)}.csv`;
+  return new Response(lines.join("\n"), {
+    headers: {
+      "content-type": "text/csv; charset=utf-8",
+      "content-disposition": `attachment; filename="${filename}"`,
+    },
+  });
+}
+```
+
+- [ ] **Step 6: Manual verification**
+
+Run `npm run dev`. From the event dashboard, click "Eksport CSV". Should download a CSV with header + one row per participant.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "feat: CSV export of participants"
+```
+
+---
+
+## Task 22: Scheduled Worker — clean up expired pendings
+
+**Files:**
+- Create: `src/lib/scheduled.ts`
+- Modify: OpenNext config or wrangler glue to register a scheduled handler
+
+OpenNext Cloudflare exposes a `scheduled` hook via a custom entrypoint. The simplest MVP approach: expose a signed HTTP endpoint that the cron calls (since OpenNext wraps the Worker entry and a direct `scheduled()` export requires ejecting the worker).
+
+For MVP we use a **cron-triggered HTTP fetch** pattern. Cloudflare Cron Triggers can fire `scheduled` events, and we add our own worker layer that routes scheduled events to an internal cleanup endpoint.
+
+The pragmatic MVP path: use a public route protected by a shared secret, called by `wrangler` cron via a small wrapper worker OR as a Next.js `route.ts` invoked by an external scheduler. We'll go with **the simplest Cloudflare-native option: `scheduled` via a custom `open-next.config.ts` middleware**.
+
+In practice, OpenNext for Cloudflare supports `scheduled()` via a custom worker entry. Full setup:
+
+- [ ] **Step 1: Create cleanup route (HTTP fallback, also used in prod)**
+
+Create `src/app/api/cron/cleanup-pending/route.ts`:
+```ts
+import { NextRequest } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { sql, and, eq, lt } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db/client";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest) {
+  const { env } = getCloudflareContext();
+  const token = req.headers.get("authorization");
+  if (token !== `Bearer ${env.CRON_SECRET ?? ""}` || !env.CRON_SECRET) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const db = getDb();
+  const now = Date.now();
+  const result = await db
+    .update(schema.participants)
+    .set({ status: "cancelled", updatedAt: now })
+    .where(
+      and(
+        eq(schema.participants.status, "pending"),
+        lt(schema.participants.expiresAt, now),
+      ),
+    );
+
+  return Response.json({ ok: true, updatedAt: now, result });
+}
+```
+
+- [ ] **Step 2: Add CRON_SECRET to dev vars**
+
+Append to `.dev.vars.example` and `.env.local`:
+```
+CRON_SECRET=replace-with-random-32-chars
+```
+
+Add `CRON_SECRET: string` to `cloudflare-env.d.ts`.
+
+- [ ] **Step 3: Create `worker.ts` custom entry for scheduled handler**
+
+Create `worker.ts` at project root:
+```ts
+// Custom Worker entry that composes OpenNext's default fetch handler
+// with a scheduled handler for D1 cleanup.
+import handler from "./.open-next/worker.js";
+
+export default {
+  fetch: handler.fetch,
+  async scheduled(_event: ScheduledEvent, env: CloudflareEnv, _ctx: ExecutionContext) {
+    // Call our own cleanup endpoint, authenticated with CRON_SECRET.
+    const res = await fetch(
+      `https://${env.NEXT_PUBLIC_ROOT_DOMAIN}/api/cron/cleanup-pending`,
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${env.CRON_SECRET}` },
+      },
+    );
+    if (!res.ok) {
+      console.error("cleanup-pending failed", res.status, await res.text());
+    }
+  },
+} satisfies ExportedHandler<CloudflareEnv>;
+```
+
+- [ ] **Step 4: Point wrangler at the custom worker**
+
+Modify `wrangler.jsonc`:
+```jsonc
+  "main": "worker.ts",
+```
+
+(replacing the prior `".open-next/worker.js"`). The custom worker imports that module.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "feat: scheduled cleanup of expired pending participants"
+```
+
+---
+
+## Task 23: Seed deploy and smoke test
+
+**Files:**
+- None (deploy only)
+
+- [ ] **Step 1: Apply migrations to remote D1**
+
+Run:
+```bash
+npm run db:migrate:remote
+```
+
+- [ ] **Step 2: Set production secrets**
+
+Run each:
+```bash
+npx wrangler secret put CLERK_SECRET_KEY
+npx wrangler secret put STRIPE_SECRET_KEY
+npx wrangler secret put STRIPE_WEBHOOK_SECRET
+npx wrangler secret put CRON_SECRET
+```
+
+For `NEXT_PUBLIC_*` variables, set them in `wrangler.jsonc` under `"vars"` (they're inlined at build time, not secrets).
+
+- [ ] **Step 3: Build + deploy**
+
+Run:
+```bash
+npm run deploy
+```
+
+Expected: prints a `*.workers.dev` URL. For real subdomain routing you'll need to configure `wyjazdo.pl` and `*.wyjazdo.pl` as custom domains in the Cloudflare dashboard pointing at this Worker.
+
+- [ ] **Step 4: Configure Stripe webhook endpoint**
+
+In the Stripe dashboard (test mode), add an endpoint:
+- URL: `https://wyjazdo.pl/api/stripe/webhook`
+- Events: `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed`
+- Copy the signing secret and re-run `wrangler secret put STRIPE_WEBHOOK_SECRET` with it, then redeploy.
+
+- [ ] **Step 5: Manual smoke test**
+
+- Sign up as a new organizer on prod
+- Create + publish an event
+- Register as a participant from the subdomain
+- Complete Stripe test payment
+- Verify webhook flips status to `paid`
+- Verify dashboard shows the participant and CSV export works
+
+No commit — deploy-only task.
+
+---
+
+## Self-review
+
+**Spec coverage check:** Walked every section of the spec against the task list.
+
+| Spec requirement | Task |
+|---|---|
+| §3 project structure | Tasks 1–4 scaffold, Task 7 middleware, Task 10 Clerk |
+| §4 routing strategy | Task 7 middleware + Task 6 tenant resolver |
+| §5 data model — organizers | Task 4 (schema) + Task 11 (onboarding) + Task 12 (settings) |
+| §5 data model — events | Task 4 (schema) + Tasks 13–14 (CRUD) |
+| §5 data model — participants | Task 4 (schema) + Task 17 (insert) + Task 18 (webhook update) |
+| §6.1 organizer onboarding | Task 11 |
+| §6.2 event creation | Tasks 13–14 |
+| §6.3 participant registration | Task 15 (form) + Task 17 (handler) |
+| §6.4 capacity rule | Task 9 (pure fn + DB) |
+| §6.5 Stripe webhook | Task 18 |
+| §6.6 cleanup cron | Task 22 |
+| §6.7 dashboard | Tasks 13, 14, 20, 21 |
+| Auth boundary (org-scoped queries) | Task 13 (`organizer_id` in every dashboard query) |
+| BLIK + P24 + cards | Task 17 (`payment_method_types`) |
+| CSV export | Task 21 |
+| Waitlist | Task 17 (full → waitlisted path), Task 20 (separate table) |
+| Capacity=30min pending | Task 17 (`PENDING_TTL_MS`) |
+| Deploy | Task 23 |
+
+**Placeholder scan:** No TBDs, TODOs, or "handle edge cases" placeholders. Every step has complete code or a concrete command.
+
+**Type consistency:** `newId()`, `getDb()`, `getOrganizerBySubdomain`, `getPublishedEventBySlug`, `countTakenSpots`, `markPaidIfPending`, `cancelIfPending`, `WebhookDeps` — all used consistently with the same names across tasks. Custom question schema exported once in Task 13 and referenced by name everywhere.
+
+**Scope check:** Plan is sized for a single implementation pass. It's long (23 tasks) but every task is bite-sized and produces a committable increment. No independent subsystems requiring a separate plan.
+
+---
+
+## Plan complete
+
+Plan saved to `docs/superpowers/plans/2026-04-13-wyjazdo-mvp.md`.
+
+Execution options:
+
+1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration.
+2. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints.
+
+Which approach?
