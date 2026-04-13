@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wyjazdo",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-09-15",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  "vars": {
+    "NEXT_PUBLIC_ROOT_DOMAIN": "wyjazdo.pl"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wyjazdo",
+      "database_id": "REPLACE_AFTER_CREATE"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  }
+}
