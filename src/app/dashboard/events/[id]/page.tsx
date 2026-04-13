@@ -4,6 +4,7 @@ import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
 import type { CustomQuestion } from "@/lib/validators/event";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
+import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
 import { saveEventAction, changeStatusAction } from "./actions";
 
 function toLocalInput(ts: number) {
@@ -107,6 +108,47 @@ export default async function EventEditPage({
 
         <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-white">Zapisz</button>
       </form>
+
+        <section className="mt-12">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Uczestnicy</h2>
+            <a
+              href={`/dashboard/events/${event.id}/export`}
+              className="text-sm text-neutral-700 hover:underline"
+            >
+              Eksport CSV
+            </a>
+          </div>
+          <ParticipantsSection eventId={event.id} questions={questions} />
+        </section>
+    </div>
+  );
+}
+
+async function ParticipantsSection({
+  eventId,
+  questions,
+}: {
+  eventId: string;
+  questions: CustomQuestion[];
+}) {
+  const { listParticipantsForEvent } = await import("@/lib/db/queries/participants");
+  const all = await listParticipantsForEvent(eventId);
+
+  const active = all.filter((p) => p.status !== "waitlisted");
+  const waitlist = all.filter((p) => p.status === "waitlisted");
+
+  return (
+    <div>
+      <ParticipantsTable participants={active} questions={questions} />
+      {waitlist.length > 0 && (
+        <>
+          <h3 className="mt-8 text-sm font-semibold uppercase text-neutral-500">
+            Lista rezerwowa ({waitlist.length})
+          </h3>
+          <ParticipantsTable participants={waitlist} questions={questions} />
+        </>
+      )}
     </div>
   );
 }
