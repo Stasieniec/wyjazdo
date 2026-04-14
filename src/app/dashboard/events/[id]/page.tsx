@@ -7,7 +7,7 @@ import type { CustomQuestion } from "@/lib/validators/event";
 import { parseParticipantFilterStatus } from "@/lib/participantFilterStatus";
 import { ParticipantFilters } from "@/components/dashboard/ParticipantFilters";
 import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
-import { Button, StatusBadge } from "@/components/ui";
+import { Button, StatusBadge, SubmitButton } from "@/components/ui";
 import { changeStatusAction } from "./actions";
 import { EventEditForm } from "./EventEditForm";
 
@@ -56,22 +56,22 @@ export default async function EventEditPage({
           </Button>
           {event.status !== "published" && (
             <form action={publishBound}>
-              <Button type="submit" variant="accent" size="sm">
+              <SubmitButton variant="accent" size="sm">
                 Opublikuj
-              </Button>
+              </SubmitButton>
             </form>
           )}
           {event.status === "published" && (
             <form action={unpublishBound}>
-              <Button type="submit" variant="secondary" size="sm">
+              <SubmitButton variant="secondary" size="sm">
                 Ukryj
-              </Button>
+              </SubmitButton>
             </form>
           )}
           <form action={archiveBound}>
-            <Button type="submit" variant="secondary" size="sm">
+            <SubmitButton variant="secondary" size="sm">
               Archiwizuj
-            </Button>
+            </SubmitButton>
           </form>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
-import { Button, Input, Textarea } from "@/components/ui";
+import { Input, SubmitButton, Textarea } from "@/components/ui";
 import { saveEventAction, type SaveEventFormState } from "./actions";
 
 type Props = {
@@ -23,7 +23,7 @@ type Props = {
 };
 
 export function EventEditForm({ eventId, event, initialQuestions }: Props) {
-  const [state, formAction, pending] = useActionState<SaveEventFormState, FormData>(
+  const [state, formAction] = useActionState<SaveEventFormState, FormData>(
     saveEventAction.bind(null, eventId),
     null,
   );
@@ -98,9 +98,7 @@ export function EventEditForm({ eventId, event, initialQuestions }: Props) {
         </div>
       </fieldset>
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Zapisywanie..." : "Zapisz"}
-      </Button>
+      <SubmitButton>Zapisz</SubmitButton>
     </form>
   );
 }

@@ -2,11 +2,11 @@
 
 import { useActionState } from "react";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
-import { Button, Input, Textarea } from "@/components/ui";
+import { Input, SubmitButton, Textarea } from "@/components/ui";
 import { createEventAction } from "./actions";
 
 export default function NewEventPage() {
-  const [state, formAction, pending] = useActionState<{ error?: string } | null, FormData>(
+  const [state, formAction] = useActionState<{ error?: string } | null, FormData>(
     async (_prev, formData) => (await createEventAction(formData)) ?? null,
     null,
   );
@@ -36,9 +36,7 @@ export default function NewEventPage() {
 
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-        <Button type="submit" disabled={pending}>
-          {pending ? "Zapisywanie..." : "Utwórz jako szkic"}
-        </Button>
+        <SubmitButton>Utwórz jako szkic</SubmitButton>
       </form>
     </div>
   );

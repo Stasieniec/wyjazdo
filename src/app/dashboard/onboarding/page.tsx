@@ -2,10 +2,10 @@
 
 import { useActionState } from "react";
 import { createOrganizerAction } from "./actions";
-import { Button, Input, Textarea } from "@/components/ui";
+import { Input, SubmitButton, Textarea } from "@/components/ui";
 
 export default function OnboardingPage() {
-  const [state, formAction, pending] = useActionState<{ error?: string } | null, FormData>(
+  const [state, formAction] = useActionState<{ error?: string } | null, FormData>(
     async (_prev, formData) => {
       return (await createOrganizerAction(formData)) ?? null;
     },
@@ -35,9 +35,7 @@ export default function OnboardingPage() {
 
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-        <Button type="submit" disabled={pending}>
-          {pending ? "Tworzenie..." : "Utwórz profil"}
-        </Button>
+        <SubmitButton pendingLabel="Tworzenie...">Utwórz profil</SubmitButton>
       </form>
     </div>
   );

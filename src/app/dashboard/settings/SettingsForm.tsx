@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button, Input, Textarea } from "@/components/ui";
+import { Input, SubmitButton, Textarea } from "@/components/ui";
 import { updateSettingsAction, type SettingsFormState } from "./actions";
 
 type Social = Record<string, string | null>;
@@ -20,7 +20,7 @@ type Props = {
 };
 
 export function SettingsForm({ defaults }: Props) {
-  const [state, formAction, pending] = useActionState<SettingsFormState, FormData>(
+  const [state, formAction] = useActionState<SettingsFormState, FormData>(
     updateSettingsAction,
     null,
   );
@@ -99,9 +99,7 @@ export function SettingsForm({ defaults }: Props) {
         error={state?.errors?.facebook}
       />
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Zapisywanie..." : "Zapisz"}
-      </Button>
+      <SubmitButton>Zapisz</SubmitButton>
     </form>
   );
 }

@@ -1,4 +1,5 @@
 export { Button } from "./Button";
+export { SubmitButton } from "./SubmitButton";
 export { Input } from "./Input";
 export { Textarea } from "./Textarea";
 export { Select } from "./Select";

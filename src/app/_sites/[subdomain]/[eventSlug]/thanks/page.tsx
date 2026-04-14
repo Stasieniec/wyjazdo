@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { getParticipantById } from "@/lib/db/queries/participants";
-import { Button, Card } from "@/components/ui";
+import { Card, SubmitButton } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -132,15 +132,14 @@ export default async function ThanksPage({
               <h1 className="text-2xl font-semibold">Płatność nie powiodła się</h1>
               <p className="mt-4 text-muted-foreground">Możesz spróbować zapisać się ponownie.</p>
               <form action={`/${eventSlug}/register`} className="mt-8 inline-block">
-                <Button
-                  type="submit"
+                <SubmitButton
                   variant="primary"
                   size="md"
                   className="text-white hover:opacity-90"
                   style={{ backgroundColor: "var(--brand)" }}
                 >
                   Spróbuj ponownie
-                </Button>
+                </SubmitButton>
               </form>
             </div>
           </Card>

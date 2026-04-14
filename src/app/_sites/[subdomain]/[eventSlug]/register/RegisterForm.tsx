@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
-import { Card, Input, Select, Textarea } from "@/components/ui";
+import { Card, Input, Select, SubmitButton, Textarea } from "@/components/ui";
 import { registerAction, type RegisterFormState } from "./actions";
 
 type Props = {
@@ -97,18 +97,14 @@ export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions 
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md px-6 py-3 font-medium text-white transition-colors hover:opacity-90 disabled:opacity-60"
+        <SubmitButton
+          pendingLabel="Przetwarzanie..."
+          variant="primary"
+          className="text-white hover:opacity-90"
           style={{ backgroundColor: "var(--brand)" }}
         >
-          {pending
-            ? "Przetwarzanie..."
-            : isFull
-              ? "Dołącz do listy rezerwowej"
-              : "Przejdź do płatności"}
-        </button>
+          {isFull ? "Dołącz do listy rezerwowej" : "Przejdź do płatności"}
+        </SubmitButton>
       </form>
     </Card>
   );
