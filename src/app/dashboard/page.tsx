@@ -64,7 +64,7 @@ export default async function DashboardHome() {
                 </div>
                 <Link
                   href={`/dashboard/events/${e.id}`}
-                  className="shrink-0 text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                  className="hidden shrink-0 text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline sm:inline"
                 >
                   Edytuj &rarr;
                 </Link>

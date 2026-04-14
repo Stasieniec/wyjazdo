@@ -199,11 +199,11 @@ function SocialLinks({
   if (!email && !phone && links.length === 0) return null;
 
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
+    <div className="mt-6 flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-2 text-sm sm:gap-x-3">
       {email && (
         <a
           href={`mailto:${email}`}
-          className="rounded-full border border-border px-3 py-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="max-w-full min-w-0 break-words rounded-full border border-border px-3 py-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           {email}
         </a>
@@ -211,7 +211,7 @@ function SocialLinks({
       {phone && (
         <a
           href={`tel:${phone}`}
-          className="rounded-full border border-border px-3 py-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="max-w-full min-w-0 break-words rounded-full border border-border px-3 py-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           {phone}
         </a>
@@ -222,7 +222,7 @@ function SocialLinks({
           href={l.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-full border border-border px-3 py-1 transition-colors hover:text-foreground"
+          className="shrink-0 rounded-full border border-border px-3 py-1 transition-colors hover:text-foreground"
           style={{ color: brandColor }}
         >
           {l.label}
