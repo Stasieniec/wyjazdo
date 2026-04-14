@@ -5,12 +5,11 @@ import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
 import type { CustomQuestion } from "@/lib/validators/event";
 import { parseParticipantFilterStatus } from "@/lib/participantFilterStatus";
-import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
-import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
 import { ParticipantFilters } from "@/components/dashboard/ParticipantFilters";
 import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
-import { Button, Input, Textarea, StatusBadge } from "@/components/ui";
-import { saveEventAction, changeStatusAction } from "./actions";
+import { Button, StatusBadge } from "@/components/ui";
+import { changeStatusAction } from "./actions";
+import { EventEditForm } from "./EventEditForm";
 
 export default async function EventEditPage({
   params,
@@ -33,10 +32,6 @@ export default async function EventEditPage({
     ? JSON.parse(event.customQuestions)
     : [];
 
-  async function saveBound(formData: FormData) {
-    "use server";
-    await saveEventAction(id, formData);
-  }
   const publishBound = changeStatusAction.bind(null, id, "published");
   const unpublishBound = changeStatusAction.bind(null, id, "draft");
   const archiveBound = changeStatusAction.bind(null, id, "archived");
@@ -81,42 +76,20 @@ export default async function EventEditPage({
         </div>
       </div>
 
-      <form action={saveBound} className="mt-8 max-w-xl space-y-4">
-        <Input name="title" label="Tytuł" defaultValue={event.title} required maxLength={200} />
-        <Textarea name="description" label="Opis" defaultValue={event.description ?? ""} rows={6} />
-        <Input name="location" label="Miejsce" defaultValue={event.location ?? ""} />
-        <EventDateTimeRange defaultStartsAt={event.startsAt} defaultEndsAt={event.endsAt} />
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            type="number"
-            name="price"
-            label="Cena (PLN)"
-            step="0.01"
-            min="0"
-            defaultValue={event.priceCents / 100}
-            required
-          />
-          <Input
-            type="number"
-            name="capacity"
-            label="Liczba miejsc"
-            min="1"
-            defaultValue={event.capacity}
-            required
-          />
-        </div>
-        <Input type="url" name="coverUrl" label="URL okładki" defaultValue={event.coverUrl ?? ""} />
-
-        <fieldset className="mt-4">
-          <legend className="text-sm font-medium">Pytania do uczestnika</legend>
-          <p className="text-xs text-muted-foreground">Odpowiedzi zostaną zapisane razem ze zgłoszeniem.</p>
-          <div className="mt-2">
-            <CustomQuestionsEditor initial={questions} name="customQuestions" />
-          </div>
-        </fieldset>
-
-        <Button type="submit">Zapisz</Button>
-      </form>
+      <EventEditForm
+        eventId={id}
+        event={{
+          title: event.title,
+          description: event.description,
+          location: event.location,
+          startsAt: event.startsAt,
+          endsAt: event.endsAt,
+          priceCents: event.priceCents,
+          capacity: event.capacity,
+          coverUrl: event.coverUrl,
+        }}
+        initialQuestions={questions}
+      />
 
         <section className="mt-12">
           <div className="flex items-center justify-between">

@@ -3,7 +3,7 @@ import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
 import type { CustomQuestion } from "@/lib/validators/event";
-import { Card, Input, Select, Textarea } from "@/components/ui";
+import { RegisterForm } from "./RegisterForm";
 
 export default async function RegisterPage({
   params,
@@ -72,66 +72,13 @@ export default async function RegisterPage({
         {isFull ? "Zapis na listę rezerwową" : "Formularz zapisu"}
       </p>
 
-      <Card className="mt-4">
-        <form action="/api/register" method="POST" className="space-y-4">
-          <input type="hidden" name="eventId" value={event.id} />
-          <input type="hidden" name="organizerSubdomain" value={subdomain} />
-          <input type="hidden" name="eventSlug" value={eventSlug} />
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input label="Imię" name="firstName" required maxLength={100} />
-            <Input label="Nazwisko" name="lastName" required maxLength={100} />
-          </div>
-          <Input type="email" label="Email" name="email" required />
-          <Input label="Telefon" name="phone" />
-
-          {questions.map((q) => {
-            const label = `${q.label}${q.required ? " *" : ""}`;
-            if (q.type === "long_text") {
-              return (
-                <Textarea
-                  key={q.id}
-                  label={label}
-                  name={`q_${q.id}`}
-                  required={q.required}
-                  rows={3}
-                />
-              );
-            }
-            if (q.type === "select") {
-              return (
-                <Select
-                  key={q.id}
-                  label={label}
-                  name={`q_${q.id}`}
-                  required={q.required}
-                  placeholder="—"
-                  options={
-                    q.options?.map((opt) => ({ value: opt, label: opt })) ?? []
-                  }
-                />
-              );
-            }
-            return (
-              <Input
-                key={q.id}
-                label={label}
-                name={`q_${q.id}`}
-                required={q.required}
-                maxLength={500}
-              />
-            );
-          })}
-
-          <button
-            type="submit"
-            className="rounded-md px-6 py-3 font-medium text-white transition-colors hover:opacity-90"
-            style={{ backgroundColor: "var(--brand)" }}
-          >
-            {isFull ? "Dołącz do listy rezerwowej" : "Przejdź do płatności"}
-          </button>
-        </form>
-      </Card>
+      <RegisterForm
+        eventId={event.id}
+        subdomain={subdomain}
+        eventSlug={eventSlug}
+        isFull={isFull}
+        questions={questions}
+      />
     </main>
   );
 }

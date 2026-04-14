@@ -6,8 +6,15 @@ import { z } from "zod";
 import { eventBaseSchema, customQuestionSchema } from "@/lib/validators/event";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
+import { zodIssuesToRecord } from "@/lib/zod-errors";
 
-export async function saveEventAction(eventId: string, formData: FormData) {
+export type SaveEventFormState = { errors?: Record<string, string> } | null;
+
+export async function saveEventAction(
+  eventId: string,
+  _prev: SaveEventFormState,
+  formData: FormData,
+): Promise<SaveEventFormState> {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
   const organizer = await getOrganizerByClerkUserId(userId);
@@ -15,9 +22,21 @@ export async function saveEventAction(eventId: string, formData: FormData) {
   const existing = await getEventForOrganizer(organizer.id, eventId);
   if (!existing) throw new Error("Not found");
 
-  const questionsRaw = String(formData.get("customQuestions") ?? "[]");
-  const questionsParsed = z.array(customQuestionSchema).safeParse(JSON.parse(questionsRaw));
-  if (!questionsParsed.success) return { error: "Błąd w pytaniach niestandardowych" };
+  let questionsParsed;
+  try {
+    const questionsRaw = String(formData.get("customQuestions") ?? "[]");
+    questionsParsed = z.array(customQuestionSchema).safeParse(JSON.parse(questionsRaw));
+  } catch {
+    return { errors: { customQuestions: "Nieprawidłowy format listy pytań." } };
+  }
+  if (!questionsParsed.success) {
+    return {
+      errors: {
+        customQuestions:
+          questionsParsed.error.issues[0]?.message ?? "Błąd walidacji pytań niestandardowych.",
+      },
+    };
+  }
 
   const raw = {
     slug: existing.slug,
@@ -33,8 +52,22 @@ export async function saveEventAction(eventId: string, formData: FormData) {
     customQuestions: questionsParsed.data,
   };
   const parsed = eventBaseSchema.safeParse(raw);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
-  if (parsed.data.endsAt < parsed.data.startsAt) return { error: "Data końca przed datą początku" };
+  if (!parsed.success) {
+    const err = zodIssuesToRecord(parsed.error.issues);
+    if (err.priceCents) {
+      err.price = err.priceCents;
+      delete err.priceCents;
+    }
+    return { errors: err };
+  }
+  if (parsed.data.endsAt < parsed.data.startsAt) {
+    return {
+      errors: {
+        startsAt: "Koniec wydarzenia musi być po jego początku.",
+        endsAt: "Koniec wydarzenia musi być po jego początku.",
+      },
+    };
+  }
 
   await updateEvent(organizer.id, eventId, {
     title: parsed.data.title,
@@ -49,7 +82,7 @@ export async function saveEventAction(eventId: string, formData: FormData) {
   });
 
   revalidatePath(`/dashboard/events/${eventId}`);
-  return { ok: true };
+  return {};
 }
 
 const statusSchema = z.enum(["draft", "published", "archived"]);

@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getOrganizerByClerkUserId, updateOrganizer } from "@/lib/db/queries/organizers";
+import { zodIssuesToRecord } from "@/lib/zod-errors";
 
 const settingsSchema = z.object({
   displayName: z.string().min(1).max(100),
@@ -26,14 +27,19 @@ function emptyToNull(v: string | undefined | null) {
   return v && v.length > 0 ? v : null;
 }
 
-export async function updateSettingsAction(formData: FormData) {
+export type SettingsFormState = { errors?: Record<string, string> } | null;
+
+export async function updateSettingsAction(
+  _prev: SettingsFormState,
+  formData: FormData,
+): Promise<SettingsFormState> {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
   const organizer = await getOrganizerByClerkUserId(userId);
   if (!organizer) throw new Error("No organizer");
 
   const parsed = settingsSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { errors: zodIssuesToRecord(parsed.error.issues) };
   const d = parsed.data;
 
   const socialLinks = JSON.stringify({
@@ -54,5 +60,5 @@ export async function updateSettingsAction(formData: FormData) {
   });
 
   revalidatePath("/dashboard/settings");
-  return { ok: true };
+  return {};
 }

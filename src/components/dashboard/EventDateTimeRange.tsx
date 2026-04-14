@@ -20,9 +20,11 @@ type Props = {
   /** Unix ms — edit forms */
   defaultStartsAt?: number;
   defaultEndsAt?: number;
+  /** Server-side validation message (e.g. range order). */
+  error?: string;
 };
 
-export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt }: Props) {
+export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Props) {
   const id = useId();
   const validityRef = useRef<HTMLInputElement>(null);
 
@@ -154,6 +156,11 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt }: Props) {
       <p className="text-xs text-neutral-500">
         Użyj kalendarza albo wpisz daty ręcznie (dd/mm/rrrr), potem ustaw godziny rozpoczęcia i zakończenia.
       </p>
+      {error && (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
