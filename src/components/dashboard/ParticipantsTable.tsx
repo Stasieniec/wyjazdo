@@ -4,12 +4,17 @@ import type { CustomQuestion } from "@/lib/validators/event";
 export default function ParticipantsTable({
   participants,
   questions,
+  emptyMessage,
 }: {
   participants: Participant[];
   questions: CustomQuestion[];
+  /** When set (e.g. filtered list), shown instead of the default “Brak zgłoszeń.” */
+  emptyMessage?: string;
 }) {
   if (participants.length === 0) {
-    return <p className="mt-4 text-muted-foreground">Brak zgłoszeń.</p>;
+    return (
+      <p className="mt-4 text-muted-foreground">{emptyMessage ?? "Brak zgłoszeń."}</p>
+    );
   }
   return (
     <div className="mt-4 overflow-x-auto">

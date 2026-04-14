@@ -1,20 +1,27 @@
+import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
 import type { CustomQuestion } from "@/lib/validators/event";
+import { parseParticipantFilterStatus } from "@/lib/participantFilterStatus";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
+import { ParticipantFilters } from "@/components/dashboard/ParticipantFilters";
 import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
 import { Button, Input, Textarea, StatusBadge } from "@/components/ui";
 import { saveEventAction, changeStatusAction } from "./actions";
 
 export default async function EventEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ status?: string }>;
 }) {
   const { id } = await params;
+  const { status: statusParam } = await searchParams;
+  const statusFilter = parseParticipantFilterStatus(statusParam);
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
   const organizer = await getOrganizerByClerkUserId(userId);
@@ -109,7 +116,7 @@ export default async function EventEditPage({
               Eksport CSV
             </a>
           </div>
-          <ParticipantsSection eventId={event.id} questions={questions} />
+          <ParticipantsSection eventId={event.id} questions={questions} statusFilter={statusFilter} />
         </section>
     </div>
   );
@@ -118,19 +125,32 @@ export default async function EventEditPage({
 async function ParticipantsSection({
   eventId,
   questions,
+  statusFilter,
 }: {
   eventId: string;
   questions: CustomQuestion[];
+  statusFilter: ReturnType<typeof parseParticipantFilterStatus>;
 }) {
   const { listParticipantsForEvent } = await import("@/lib/db/queries/participants");
   const all = await listParticipantsForEvent(eventId);
 
   const active = all.filter((p) => p.status !== "waitlisted");
+  const filtered =
+    statusFilter === "all"
+      ? active
+      : active.filter((p) => p.status === statusFilter);
   const waitlist = all.filter((p) => p.status === "waitlisted");
 
   return (
     <div>
-      <ParticipantsTable participants={active} questions={questions} />
+      <Suspense fallback={<div className="mt-4 h-8" aria-hidden />}>
+        <ParticipantFilters current={statusFilter} />
+      </Suspense>
+      <ParticipantsTable
+        participants={filtered}
+        questions={questions}
+        emptyMessage={statusFilter === "all" ? undefined : "Brak zgłoszeń w tej kategorii."}
+      />
       {waitlist.length > 0 && (
         <>
           <h3 className="mt-8 text-sm font-semibold uppercase text-neutral-500">
