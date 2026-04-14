@@ -18,9 +18,11 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.1.0",
+    "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.3",
     "react": "19.2.4",
+    "react-day-picker": "^9.14.0",
     "react-dom": "19.2.4",
     "stripe": "^22.0.1",
     "ulid": "^3.0.2",

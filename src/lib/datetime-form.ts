@@ -55,3 +55,21 @@ export function yyyyMmDdToDdMmYyyy(iso: string): string | null {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d)}/${pad(mo)}/${y}`;
 }
+
+/** Local calendar date from a `Date` (ignores time-of-day). */
+export function localDateParts(d: Date): { y: number; m: number; d: number } {
+  return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
+}
+
+/** Midnight local time for a timestamp (for range calendar). */
+export function startOfLocalDay(ts: number): Date {
+  const d = new Date(ts);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/** Combine a local calendar date with `HH:mm` into `YYYY-MM-DDTHH:mm` for `FormData`. */
+export function combineLocalDateAndTime(date: Date, timeStr: string): string | null {
+  const t = parseTimeHm(timeStr);
+  if (!t) return null;
+  return toDatetimeLocalValue(localDateParts(date), t);
+}

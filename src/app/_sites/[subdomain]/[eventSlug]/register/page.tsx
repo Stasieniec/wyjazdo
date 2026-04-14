@@ -73,7 +73,10 @@ export default async function RegisterPage({
           </label>
         ))}
 
-        <button type="submit" className="rounded-md bg-neutral-900 px-6 py-3 font-medium text-white">
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
           {isFull ? "Dołącz do listy rezerwowej" : "Przejdź do płatności"}
         </button>
       </form>

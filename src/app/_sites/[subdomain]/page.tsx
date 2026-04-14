@@ -27,19 +27,19 @@ export default async function OrganizerProfilePage({
         <h1 className="text-3xl font-bold">{organizer.displayName}</h1>
       </div>
       {organizer.description && (
-        <p className="mt-4 whitespace-pre-wrap text-neutral-700">{organizer.description}</p>
+        <p className="mt-4 whitespace-pre-wrap leading-relaxed text-foreground">{organizer.description}</p>
       )}
 
       <h2 className="mt-10 text-xl font-semibold">Nadchodzące wydarzenia</h2>
       {events.length === 0 ? (
-        <p className="mt-4 text-neutral-500">Brak nadchodzących wydarzeń.</p>
+        <p className="mt-4 text-muted-foreground">Brak nadchodzących wydarzeń.</p>
       ) : (
         <ul className="mt-4 space-y-3">
           {events.map((e) => (
-            <li key={e.id} className="rounded-lg border p-4 hover:bg-neutral-50">
+            <li key={e.id} className="rounded-lg border border-border p-4 transition-colors hover:bg-muted">
               <Link href={`/${e.slug}`} className="block">
                 <div className="font-medium">{e.title}</div>
-                <div className="text-sm text-neutral-500">
+                <div className="text-sm text-muted-foreground">
                   {new Date(e.startsAt).toLocaleDateString("pl-PL")} &middot; {e.location}
                 </div>
               </Link>

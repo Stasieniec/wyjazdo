@@ -28,7 +28,7 @@ export default function CustomQuestionsEditor({
       <input type="hidden" name={name} value={JSON.stringify(questions)} />
       <div className="space-y-3">
         {questions.map((q, i) => (
-          <div key={q.id} className="rounded-md border p-3">
+          <div key={q.id} className="rounded-md border border-border bg-background p-3">
             <div className="flex gap-2">
               <input
                 placeholder="Pytanie"

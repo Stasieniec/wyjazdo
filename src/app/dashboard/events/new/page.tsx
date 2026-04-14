@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { DateTimePickerField } from "@/components/dashboard/DateTimePickerField";
+import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import { createEventAction } from "./actions";
 
 export default function NewEventPage() {
@@ -38,10 +38,7 @@ export default function NewEventPage() {
           <span className="text-sm font-medium">Miejsce</span>
           <input name="location" className="mt-1 w-full rounded-md border px-3 py-2" />
         </label>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <DateTimePickerField name="startsAt" label="Start" />
-          <DateTimePickerField name="endsAt" label="Koniec" />
-        </div>
+        <EventDateTimeRange />
         <div className="grid grid-cols-2 gap-4">
           <label className="block">
             <span className="text-sm font-medium">Cena (PLN)</span>
@@ -59,7 +56,11 @@ export default function NewEventPage() {
 
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-        <button type="submit" disabled={pending} className="rounded-md bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+        >
           {pending ? "Zapisywanie..." : "Utwórz jako szkic"}
         </button>
       </form>

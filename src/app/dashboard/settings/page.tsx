@@ -49,7 +49,10 @@ export default async function SettingsPage() {
         {field("instagram", "Instagram", social.instagram ?? "")}
         {field("facebook", "Facebook", social.facebook ?? "")}
 
-        <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-white">
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
           Zapisz
         </button>
       </form>

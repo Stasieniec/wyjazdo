@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
 import type { CustomQuestion } from "@/lib/validators/event";
-import { DateTimePickerField } from "@/components/dashboard/DateTimePickerField";
+import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
 import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
 import { saveEventAction, changeStatusAction } from "./actions";
@@ -38,7 +38,7 @@ export default async function EventEditPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{event.title}</h1>
         <div className="flex items-center gap-2 text-sm">
-          <span className="rounded-full bg-neutral-100 px-2 py-1">{event.status}</span>
+          <span className="rounded-full bg-muted px-2 py-1 text-muted-foreground">{event.status}</span>
           {event.status !== "published" && (
             <form action={publishBound}>
               <button className="rounded bg-green-600 px-3 py-1 text-white">Opublikuj</button>
@@ -68,10 +68,7 @@ export default async function EventEditPage({
           <span className="text-sm font-medium">Miejsce</span>
           <input name="location" defaultValue={event.location ?? ""} className="mt-1 w-full rounded-md border px-3 py-2" />
         </label>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <DateTimePickerField name="startsAt" label="Start" defaultTimestamp={event.startsAt} />
-          <DateTimePickerField name="endsAt" label="Koniec" defaultTimestamp={event.endsAt} />
-        </div>
+        <EventDateTimeRange defaultStartsAt={event.startsAt} defaultEndsAt={event.endsAt} />
         <div className="grid grid-cols-2 gap-4">
           <label className="block">
             <span className="text-sm font-medium">Cena (PLN)</span>
@@ -89,13 +86,18 @@ export default async function EventEditPage({
 
         <fieldset className="mt-4">
           <legend className="text-sm font-medium">Pytania do uczestnika</legend>
-          <p className="text-xs text-neutral-500">Odpowiedzi zostaną zapisane razem ze zgłoszeniem.</p>
+          <p className="text-xs text-muted-foreground">Odpowiedzi zostaną zapisane razem ze zgłoszeniem.</p>
           <div className="mt-2">
             <CustomQuestionsEditor initial={questions} name="customQuestions" />
           </div>
         </fieldset>
 
-        <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-white">Zapisz</button>
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          Zapisz
+        </button>
       </form>
 
         <section className="mt-12">
@@ -103,7 +105,7 @@ export default async function EventEditPage({
             <h2 className="text-lg font-semibold">Uczestnicy</h2>
             <a
               href={`/dashboard/events/${event.id}/export`}
-              className="text-sm text-neutral-700 hover:underline"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
             >
               Eksport CSV
             </a>

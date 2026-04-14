@@ -9,12 +9,12 @@ export default function ParticipantsTable({
   questions: CustomQuestion[];
 }) {
   if (participants.length === 0) {
-    return <p className="mt-4 text-neutral-500">Brak zgłoszeń.</p>;
+    return <p className="mt-4 text-muted-foreground">Brak zgłoszeń.</p>;
   }
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="border-b text-left text-xs uppercase text-neutral-500">
+        <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="py-2 pr-4">Status</th>
             <th className="py-2 pr-4">Imię i nazwisko</th>
@@ -33,7 +33,7 @@ export default function ParticipantsTable({
               ? JSON.parse(p.customAnswers)
               : {};
             return (
-              <tr key={p.id} className="border-b last:border-0">
+              <tr key={p.id} className="border-b border-border last:border-0">
                 <td className="py-2 pr-4">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${statusColor(p.status)}`}>
                     {p.status}

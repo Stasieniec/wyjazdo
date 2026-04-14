@@ -14,7 +14,7 @@ export default function OnboardingPage() {
   return (
     <div className="max-w-lg">
       <h1 className="text-2xl font-semibold">Utwórz profil organizatora</h1>
-      <p className="mt-2 text-neutral-600">
+      <p className="mt-2 text-muted-foreground">
         Twój profil będzie dostępny pod adresem{" "}
         <code>twoja-nazwa.wyjazdo.pl</code>.
       </p>
@@ -56,7 +56,7 @@ export default function OnboardingPage() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-white disabled:opacity-50"
+          className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {pending ? "Tworzenie..." : "Utwórz profil"}
         </button>

@@ -8,13 +8,13 @@ export default function MarketingPage() {
         <nav className="mb-12 flex flex-wrap items-center justify-end gap-3 text-sm">
           <Link
             href="/sign-in"
-            className="text-neutral-700 underline-offset-4 hover:underline"
+            className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
           >
             Zaloguj się
           </Link>
           <Link
             href="/sign-up"
-            className="rounded-md bg-neutral-900 px-4 py-2 font-medium text-white hover:bg-neutral-800"
+            className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Załóż konto
           </Link>
@@ -24,15 +24,15 @@ export default function MarketingPage() {
         <nav className="mb-12 flex flex-wrap items-center justify-end gap-4 text-sm">
           <Link
             href="/dashboard"
-            className="text-neutral-700 underline-offset-4 hover:underline"
+            className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
           >
             Panel organizatora
           </Link>
           <UserButton />
         </nav>
       </Show>
-      <h1 className="text-4xl font-bold tracking-tight">wyjazdo.pl</h1>
-      <p className="mt-4 text-lg text-neutral-600">
+      <h1 className="text-4xl font-bold tracking-tight text-foreground">wyjazdo.pl</h1>
+      <p className="mt-4 max-w-prose text-lg leading-relaxed text-muted-foreground">
         Platforma dla organizatorów wyjazdów, warsztatów i retreatów.
       </p>
     </main>

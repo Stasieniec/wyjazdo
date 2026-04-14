@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  combineLocalDateAndTime,
   formatDdMmYyyyInput,
   parseDdMmYyyy,
   parseTimeHm,
@@ -52,5 +53,12 @@ describe("timestampToDdMmYyyyAndTime", () => {
   it("uses local timezone", () => {
     const ts = new Date(2026, 3, 14, 15, 30, 0).getTime();
     expect(timestampToDdMmYyyyAndTime(ts)).toEqual({ date: "14/04/2026", time: "15:30" });
+  });
+});
+
+describe("combineLocalDateAndTime", () => {
+  it("joins local date and HH:mm", () => {
+    const d = new Date(2026, 3, 14);
+    expect(combineLocalDateAndTime(d, "09:05")).toBe("2026-04-14T09:05");
   });
 });

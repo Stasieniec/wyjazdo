@@ -16,28 +16,31 @@ export default async function DashboardHome() {
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Wydarzenia</h1>
-        <Link href="/dashboard/events/new" className="rounded-md bg-neutral-900 px-4 py-2 text-white">
+        <Link
+          href="/dashboard/events/new"
+          className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
           + Nowe wydarzenie
         </Link>
       </div>
 
       {events.length === 0 ? (
-        <p className="mt-8 text-neutral-500">Nie masz jeszcze żadnych wydarzeń.</p>
+        <p className="mt-8 text-muted-foreground">Nie masz jeszcze żadnych wydarzeń.</p>
       ) : (
-        <ul className="mt-8 divide-y rounded-lg border">
+        <ul className="mt-8 divide-y divide-border rounded-lg border border-border bg-background">
           {events.map((e) => (
             <li key={e.id} className="flex items-center justify-between px-4 py-3">
               <div>
                 <Link href={`/dashboard/events/${e.id}`} className="font-medium hover:underline">
                   {e.title}
                 </Link>
-                <div className="text-sm text-neutral-500">
+                <div className="text-sm text-muted-foreground">
                   {new Date(e.startsAt).toLocaleDateString("pl-PL")} &middot; {e.status}
                 </div>
               </div>
               <Link
                 href={`/dashboard/events/${e.id}`}
-                className="text-sm text-neutral-600 hover:underline"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
               >
                 Edytuj &rarr;
               </Link>
