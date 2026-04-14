@@ -6,8 +6,14 @@ import { eventBaseSchema } from "@/lib/validators/event";
 import { newId } from "@/lib/ids";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { insertEvent, isSlugTakenForOrganizer } from "@/lib/db/queries/events-dashboard";
+import { zodIssuesToRecord } from "@/lib/zod-errors";
 
-export async function createEventAction(formData: FormData) {
+export type CreateEventFormState = { errors?: Record<string, string> } | null;
+
+export async function createEventAction(
+  _prev: CreateEventFormState,
+  formData: FormData,
+): Promise<CreateEventFormState> {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
   const organizer = await getOrganizerByClerkUserId(userId);
@@ -18,8 +24,8 @@ export async function createEventAction(formData: FormData) {
     title: String(formData.get("title") ?? ""),
     description: (formData.get("description") as string) || undefined,
     location: (formData.get("location") as string) || undefined,
-    startsAt: Number(new Date(String(formData.get("startsAt") ?? "")).getTime()),
-    endsAt: Number(new Date(String(formData.get("endsAt") ?? "")).getTime()),
+    startsAt: new Date(String(formData.get("startsAt") ?? "")).getTime(),
+    endsAt: new Date(String(formData.get("endsAt") ?? "")).getTime(),
     priceCents: Math.round(Number(formData.get("price") ?? 0) * 100),
     currency: "PLN" as const,
     capacity: Number(formData.get("capacity") ?? 0),
@@ -28,10 +34,24 @@ export async function createEventAction(formData: FormData) {
   };
 
   const parsed = eventBaseSchema.safeParse(raw);
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
-  if (parsed.data.endsAt < parsed.data.startsAt) return { error: "Data końca przed datą początku" };
+  if (!parsed.success) {
+    const err = zodIssuesToRecord(parsed.error.issues);
+    if (err.priceCents) {
+      err.price = err.priceCents;
+      delete err.priceCents;
+    }
+    return { errors: err };
+  }
+  if (parsed.data.endsAt < parsed.data.startsAt) {
+    return {
+      errors: {
+        startsAt: "Koniec wydarzenia musi być po jego początku.",
+        endsAt: "Koniec wydarzenia musi być po jego początku.",
+      },
+    };
+  }
   if (await isSlugTakenForOrganizer(organizer.id, parsed.data.slug)) {
-    return { error: "Ta nazwa w URL jest już zajęta" };
+    return { errors: { slug: "Ta nazwa w URL jest już zajęta" } };
   }
 
   const id = newId();
