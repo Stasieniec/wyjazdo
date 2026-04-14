@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { countTakenSpots } from "@/lib/capacity";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { listEventsForOrganizer } from "@/lib/db/queries/events-dashboard";
 import { Card, StatusBadge } from "@/components/ui";
@@ -12,6 +13,13 @@ export default async function DashboardHome() {
   if (!organizer) redirect("/dashboard/onboarding");
 
   const events = await listEventsForOrganizer(organizer.id);
+  const nowMs = Date.now();
+  const eventsWithTaken = await Promise.all(
+    events.map(async (e) => ({
+      ...e,
+      taken: await countTakenSpots(e.id, nowMs),
+    })),
+  );
 
   return (
     <div>
@@ -28,30 +36,42 @@ export default async function DashboardHome() {
       {events.length === 0 ? (
         <p className="mt-8 text-muted-foreground">Nie masz jeszcze żadnych wydarzeń.</p>
       ) : (
-        <ul className="mt-8 space-y-4">
-          {events.map((e) => (
-            <li key={e.id}>
-              <Card padding="sm" className="flex items-center justify-between">
-                <div>
+        <Card padding="none" className="mt-8">
+          <ul className="divide-y divide-border">
+            {eventsWithTaken.map((e) => (
+              <li key={e.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="min-w-0">
                   <Link href={`/dashboard/events/${e.id}`} className="font-medium hover:underline">
                     {e.title}
                   </Link>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span>{new Date(e.startsAt).toLocaleDateString("pl-PL")}</span>
                     <span>&middot;</span>
+                    <span>
+                      {e.taken}/{e.capacity}
+                    </span>
+                    {e.location ? (
+                      <>
+                        <span>&middot;</span>
+                        <span className="truncate" title={e.location}>
+                          {e.location}
+                        </span>
+                      </>
+                    ) : null}
+                    <span>&middot;</span>
                     <StatusBadge status={e.status} />
                   </div>
                 </div>
                 <Link
                   href={`/dashboard/events/${e.id}`}
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                  className="shrink-0 text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
                 >
                   Edytuj &rarr;
                 </Link>
-              </Card>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
     </div>
   );
