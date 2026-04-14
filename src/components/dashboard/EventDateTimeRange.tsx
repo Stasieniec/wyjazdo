@@ -4,7 +4,14 @@ import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
-import { combineLocalDateAndTime, startOfLocalDay, timestampToDdMmYyyyAndTime } from "@/lib/datetime-form";
+import {
+  combineLocalDateAndTime,
+  formatDdMmYyyyFromDate,
+  formatDdMmYyyyInput,
+  parseDdMmYyyy,
+  startOfLocalDay,
+  timestampToDdMmYyyyAndTime,
+} from "@/lib/datetime-form";
 import { TimePickerSelects } from "./TimePickerSelects";
 
 import "react-day-picker/style.css";
@@ -35,6 +42,56 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt }: Props) {
   const [endTimeStr, setEndTimeStr] = useState(() =>
     defaultEndsAt != null ? timestampToDdMmYyyyAndTime(defaultEndsAt).time : "17:00",
   );
+
+  const [startDateStr, setStartDateStr] = useState(() =>
+    defaultStartsAt != null ? formatDdMmYyyyFromDate(startOfLocalDay(defaultStartsAt)) : "",
+  );
+  const [endDateStr, setEndDateStr] = useState(() =>
+    defaultEndsAt != null ? formatDdMmYyyyFromDate(startOfLocalDay(defaultEndsAt)) : "",
+  );
+  const [manualDateError, setManualDateError] = useState<string | null>(null);
+
+  function handleRangeSelect(sel: DateRange | undefined) {
+    setManualDateError(null);
+    setRange(sel);
+    if (sel?.from) setStartDateStr(formatDdMmYyyyFromDate(sel.from));
+    else setStartDateStr("");
+    if (sel?.to) setEndDateStr(formatDdMmYyyyFromDate(sel.to));
+    else setEndDateStr("");
+  }
+
+  function applyManualDates() {
+    setManualDateError(null);
+    const s = startDateStr.trim();
+    const e = endDateStr.trim();
+    if (!s && !e) {
+      setRange(undefined);
+      return;
+    }
+    if (!s) {
+      return;
+    }
+    const fromParts = parseDdMmYyyy(s);
+    if (!fromParts) {
+      return;
+    }
+    const fromDate = new Date(fromParts.y, fromParts.m - 1, fromParts.d);
+    if (!e) {
+      setRange({ from: fromDate, to: undefined });
+      return;
+    }
+    const toParts = parseDdMmYyyy(e);
+    if (!toParts) {
+      return;
+    }
+    const toDate = new Date(toParts.y, toParts.m - 1, toParts.d);
+    if (toDate < fromDate) {
+      setManualDateError("Data końca nie może być wcześniejsza niż początek.");
+      setRange(undefined);
+      return;
+    }
+    setRange({ from: fromDate, to: toDate });
+  }
 
   const startsCombined = useMemo(() => {
     if (!range?.from) return "";
@@ -72,7 +129,7 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt }: Props) {
     const el = validityRef.current;
     if (!el) return;
     if (!range?.from || !range?.to) {
-      el.setCustomValidity("Wybierz datę początku i końca w kalendarzu.");
+      el.setCustomValidity("Podaj datę początku i końca (kalendarz lub pola tekstowe).");
       return;
     }
     if (!startsCombined || !endsCombined) {
@@ -95,8 +152,44 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt }: Props) {
     <fieldset className="relative space-y-3">
       <legend className="text-sm font-medium">Termin wydarzenia</legend>
       <p className="text-xs text-neutral-500">
-        Wybierz pierwszy i ostatni dzień w kalendarzu, potem ustal godziny rozpoczęcia i zakończenia.
+        Użyj kalendarza albo wpisz daty ręcznie (dd/mm/rrrr), potem ustaw godziny rozpoczęcia i zakończenia.
       </p>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-xs font-medium text-neutral-600">Data początku</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="dd/mm/rrrr"
+            value={startDateStr}
+            onChange={(e) => setStartDateStr(formatDdMmYyyyInput(e.target.value))}
+            onBlur={applyManualDates}
+            className="mt-1 w-full rounded-md border px-3 py-2 tabular-nums"
+            aria-invalid={Boolean(manualDateError)}
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-neutral-600">Data końca</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="dd/mm/rrrr"
+            value={endDateStr}
+            onChange={(e) => setEndDateStr(formatDdMmYyyyInput(e.target.value))}
+            onBlur={applyManualDates}
+            className="mt-1 w-full rounded-md border px-3 py-2 tabular-nums"
+            aria-invalid={Boolean(manualDateError)}
+          />
+        </label>
+      </div>
+      {manualDateError && (
+        <p className="text-xs text-red-600" role="alert">
+          {manualDateError}
+        </p>
+      )}
 
       <input
         ref={validityRef}
@@ -115,7 +208,7 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt }: Props) {
           numberOfMonths={1}
           defaultMonth={defaultMonth}
           selected={range}
-          onSelect={setRange}
+          onSelect={handleRangeSelect}
           className="mx-auto [--rdp-accent-color:#171717] [--rdp-accent-background-color:#e5e5e5]"
         />
       </div>

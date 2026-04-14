@@ -61,6 +61,12 @@ export function localDateParts(d: Date): { y: number; m: number; d: number } {
   return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
 }
 
+/** Display a local calendar date as `dd/mm/yyyy`. */
+export function formatDdMmYyyyFromDate(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
 /** Midnight local time for a timestamp (for range calendar). */
 export function startOfLocalDay(ts: number): Date {
   const d = new Date(ts);

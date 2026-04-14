@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   combineLocalDateAndTime,
+  formatDdMmYyyyFromDate,
   formatDdMmYyyyInput,
   parseDdMmYyyy,
   parseTimeHm,
@@ -60,5 +61,11 @@ describe("combineLocalDateAndTime", () => {
   it("joins local date and HH:mm", () => {
     const d = new Date(2026, 3, 14);
     expect(combineLocalDateAndTime(d, "09:05")).toBe("2026-04-14T09:05");
+  });
+});
+
+describe("formatDdMmYyyyFromDate", () => {
+  it("formats local date", () => {
+    expect(formatDdMmYyyyFromDate(new Date(2026, 3, 5))).toBe("05/04/2026");
   });
 });
