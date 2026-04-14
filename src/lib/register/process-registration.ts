@@ -11,6 +11,10 @@ import {
 } from "@/lib/db/queries/participants";
 import { newId } from "@/lib/ids";
 import { getStripe } from "@/lib/stripe";
+import {
+  sendWaitlistConfirmation,
+  sendOrganizerNewRegistration,
+} from "@/lib/email/send";
 
 const PENDING_TTL_MS = 30 * 60 * 1000;
 
@@ -102,6 +106,32 @@ export async function processRegistration(
       createdAt: now,
       updatedAt: now,
     });
+
+    // Fire-and-forget emails — don't block the redirect
+    const emailPromises: Promise<void>[] = [
+      sendWaitlistConfirmation({
+        to: parsed.data.email,
+        participantName: parsed.data.firstName,
+        eventTitle: event.title,
+        eventUrl: `${origin}/${slug}`,
+        organizerName: organizer.displayName,
+      }),
+    ];
+    if (organizer.contactEmail) {
+      emailPromises.push(
+        sendOrganizerNewRegistration({
+          to: organizer.contactEmail,
+          participantName: `${parsed.data.firstName} ${parsed.data.lastName}`,
+          participantEmail: parsed.data.email,
+          eventTitle: event.title,
+          spotsInfo: `${taken} / ${event.capacity} (pełne)`,
+          isWaitlisted: true,
+          dashboardUrl: `https://wyjazdo.pl/dashboard/events/${event.id}`,
+        }),
+      );
+    }
+    Promise.allSettled(emailPromises).catch(() => {});
+
     return { redirectUrl: `${origin}/${slug}/thanks?waitlisted=1` };
   }
 

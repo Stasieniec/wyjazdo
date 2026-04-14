@@ -7,7 +7,7 @@ export default function NotFound() {
       <h1 className="mt-2 text-3xl font-bold text-foreground">
         Strona nie istnieje
       </h1>
-      <p className="mt-4 max-w-sm text-muted-foreground">
+      <p className="mt-4 max-w-sm text-muted-foreground" role="alert">
         Nie znaleźliśmy strony, której szukasz. Sprawdź adres lub wróć na stronę główną.
       </p>
       <Link

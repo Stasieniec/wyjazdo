@@ -23,7 +23,10 @@ export const eventBaseSchema = z.object({
   priceCents: z.number().int().nonnegative(),
   currency: z.literal("PLN"),
   capacity: z.number().int().min(1).max(10_000),
-  coverUrl: z.string().url().optional().or(z.literal("")),
+  coverUrl: z.string().refine(
+    (v) => v === "" || v.startsWith("/api/images/") || v.startsWith("http"),
+    "Nieprawidłowy adres zdjęcia",
+  ).optional().or(z.literal("")),
   customQuestions: z.array(customQuestionSchema).max(20).default([]),
 });
 export type EventBase = z.infer<typeof eventBaseSchema>;

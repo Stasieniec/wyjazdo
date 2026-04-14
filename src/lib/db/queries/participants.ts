@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 
 export async function insertParticipant(row: typeof schema.participants.$inferInsert) {
@@ -66,6 +66,26 @@ export async function markPaidIfPending(params: {
         eq(schema.participants.status, "pending"),
       ),
     );
+}
+
+/**
+ * Returns participant + event + organizer data for email context.
+ * Used after payment confirmation or waitlist join.
+ */
+export async function getParticipantWithContext(participantId: string) {
+  const db = getDb();
+  const rows = await db
+    .select({
+      participant: schema.participants,
+      event: schema.events,
+      organizer: schema.organizers,
+    })
+    .from(schema.participants)
+    .innerJoin(schema.events, eq(schema.participants.eventId, schema.events.id))
+    .innerJoin(schema.organizers, eq(schema.events.organizerId, schema.organizers.id))
+    .where(eq(schema.participants.id, participantId))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function cancelIfPending(participantId: string) {

@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
-import { Input, SubmitButton, Textarea } from "@/components/ui";
+import { ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { saveEventAction, type SaveEventFormState } from "./actions";
 
 type Props = {
@@ -77,11 +77,11 @@ export function EventEditForm({ eventId, event, initialQuestions }: Props) {
           error={state?.errors?.capacity}
         />
       </div>
-      <Input
-        type="url"
+      <ImageUpload
         name="coverUrl"
-        label="URL okładki"
-        defaultValue={event.coverUrl ?? ""}
+        label="Zdjęcie okładki"
+        defaultValue={event.coverUrl}
+        aspect="cover"
         error={state?.errors?.coverUrl}
       />
 

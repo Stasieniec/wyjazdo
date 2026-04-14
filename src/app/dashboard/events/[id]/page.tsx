@@ -97,6 +97,7 @@ export default async function EventEditPage({
             <a
               href={`/dashboard/events/${event.id}/export`}
               className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+              aria-label="Eksportuj uczestników do CSV"
             >
               Eksport CSV
             </a>

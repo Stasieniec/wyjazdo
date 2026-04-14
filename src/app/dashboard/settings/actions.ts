@@ -9,8 +9,14 @@ import { zodIssuesToRecord } from "@/lib/zod-errors";
 const settingsSchema = z.object({
   displayName: z.string().min(1).max(100),
   description: z.string().max(2000).optional(),
-  logoUrl: z.string().url().optional().or(z.literal("")),
-  coverUrl: z.string().url().optional().or(z.literal("")),
+  logoUrl: z.string().refine(
+    (v) => v === "" || v.startsWith("/api/images/") || v.startsWith("http"),
+    "Nieprawidłowy adres zdjęcia",
+  ).optional().or(z.literal("")),
+  coverUrl: z.string().refine(
+    (v) => v === "" || v.startsWith("/api/images/") || v.startsWith("http"),
+    "Nieprawidłowy adres zdjęcia",
+  ).optional().or(z.literal("")),
   brandColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)

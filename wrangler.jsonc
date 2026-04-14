@@ -1,28 +1,45 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "wyjazdo",
-  "main": "worker.ts",
-  "compatibility_date": "2025-09-15",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "observability": { "enabled": true },
-  "vars": {
-    "NEXT_PUBLIC_ROOT_DOMAIN": "wyjazdo.pl",
-    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_Y3V0ZS1zYXdmbHktNTcuY2xlcmsuYWNjb3VudHMuZGV2JA",
-    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TM5lkE76RBnluFLqc7QyEs1dgMGwu77mXnzc9basDJxrmVgVHG0umEhmbqXD1LbOMVGnXlWjlxGcCg1DAqFKmmV006Ewofto0"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "wyjazdo",
-      "database_id": "05516302-6979-44cb-89ed-fc16e41b4f7c",
-      "migrations_dir": "src/lib/db/migrations"
-    }
-  ],
-  "triggers": {
-    "crons": ["*/10 * * * *"]
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "wyjazdo",
+	"main": "worker.ts",
+	"compatibility_date": "2025-09-15",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"vars": {
+		"NEXT_PUBLIC_ROOT_DOMAIN": "wyjazdo.pl",
+		"NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_Y3V0ZS1zYXdmbHktNTcuY2xlcmsuYWNjb3VudHMuZGV2JA",
+		"NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TM5lkE76RBnluFLqc7QyEs1dgMGwu77mXnzc9basDJxrmVgVHG0umEhmbqXD1LbOMVGnXlWjlxGcCg1DAqFKmmV006Ewofto0"
+	},
+	"r2_buckets": [
+		{
+			"binding": "R2_IMAGES",
+			"bucket_name": "wyjazdo-images"
+		},
+		{
+			"bucket_name": "wyjazdo-images",
+			"binding": "wyjazdo_images"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "wyjazdo",
+			"database_id": "05516302-6979-44cb-89ed-fc16e41b4f7c",
+			"migrations_dir": "src/lib/db/migrations"
+		}
+	],
+	"triggers": {
+		"crons": [
+			"*/10 * * * *"
+		]
+	}
 }

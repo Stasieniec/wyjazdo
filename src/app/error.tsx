@@ -12,7 +12,7 @@ export default function ErrorPage({
       <h1 className="mt-2 text-3xl font-bold text-foreground">
         Coś poszło nie tak
       </h1>
-      <p className="mt-4 max-w-sm text-muted-foreground">
+      <p className="mt-4 max-w-sm text-muted-foreground" role="alert">
         Wystąpił nieoczekiwany błąd. Spróbuj ponownie lub wróć później.
       </p>
       <button

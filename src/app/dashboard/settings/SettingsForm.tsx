@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Input, SubmitButton, Textarea } from "@/components/ui";
+import { ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { updateSettingsAction, type SettingsFormState } from "./actions";
 
 type Social = Record<string, string | null>;
@@ -45,18 +45,18 @@ export function SettingsForm({ defaults }: Props) {
         maxLength={2000}
         error={state?.errors?.description}
       />
-      <Input
-        type="url"
+      <ImageUpload
         name="logoUrl"
-        label="URL logo"
-        defaultValue={defaults.logoUrl ?? ""}
+        label="Logo"
+        defaultValue={defaults.logoUrl}
+        aspect="logo"
         error={state?.errors?.logoUrl}
       />
-      <Input
-        type="url"
+      <ImageUpload
         name="coverUrl"
-        label="URL okładki"
-        defaultValue={defaults.coverUrl ?? ""}
+        label="Zdjęcie okładki"
+        defaultValue={defaults.coverUrl}
+        aspect="cover"
         error={state?.errors?.coverUrl}
       />
       <Input

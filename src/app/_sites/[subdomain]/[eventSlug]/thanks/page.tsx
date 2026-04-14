@@ -116,7 +116,11 @@ export default async function ThanksPage({
         <>
           <Card className="mt-6 text-left">
             <EventSummary title={event.title} dateLabel={eventDateLabel} />
-            <div className="text-center">
+            <div
+              className="text-center"
+              aria-live="polite"
+              aria-atomic="true"
+            >
               <h1 className="text-2xl font-semibold">Przetwarzamy płatność...</h1>
               <p className="mt-4 text-muted-foreground">Ta strona odświeży się automatycznie.</p>
               <meta httpEquiv="refresh" content="5" />

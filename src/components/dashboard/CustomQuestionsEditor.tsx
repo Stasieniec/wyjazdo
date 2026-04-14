@@ -97,6 +97,7 @@ function SortableOptionRow({
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-1 ${isDragging ? "z-10 opacity-60" : ""}`}
+      aria-roledescription="sortable"
     >
       <button
         type="button"
@@ -129,6 +130,7 @@ function SortableOptionRow({
         placeholder={`Opcja ${index + 1}`}
         className="min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm"
         autoComplete="off"
+        aria-label={`Tekst opcji ${index + 1}`}
       />
       <button
         type="button"
@@ -205,7 +207,9 @@ function SelectOptionsEditor({
     <div className="mt-3 rounded-md border border-border/80 bg-muted/30 p-3">
       <p className="mb-2 text-xs font-medium text-muted-foreground">Opcje odpowiedzi</p>
       <p className="sr-only" id="select-options-dnd-hint">
-        Użyj uchwytu po lewej stronie, aby przeciągnąć i zmienić kolejność opcji.
+        Użyj uchwytu po lewej stronie, aby przeciągnąć i zmienić kolejność opcji. Klawiatura: skup się na
+        uchwycie, naciśnij Spację, aby podnieść element, strzałki w górę lub w dół, aby przesunąć, Spację
+        ponownie, aby upuścić.
       </p>
       <DndContext
         sensors={sensors}
@@ -265,6 +269,7 @@ function SortableQuestionCard({
       ref={setNodeRef}
       style={style}
       className={`rounded-md border border-border bg-background p-3 ${isDragging ? "z-10 opacity-60" : ""}`}
+      aria-roledescription="sortable"
     >
       <div className="flex gap-2">
         <button
@@ -284,8 +289,10 @@ function SortableQuestionCard({
               value={q.label}
               onChange={(e) => onUpdate({ label: e.target.value })}
               className="min-w-[12rem] flex-1 rounded border px-2 py-1"
+              aria-label="Treść pytania"
             />
             <select
+              aria-label="Typ pytania"
               value={q.type}
               onChange={(e) => {
                 const t = e.target.value as CustomQuestion["type"];
@@ -378,6 +385,8 @@ export default function CustomQuestionsEditor({
       <input type="hidden" name={name} value={JSON.stringify(sanitizeForSubmit(questions))} />
       <p className="sr-only" id="questions-dnd-hint">
         Użyj uchwytu po lewej stronie każdego pytania, aby przeciągnąć i zmienić kolejność pytań.
+        Klawiatura: skup się na uchwycie, naciśnij Spację, aby podnieść element, strzałki w górę lub w dół,
+        aby przesunąć, Spację ponownie, aby upuścić.
       </p>
       <DndContext
         sensors={questionSensors}

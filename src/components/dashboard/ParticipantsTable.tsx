@@ -21,15 +21,15 @@ export default function ParticipantsTable({
       <table className="w-full text-sm">
         <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="py-2 pr-4">Status</th>
-            <th className="py-2 pr-4">Imię i nazwisko</th>
-            <th className="py-2 pr-4">Email</th>
-            <th className="py-2 pr-4">Telefon</th>
-            <th className="py-2 pr-4">Zapłacono</th>
+            <th scope="col" className="py-2 pr-4">Status</th>
+            <th scope="col" className="py-2 pr-4">Imię i nazwisko</th>
+            <th scope="col" className="py-2 pr-4">Email</th>
+            <th scope="col" className="py-2 pr-4">Telefon</th>
+            <th scope="col" className="py-2 pr-4">Zapłacono</th>
             {questions.map((q) => (
-              <th key={q.id} className="py-2 pr-4">{q.label}</th>
+              <th key={q.id} scope="col" className="py-2 pr-4">{q.label}</th>
             ))}
-            <th className="py-2 pr-4">Data zapisu</th>
+            <th scope="col" className="py-2 pr-4">Data zapisu</th>
           </tr>
         </thead>
         <tbody>
