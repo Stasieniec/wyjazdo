@@ -99,6 +99,9 @@ export function SettingsForm({ defaults }: Props) {
         error={state?.errors?.facebook}
       />
 
+      {state && !state.errors && (
+        <p className="text-sm text-success">Zmiany zostały zapisane.</p>
+      )}
       <SubmitButton>Zapisz</SubmitButton>
     </form>
   );

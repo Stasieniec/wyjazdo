@@ -98,6 +98,9 @@ export function EventEditForm({ eventId, event, initialQuestions }: Props) {
         </div>
       </fieldset>
 
+      {state && !state.errors && (
+        <p className="text-sm text-success">Zmiany zostały zapisane.</p>
+      )}
       <SubmitButton>Zapisz</SubmitButton>
     </form>
   );
