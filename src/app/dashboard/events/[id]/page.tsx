@@ -41,12 +41,24 @@ export default async function EventEditPage({
   const unpublishBound = changeStatusAction.bind(null, id, "draft");
   const archiveBound = changeStatusAction.bind(null, id, "archived");
 
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
+  const previewUrl = `https://${organizer.subdomain}.${rootDomain}/${event.slug}`;
+
   return (
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{event.title}</h1>
         <div className="flex items-center gap-2 text-sm">
           <StatusBadge status={event.status} />
+          <Button
+            href={previewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="ghost"
+            size="sm"
+          >
+            Podgląd
+          </Button>
           {event.status !== "published" && (
             <form action={publishBound}>
               <Button type="submit" variant="accent" size="sm">

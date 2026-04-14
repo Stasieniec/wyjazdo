@@ -1,4 +1,4 @@
-import { type ButtonHTMLAttributes } from "react";
+import { type AnchorHTMLAttributes, type ButtonHTMLAttributes } from "react";
 
 type Variant = "primary" | "accent" | "secondary" | "ghost" | "destructive";
 type Size = "sm" | "md" | "lg";
@@ -22,21 +22,22 @@ const sizeStyles: Record<Size, string> = {
   lg: "px-6 py-3 text-base rounded-lg",
 };
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
-  size?: Size;
-}
+type ButtonProps =
+  | (ButtonHTMLAttributes<HTMLButtonElement> & { href?: undefined })
+  | (AnchorHTMLAttributes<HTMLAnchorElement> & { href: string });
 
 export function Button({
   variant = "primary",
   size = "md",
   className = "",
   ...props
-}: ButtonProps) {
-  return (
-    <button
-      className={`inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
-      {...props}
-    />
-  );
+}: ButtonProps & { variant?: Variant; size?: Size }) {
+  const classes = `inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
+
+  if ("href" in props && props.href !== undefined) {
+    const { href, ...anchorProps } = props;
+    return <a href={href} className={classes} {...anchorProps} />;
+  }
+
+  return <button className={classes} {...props} />;
 }
