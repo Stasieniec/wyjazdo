@@ -6,6 +6,7 @@ import type { CustomQuestion } from "@/lib/validators/event";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
 import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
+import { Button, Input, Textarea, StatusBadge } from "@/components/ui";
 import { saveEventAction, changeStatusAction } from "./actions";
 
 export default async function EventEditPage({
@@ -38,51 +39,54 @@ export default async function EventEditPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{event.title}</h1>
         <div className="flex items-center gap-2 text-sm">
-          <span className="rounded-full bg-muted px-2 py-1 text-muted-foreground">{event.status}</span>
+          <StatusBadge status={event.status} />
           {event.status !== "published" && (
             <form action={publishBound}>
-              <button className="rounded bg-green-600 px-3 py-1 text-white">Opublikuj</button>
+              <Button type="submit" variant="accent" size="sm">
+                Opublikuj
+              </Button>
             </form>
           )}
           {event.status === "published" && (
             <form action={unpublishBound}>
-              <button className="rounded bg-neutral-200 px-3 py-1">Ukryj</button>
+              <Button type="submit" variant="secondary" size="sm">
+                Ukryj
+              </Button>
             </form>
           )}
           <form action={archiveBound}>
-            <button className="rounded bg-neutral-200 px-3 py-1">Archiwizuj</button>
+            <Button type="submit" variant="secondary" size="sm">
+              Archiwizuj
+            </Button>
           </form>
         </div>
       </div>
 
       <form action={saveBound} className="mt-8 max-w-xl space-y-4">
-        <label className="block">
-          <span className="text-sm font-medium">Tytuł</span>
-          <input name="title" defaultValue={event.title} required maxLength={200} className="mt-1 w-full rounded-md border px-3 py-2" />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium">Opis</span>
-          <textarea name="description" defaultValue={event.description ?? ""} rows={6} className="mt-1 w-full rounded-md border px-3 py-2" />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium">Miejsce</span>
-          <input name="location" defaultValue={event.location ?? ""} className="mt-1 w-full rounded-md border px-3 py-2" />
-        </label>
+        <Input name="title" label="Tytuł" defaultValue={event.title} required maxLength={200} />
+        <Textarea name="description" label="Opis" defaultValue={event.description ?? ""} rows={6} />
+        <Input name="location" label="Miejsce" defaultValue={event.location ?? ""} />
         <EventDateTimeRange defaultStartsAt={event.startsAt} defaultEndsAt={event.endsAt} />
         <div className="grid grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium">Cena (PLN)</span>
-            <input type="number" name="price" step="0.01" min="0" defaultValue={event.priceCents / 100} required className="mt-1 w-full rounded-md border px-3 py-2" />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Liczba miejsc</span>
-            <input type="number" name="capacity" min="1" defaultValue={event.capacity} required className="mt-1 w-full rounded-md border px-3 py-2" />
-          </label>
+          <Input
+            type="number"
+            name="price"
+            label="Cena (PLN)"
+            step="0.01"
+            min="0"
+            defaultValue={event.priceCents / 100}
+            required
+          />
+          <Input
+            type="number"
+            name="capacity"
+            label="Liczba miejsc"
+            min="1"
+            defaultValue={event.capacity}
+            required
+          />
         </div>
-        <label className="block">
-          <span className="text-sm font-medium">URL okładki</span>
-          <input type="url" name="coverUrl" defaultValue={event.coverUrl ?? ""} className="mt-1 w-full rounded-md border px-3 py-2" />
-        </label>
+        <Input type="url" name="coverUrl" label="URL okładki" defaultValue={event.coverUrl ?? ""} />
 
         <fieldset className="mt-4">
           <legend className="text-sm font-medium">Pytania do uczestnika</legend>
@@ -92,12 +96,7 @@ export default async function EventEditPage({
           </div>
         </fieldset>
 
-        <button
-          type="submit"
-          className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          Zapisz
-        </button>
+        <Button type="submit">Zapisz</Button>
       </form>
 
         <section className="mt-12">

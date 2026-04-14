@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { updateSettingsAction } from "./actions";
+import { Button, Input, Textarea } from "@/components/ui";
 
 export default async function SettingsPage() {
   const { userId } = await auth();
@@ -13,48 +14,39 @@ export default async function SettingsPage() {
     ? (JSON.parse(organizer.socialLinks) as Record<string, string | null>)
     : {};
 
-  const field = (name: string, label: string, value: string | null, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
-    <label className="block">
-      <span className="text-sm font-medium">{label}</span>
-      <input
-        name={name}
-        defaultValue={value ?? ""}
-        className="mt-1 w-full rounded-md border px-3 py-2"
-        {...props}
-      />
-    </label>
-  );
-
   return (
     <div>
       <h1 className="text-2xl font-semibold">Ustawienia</h1>
       <form action={async (formData: FormData) => { "use server"; await updateSettingsAction(formData); }} className="mt-8 max-w-xl space-y-4">
-        {field("displayName", "Wyświetlana nazwa", organizer.displayName, { required: true, maxLength: 100 })}
-        <label className="block">
-          <span className="text-sm font-medium">Opis</span>
-          <textarea
-            name="description"
-            defaultValue={organizer.description ?? ""}
-            rows={4}
-            maxLength={2000}
-            className="mt-1 w-full rounded-md border px-3 py-2"
-          />
-        </label>
-        {field("logoUrl", "URL logo", organizer.logoUrl, { type: "url" })}
-        {field("coverUrl", "URL okładki", organizer.coverUrl, { type: "url" })}
-        {field("brandColor", "Kolor marki (hex, np. #1e40af)", organizer.brandColor, { pattern: "#[0-9a-fA-F]{6}" })}
-        {field("contactEmail", "Email kontaktowy", organizer.contactEmail, { type: "email" })}
-        {field("contactPhone", "Telefon", organizer.contactPhone)}
-        {field("website", "Strona WWW", social.website ?? "", { type: "url" })}
-        {field("instagram", "Instagram", social.instagram ?? "")}
-        {field("facebook", "Facebook", social.facebook ?? "")}
+        <Input
+          name="displayName"
+          label="Wyświetlana nazwa"
+          defaultValue={organizer.displayName}
+          required
+          maxLength={100}
+        />
+        <Textarea
+          name="description"
+          label="Opis"
+          defaultValue={organizer.description ?? ""}
+          rows={4}
+          maxLength={2000}
+        />
+        <Input type="url" name="logoUrl" label="URL logo" defaultValue={organizer.logoUrl ?? ""} />
+        <Input type="url" name="coverUrl" label="URL okładki" defaultValue={organizer.coverUrl ?? ""} />
+        <Input
+          name="brandColor"
+          label="Kolor marki (hex, np. #1e40af)"
+          defaultValue={organizer.brandColor ?? ""}
+          pattern="#[0-9a-fA-F]{6}"
+        />
+        <Input type="email" name="contactEmail" label="Email kontaktowy" defaultValue={organizer.contactEmail ?? ""} />
+        <Input name="contactPhone" label="Telefon" defaultValue={organizer.contactPhone ?? ""} />
+        <Input type="url" name="website" label="Strona WWW" defaultValue={social.website ?? ""} />
+        <Input name="instagram" label="Instagram" defaultValue={social.instagram ?? ""} />
+        <Input name="facebook" label="Facebook" defaultValue={social.facebook ?? ""} />
 
-        <button
-          type="submit"
-          className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          Zapisz
-        </button>
+        <Button type="submit">Zapisz</Button>
       </form>
     </div>
   );

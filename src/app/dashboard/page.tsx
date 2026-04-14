@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { listEventsForOrganizer } from "@/lib/db/queries/events-dashboard";
+import { Card, StatusBadge } from "@/components/ui";
 
 export default async function DashboardHome() {
   const { userId } = await auth();
@@ -27,23 +28,27 @@ export default async function DashboardHome() {
       {events.length === 0 ? (
         <p className="mt-8 text-muted-foreground">Nie masz jeszcze żadnych wydarzeń.</p>
       ) : (
-        <ul className="mt-8 divide-y divide-border rounded-lg border border-border bg-background">
+        <ul className="mt-8 space-y-4">
           {events.map((e) => (
-            <li key={e.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <Link href={`/dashboard/events/${e.id}`} className="font-medium hover:underline">
-                  {e.title}
-                </Link>
-                <div className="text-sm text-muted-foreground">
-                  {new Date(e.startsAt).toLocaleDateString("pl-PL")} &middot; {e.status}
+            <li key={e.id}>
+              <Card padding="sm" className="flex items-center justify-between">
+                <div>
+                  <Link href={`/dashboard/events/${e.id}`} className="font-medium hover:underline">
+                    {e.title}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <span>{new Date(e.startsAt).toLocaleDateString("pl-PL")}</span>
+                    <span>&middot;</span>
+                    <StatusBadge status={e.status} />
+                  </div>
                 </div>
-              </div>
-              <Link
-                href={`/dashboard/events/${e.id}`}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
-              >
-                Edytuj &rarr;
-              </Link>
+                <Link
+                  href={`/dashboard/events/${e.id}`}
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                >
+                  Edytuj &rarr;
+                </Link>
+              </Card>
             </li>
           ))}
         </ul>
