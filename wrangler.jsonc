@@ -10,7 +10,9 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "NEXT_PUBLIC_ROOT_DOMAIN": "wyjazdo.pl"
+    "NEXT_PUBLIC_ROOT_DOMAIN": "wyjazdo.pl",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_Y3V0ZS1zYXdmbHktNTcuY2xlcmsuYWNjb3VudHMuZGV2JA",
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TM5lkE76RBnluFLqc7QyEs1dgMGwu77mXnzc9basDJxrmVgVHG0umEhmbqXD1LbOMVGnXlWjlxGcCg1DAqFKmmV006Ewofto0"
   },
   "d1_databases": [
     {

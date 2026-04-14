@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 
-export async function getOrganizerBySubdomain(subdomain: string) {
+export const getOrganizerBySubdomain = cache(async function getOrganizerBySubdomain(subdomain: string) {
   const db = getDb();
   const rows = await db
     .select()
@@ -9,7 +10,7 @@ export async function getOrganizerBySubdomain(subdomain: string) {
     .where(eq(schema.organizers.subdomain, subdomain))
     .limit(1);
   return rows[0] ?? null;
-}
+});
 
 export async function getPublishedEventsByOrganizer(organizerId: string) {
   const db = getDb();
