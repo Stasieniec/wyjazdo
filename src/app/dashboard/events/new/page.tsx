@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { DateTimePickerField } from "@/components/dashboard/DateTimePickerField";
 import { createEventAction } from "./actions";
 
 export default function NewEventPage() {
@@ -37,15 +38,9 @@ export default function NewEventPage() {
           <span className="text-sm font-medium">Miejsce</span>
           <input name="location" className="mt-1 w-full rounded-md border px-3 py-2" />
         </label>
-        <div className="grid grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium">Start</span>
-            <input type="datetime-local" name="startsAt" required className="mt-1 w-full rounded-md border px-3 py-2" />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium">Koniec</span>
-            <input type="datetime-local" name="endsAt" required className="mt-1 w-full rounded-md border px-3 py-2" />
-          </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <DateTimePickerField name="startsAt" label="Start" />
+          <DateTimePickerField name="endsAt" label="Koniec" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <label className="block">
