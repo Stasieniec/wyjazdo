@@ -28,11 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       appearance={{
         baseTheme: "light",
         variables: {
-          colorPrimary: "#1c1917",
-          colorText: "#1c1917",
-          colorTextSecondary: "#57534e",
-          colorInputBackground: "#fafaf9",
-          colorBackground: "#fafaf9",
+          colorPrimary: "#1E3A5F",
+          colorText: "#111827",
+          colorTextSecondary: "#6B7280",
+          colorInputBackground: "#FAFAFA",
+          colorBackground: "#FAFAFA",
         },
       }}
     >

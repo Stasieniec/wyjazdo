@@ -1,0 +1,2 @@
+- [Visual Identity](project_visual_identity.md) — Modern Polish: navy #1E3A5F + coral #E8683A, IBM Plex Sans, light-only
+- [User Profile](user_profile.md) — Stas, founder building Wyjazdo, delegates simpler tasks to Cursor AI

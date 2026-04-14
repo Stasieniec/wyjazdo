@@ -1,32 +1,59 @@
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { userId } = await auth();
+  const organizer = userId ? await getOrganizerByClerkUserId(userId) : null;
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl";
+  const publicUrl = organizer
+    ? `https://${organizer.subdomain}.${rootDomain}`
+    : null;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/30">
       <header className="border-b border-border bg-background">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/dashboard" className="text-lg font-semibold tracking-tight text-foreground">
-            wyjazdo.pl
-          </Link>
-          <nav className="flex items-center gap-6 text-sm">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-6">
             <Link
               href="/dashboard"
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              className="text-lg font-bold tracking-tight text-primary"
             >
-              Wydarzenia
+              wyjazdo
             </Link>
-            <Link
-              href="/dashboard/settings"
-              className="text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Ustawienia
-            </Link>
+            <nav className="hidden items-center gap-1 text-sm sm:flex">
+              <NavLink href="/dashboard">Wydarzenia</NavLink>
+              <NavLink href="/dashboard/settings">Ustawienia</NavLink>
+            </nav>
+          </div>
+          <div className="flex items-center gap-4">
+            {publicUrl && (
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+              >
+                {organizer!.subdomain}.{rootDomain} &nearr;
+              </a>
+            )}
             <UserButton />
-          </nav>
+          </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+      <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
     </div>
+  );
+}
+
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+    >
+      {children}
+    </Link>
   );
 }

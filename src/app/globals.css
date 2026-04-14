@@ -1,20 +1,26 @@
 @import "tailwindcss";
 
 /*
-  Light-only, warm stone palette. Intentionally no dark scheme — avoids unreadable
-  flash for users in dark OS mode while the UI is still light-only.
+  "Modern Polish" palette — deep navy + warm coral accent.
+  Trustworthy & professional with energy. Light-only, no dark scheme.
 */
 :root {
   color-scheme: light;
-  --background: #fafaf9;
-  --foreground: #1c1917;
-  --muted: #f5f5f4;
-  --muted-foreground: #57534e;
-  --border: #e7e5e4;
-  --input: #e7e5e4;
-  --ring: #292524;
-  --primary: #1c1917;
-  --primary-foreground: #fafaf9;
+  --background: #FAFAFA;
+  --foreground: #111827;
+  --muted: #F4F4F5;
+  --muted-foreground: #6B7280;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #1E3A5F;
+  --primary: #1E3A5F;
+  --primary-foreground: #FFFFFF;
+  --accent: #E8683A;
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --success: #059669;
+  --success-foreground: #FFFFFF;
 }
 
 @theme inline {
@@ -27,6 +33,12 @@
   --color-ring: var(--ring);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), ui-monospace, "Cascadia Code", monospace;
 }
