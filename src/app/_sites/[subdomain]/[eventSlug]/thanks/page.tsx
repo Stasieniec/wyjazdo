@@ -20,10 +20,20 @@ export default async function ThanksPage({
   const event = await getPublishedEventBySlug(organizer.id, eventSlug);
   if (!event) notFound();
 
+  const brandColor = organizer.brandColor ?? "#1E3A5F";
+
   if (waitlisted === "1") {
     return (
-      <main className="mx-auto max-w-xl px-6 py-16 text-center">
-        <h1 className="text-2xl font-semibold">Jesteś na liście rezerwowej</h1>
+      <main
+        className="mx-auto max-w-xl px-6 py-16 text-center"
+        style={{ "--brand": brandColor } as React.CSSProperties}
+      >
+        <div
+          className="mx-auto h-1 w-14 rounded-full"
+          style={{ backgroundColor: "var(--brand)" }}
+          aria-hidden
+        />
+        <h1 className="mt-4 text-2xl font-semibold">Jesteś na liście rezerwowej</h1>
         <p className="mt-4 leading-relaxed text-muted-foreground">
           Powiadomimy Cię, gdy zwolni się miejsce na wydarzenie <strong>{event.title}</strong>.
         </p>
@@ -38,10 +48,18 @@ export default async function ThanksPage({
   const status = participant?.status ?? "unknown";
 
   return (
-    <main className="mx-auto max-w-xl px-6 py-16 text-center">
+    <main
+      className="mx-auto max-w-xl px-6 py-16 text-center"
+      style={{ "--brand": brandColor } as React.CSSProperties}
+    >
       {status === "paid" ? (
         <>
-          <h1 className="text-2xl font-semibold">Dziękujemy za zapis!</h1>
+          <div
+            className="mx-auto h-1 w-14 rounded-full"
+            style={{ backgroundColor: "var(--brand)" }}
+            aria-hidden
+          />
+          <h1 className="mt-4 text-2xl font-semibold">Dziękujemy za zapis!</h1>
           <p className="mt-4 leading-relaxed text-muted-foreground">
             Twoje miejsce na <strong>{event.title}</strong> zostało potwierdzone.
           </p>
@@ -58,7 +76,8 @@ export default async function ThanksPage({
           <p className="mt-4 text-muted-foreground">Możesz spróbować zapisać się ponownie.</p>
           <Link
             href={`/${eventSlug}/register`}
-            className="mt-8 inline-block rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="mt-8 inline-block rounded-md px-4 py-2 font-medium text-white transition-colors hover:opacity-90"
+            style={{ backgroundColor: "var(--brand)" }}
           >
             Spróbuj ponownie
           </Link>

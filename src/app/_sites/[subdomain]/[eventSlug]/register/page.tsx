@@ -21,8 +21,13 @@ export default async function RegisterPage({
     ? JSON.parse(event.customQuestions)
     : [];
 
+  const brandColor = organizer.brandColor ?? "#1E3A5F";
+
   return (
-    <main className="mx-auto max-w-xl px-6 py-10">
+    <main
+      className="mx-auto max-w-xl px-6 py-10"
+      style={{ "--brand": brandColor } as React.CSSProperties}
+    >
       <h1 className="text-2xl font-semibold">{event.title}</h1>
       <p className="mt-1 text-sm text-neutral-500">
         {isFull ? "Zapis na listę rezerwową" : "Formularz zapisu"}
@@ -75,7 +80,8 @@ export default async function RegisterPage({
 
         <button
           type="submit"
-          className="rounded-md bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="rounded-md px-6 py-3 font-medium text-white transition-colors hover:opacity-90"
+          style={{ backgroundColor: "var(--brand)" }}
         >
           {isFull ? "Dołącz do listy rezerwowej" : "Przejdź do płatności"}
         </button>
