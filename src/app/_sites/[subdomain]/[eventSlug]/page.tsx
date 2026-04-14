@@ -104,7 +104,7 @@ export default async function EventPage({
         </div>
 
         {/* Info grid */}
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <InfoCard label="Termin" value={dateStart === dateEnd ? dateStart : `${dateStart} — ${dateEnd}`} />
           <InfoCard label="Miejsce" value={event.location ?? "Do ustalenia"} />
           <InfoCard label="Cena" value={priceFormatted} />

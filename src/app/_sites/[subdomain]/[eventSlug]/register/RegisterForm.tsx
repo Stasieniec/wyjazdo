@@ -26,7 +26,7 @@ export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions 
         <input type="hidden" name="organizerSubdomain" value={subdomain} />
         <input type="hidden" name="eventSlug" value={eventSlug} />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Input
             label="Imię"
             name="firstName"

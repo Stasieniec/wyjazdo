@@ -28,7 +28,7 @@ export default function NewEventPage() {
         <Textarea name="description" label="Opis" rows={4} />
         <Input name="location" label="Miejsce" />
         <EventDateTimeRange />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input type="number" name="price" label="Cena (PLN)" step="0.01" min="0" required />
           <Input type="number" name="capacity" label="Liczba miejsc" min="1" required />
         </div>
