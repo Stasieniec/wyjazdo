@@ -7,6 +7,8 @@ import type { ParticipantFilterStatus } from "@/lib/participantFilterStatus";
 const FILTERS: { value: ParticipantFilterStatus; label: string }[] = [
   { value: "all", label: "Wszyscy" },
   { value: "paid", label: "Opłaceni" },
+  { value: "deposit_paid", label: "Zaliczka" },
+  { value: "overdue", label: "Zalegający" },
   { value: "pending", label: "Oczekujący" },
   { value: "cancelled", label: "Anulowani" },
 ];

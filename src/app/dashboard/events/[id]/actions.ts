@@ -6,6 +6,9 @@ import { z } from "zod";
 import { eventBaseSchema, customQuestionSchema } from "@/lib/validators/event";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
+import { getEventById } from "@/lib/db/queries/events";
+import { getPaymentById, setBalanceDueAtForPayment } from "@/lib/db/queries/payments";
+import { getParticipantById, cancelParticipant } from "@/lib/db/queries/participants";
 import { zodIssuesToRecord } from "@/lib/zod-errors";
 
 export type SaveEventFormState = { errors?: Record<string, string> } | null;
@@ -116,4 +119,43 @@ export async function changeStatusAction(eventId: string, status: string) {
   }
   await updateEvent(organizer.id, eventId, { status: parsed.data });
   revalidatePath(`/dashboard/events/${eventId}`);
+}
+
+export async function extendBalanceDeadlineAction(form: FormData): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("no organizer");
+
+  const paymentId = String(form.get("paymentId") ?? "");
+  const newDueStr = String(form.get("dueAt") ?? "");
+  if (!paymentId || !newDueStr) throw new Error("missing fields");
+  const newDue = new Date(newDueStr).getTime();
+  if (!Number.isFinite(newDue) || newDue <= Date.now()) throw new Error("invalid date");
+
+  const payment = await getPaymentById(paymentId);
+  if (!payment || payment.kind !== "balance") throw new Error("invalid payment");
+  const participant = await getParticipantById(payment.participantId);
+  if (!participant) throw new Error("no participant");
+  const event = await getEventById(participant.eventId);
+  if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
+
+  await setBalanceDueAtForPayment(paymentId, newDue);
+  revalidatePath(`/dashboard/events/${event.id}`);
+}
+
+export async function cancelAndFreeSpotAction(form: FormData): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("no organizer");
+
+  const participantId = String(form.get("participantId") ?? "");
+  const participant = await getParticipantById(participantId);
+  if (!participant) throw new Error("no participant");
+  const event = await getEventById(participant.eventId);
+  if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
+
+  await cancelParticipant(participantId);
+  revalidatePath(`/dashboard/events/${event.id}`);
 }
