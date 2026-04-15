@@ -38,6 +38,17 @@ export async function saveEventAction(
     };
   }
 
+  const depositRaw = formData.get("deposit") as string;
+  const balanceDueAtRaw = formData.get("balanceDueAt") as string;
+  const depositCents =
+    depositRaw && depositRaw.trim() !== ""
+      ? Math.round(Number(depositRaw) * 100)
+      : null;
+  const balanceDueAt =
+    balanceDueAtRaw && balanceDueAtRaw.trim() !== ""
+      ? new Date(balanceDueAtRaw).getTime()
+      : null;
+
   const raw = {
     slug: existing.slug,
     title: String(formData.get("title") ?? ""),
@@ -50,6 +61,8 @@ export async function saveEventAction(
     capacity: Number(formData.get("capacity") ?? 0),
     coverUrl: (formData.get("coverUrl") as string) || undefined,
     customQuestions: questionsParsed.data,
+    depositCents,
+    balanceDueAt,
   };
   const parsed = eventBaseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -79,6 +92,8 @@ export async function saveEventAction(
     capacity: parsed.data.capacity,
     coverUrl: parsed.data.coverUrl || null,
     customQuestions: JSON.stringify(parsed.data.customQuestions),
+    depositCents: parsed.data.depositCents ?? null,
+    balanceDueAt: parsed.data.balanceDueAt ?? null,
   });
 
   revalidatePath(`/dashboard/events/${eventId}`);
