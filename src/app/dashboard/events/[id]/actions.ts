@@ -94,6 +94,11 @@ export async function changeStatusAction(eventId: string, status: string) {
   if (!organizer) throw new Error("No organizer");
   const parsed = statusSchema.safeParse(status);
   if (!parsed.success) throw new Error("Invalid status");
+  if (parsed.data === "published") {
+    if (organizer.stripeOnboardingComplete !== 1 || organizer.stripePayoutsEnabled !== 1) {
+      throw new Error("Publikacja wymaga ukończenia konfiguracji Stripe.");
+    }
+  }
   await updateEvent(organizer.id, eventId, { status: parsed.data });
   revalidatePath(`/dashboard/events/${eventId}`);
 }

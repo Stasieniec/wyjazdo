@@ -40,6 +40,8 @@ export default async function EventEditPage({
   const publishBound = changeStatusAction.bind(null, id, "published");
   const unpublishBound = changeStatusAction.bind(null, id, "draft");
   const archiveBound = changeStatusAction.bind(null, id, "archived");
+  const stripeReady =
+    organizer.stripeOnboardingComplete === 1 && organizer.stripePayoutsEnabled === 1;
 
   const previewUrl = publicEventUrl(organizer.subdomain, event.slug);
   const editHref = `/dashboard/events/${id}`;
@@ -76,11 +78,30 @@ export default async function EventEditPage({
               </form>
             </>
           ) : (
-            <form action={publishBound}>
-              <SubmitButton variant="accent" size="sm">
-                Opublikuj
-              </SubmitButton>
-            </form>
+            <>
+              <form action={publishBound}>
+                <SubmitButton
+                  variant="accent"
+                  size="sm"
+                  disabled={!stripeReady}
+                  title={
+                    !stripeReady
+                      ? "Dokończ konfigurację Stripe, aby opublikować wydarzenie"
+                      : undefined
+                  }
+                >
+                  Opublikuj
+                </SubmitButton>
+              </form>
+              {!stripeReady && (
+                <Link
+                  href="/dashboard/onboarding/payouts"
+                  className="text-xs text-yellow-700 underline"
+                >
+                  Dokończ konfigurację Stripe
+                </Link>
+              )}
+            </>
           )}
           {event.status !== "archived" && (
             <form action={archiveBound}>
