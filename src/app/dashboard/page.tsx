@@ -24,6 +24,14 @@ export default async function DashboardHome() {
 
   return (
     <div>
+      {(organizer.stripeOnboardingComplete !== 1 || organizer.stripePayoutsEnabled !== 1) && (
+        <div className="rounded-md border border-yellow-400 bg-yellow-50 p-4 text-sm text-yellow-900 mb-6">
+          Dokończ konfigurację Stripe, aby móc publikować wydarzenia.{" "}
+          <Link href="/dashboard/onboarding/payouts" className="underline font-medium">
+            Konfiguruj
+          </Link>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Wydarzenia</h1>
         <Link
