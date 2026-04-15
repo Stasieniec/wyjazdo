@@ -1,42 +1,43 @@
 import { describe, it, expect } from "vitest";
-import { computeSpotsTaken, type CountableParticipant } from "./capacity";
+import { computeSpotsTaken } from "./capacity";
+import type { ParticipantLike, PaymentLike } from "./participant-status";
 
-const now = 1_700_000_000_000;
+type Row = { participant: ParticipantLike; payments: PaymentLike[] };
 
-const p = (
-  status: CountableParticipant["status"],
-  expiresAt: number | null = null,
-): CountableParticipant => ({ status, expiresAt });
+const NOW = 1_000_000_000_000;
+
+const lc = (s: ParticipantLike["lifecycleStatus"]): ParticipantLike => ({ lifecycleStatus: s });
+const pay = (over: Partial<PaymentLike> = {}): PaymentLike => ({
+  kind: "full",
+  status: "pending",
+  dueAt: null,
+  ...over,
+});
 
 describe("computeSpotsTaken", () => {
-  it("counts paid", () => {
-    expect(computeSpotsTaken([p("paid"), p("paid")], now)).toBe(2);
-  });
-
-  it("counts pending that hasn't expired", () => {
-    expect(computeSpotsTaken([p("pending", now + 10_000)], now)).toBe(1);
-  });
-
-  it("ignores expired pending", () => {
-    expect(computeSpotsTaken([p("pending", now - 10_000)], now)).toBe(0);
-  });
-
-  it("ignores cancelled and waitlisted", () => {
-    expect(computeSpotsTaken([p("cancelled"), p("waitlisted"), p("refunded")], now)).toBe(0);
-  });
-
-  it("mixed example", () => {
-    expect(
-      computeSpotsTaken(
-        [
-          p("paid"),
-          p("pending", now + 1000),
-          p("pending", now - 1000),
-          p("waitlisted"),
-          p("cancelled"),
+  it("counts pending, deposit_paid, paid, and overdue", () => {
+    const rows: Row[] = [
+      { participant: lc("active"), payments: [pay({ status: "pending" })] },
+      { participant: lc("active"), payments: [pay({ kind: "deposit", status: "succeeded" })] },
+      { participant: lc("active"), payments: [pay({ kind: "full", status: "succeeded" })] },
+      {
+        participant: lc("active"),
+        payments: [
+          pay({ kind: "deposit", status: "succeeded" }),
+          pay({ kind: "balance", status: "expired", dueAt: NOW - 1 }),
         ],
-        now,
-      ),
-    ).toBe(2);
+      },
+    ];
+    expect(computeSpotsTaken(rows, NOW)).toBe(4);
+  });
+
+  it("does not count waitlisted, cancelled, refunded", () => {
+    const rows: Row[] = [
+      { participant: lc("waitlisted"), payments: [] },
+      { participant: lc("cancelled"), payments: [pay({ status: "succeeded" })] },
+      { participant: lc("active"), payments: [pay({ status: "refunded" })] },
+      { participant: lc("active"), payments: [pay({ status: "expired" })] },
+    ];
+    expect(computeSpotsTaken(rows, NOW)).toBe(0);
   });
 });
