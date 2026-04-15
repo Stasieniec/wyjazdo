@@ -53,6 +53,11 @@ export default async function EventPage({
     currency: event.currency,
   }).format(event.priceCents / 100);
 
+  const isDepositMode =
+    event.depositCents != null &&
+    event.depositCents > 0 &&
+    event.depositCents < event.priceCents;
+
   const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", {
     day: "numeric",
     month: "long",
@@ -107,7 +112,25 @@ export default async function EventPage({
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <InfoCard label="Termin" value={dateStart === dateEnd ? dateStart : `${dateStart} — ${dateEnd}`} />
           <InfoCard label="Miejsce" value={event.location ?? "Do ustalenia"} />
-          <InfoCard label="Cena" value={priceFormatted} />
+          {isDepositMode ? (
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Cena
+              </dt>
+              <dd className="mt-1 space-y-0.5 text-sm font-semibold text-foreground">
+                <p>Całkowita: {(event.priceCents / 100).toFixed(2)} zł</p>
+                <p>Zaliczka: {(event.depositCents! / 100).toFixed(2)} zł</p>
+                <p>
+                  Dopłata: {((event.priceCents - event.depositCents!) / 100).toFixed(2)} zł
+                  {event.balanceDueAt
+                    ? ` do ${new Date(event.balanceDueAt).toLocaleDateString("pl-PL")}`
+                    : ""}
+                </p>
+              </dd>
+            </div>
+          ) : (
+            <InfoCard label="Cena" value={priceFormatted} />
+          )}
           <InfoCard
             label="Dostępność"
             value={isFull ? "Brak miejsc" : `${spotsLeft} wolnych miejsc`}
