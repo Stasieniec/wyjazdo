@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
-import { Input, SubmitButton, Textarea } from "@/components/ui";
+import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { createEventAction, type CreateEventFormState } from "./actions";
 
 export default function NewEventPage() {
@@ -14,63 +14,69 @@ export default function NewEventPage() {
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-semibold">Nowe wydarzenie</h1>
-      <form action={formAction} className="mt-8 space-y-4">
-        <Input
-          name="title"
-          label="Tytuł"
-          required
-          maxLength={200}
-          error={state?.errors?.title}
-        />
-        <Input
-          name="slug"
-          label="Nazwa w URL"
-          required
-          pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
-          minLength={3}
-          maxLength={64}
-          placeholder="np. warsztaty-kwietniowe"
-          error={state?.errors?.slug}
-        />
-        <Textarea name="description" label="Opis" rows={4} error={state?.errors?.description} />
-        <Input name="location" label="Miejsce" error={state?.errors?.location} />
-        <EventDateTimeRange
-          error={state?.errors?.startsAt ?? state?.errors?.endsAt}
-        />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <p className="mt-1 text-sm text-muted-foreground">
+        Uzupełnij podstawowe informacje. Wydarzenie utworzy się jako szkic — możesz je
+        opublikować później.
+      </p>
+      <Card className="mt-6">
+        <form action={formAction} className="space-y-4">
           <Input
-            type="number"
-            name="price"
-            label="Cena (PLN)"
-            step="0.01"
-            min="0"
+            name="title"
+            label="Tytuł"
             required
-            error={state?.errors?.price ?? state?.errors?.priceCents}
+            maxLength={200}
+            error={state?.errors?.title}
           />
           <Input
-            type="number"
-            name="capacity"
-            label="Liczba miejsc"
-            min="1"
+            name="slug"
+            label="Nazwa w URL"
             required
-            error={state?.errors?.capacity}
+            pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
+            minLength={3}
+            maxLength={64}
+            placeholder="np. warsztaty-kwietniowe"
+            error={state?.errors?.slug}
           />
-        </div>
-        <Input
-          type="url"
-          name="coverUrl"
-          label="URL okładki (opcjonalnie)"
-          error={state?.errors?.coverUrl}
-        />
+          <Textarea name="description" label="Opis" rows={4} error={state?.errors?.description} />
+          <Input name="location" label="Miejsce" error={state?.errors?.location} />
+          <EventDateTimeRange
+            error={state?.errors?.startsAt ?? state?.errors?.endsAt}
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              type="number"
+              name="price"
+              label="Cena (PLN)"
+              step="0.01"
+              min="0"
+              required
+              error={state?.errors?.price ?? state?.errors?.priceCents}
+            />
+            <Input
+              type="number"
+              name="capacity"
+              label="Liczba miejsc"
+              min="1"
+              required
+              error={state?.errors?.capacity}
+            />
+          </div>
+          <ImageUpload
+            name="coverUrl"
+            label="Zdjęcie okładki (opcjonalnie)"
+            aspect="cover"
+            error={state?.errors?.coverUrl}
+          />
 
-        {state?.errors?._form && (
-          <p className="text-sm text-destructive" role="alert">
-            {state.errors._form}
-          </p>
-        )}
+          {state?.errors?._form && (
+            <p className="text-sm text-destructive" role="alert">
+              {state.errors._form}
+            </p>
+          )}
 
-        <SubmitButton>Utwórz jako szkic</SubmitButton>
-      </form>
+          <SubmitButton>Utwórz jako szkic</SubmitButton>
+        </form>
+      </Card>
     </div>
   );
 }

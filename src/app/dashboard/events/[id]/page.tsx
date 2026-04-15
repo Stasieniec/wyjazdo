@@ -7,7 +7,9 @@ import type { CustomQuestion } from "@/lib/validators/event";
 import { parseParticipantFilterStatus } from "@/lib/participantFilterStatus";
 import { ParticipantFilters } from "@/components/dashboard/ParticipantFilters";
 import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
-import { Button, StatusBadge, SubmitButton } from "@/components/ui";
+import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
+import { Button, Card, StatusBadge, SubmitButton } from "@/components/ui";
+import { publicEventUrl } from "@/lib/urls";
 import { changeStatusAction } from "./actions";
 import { EventEditForm } from "./EventEditForm";
 
@@ -36,74 +38,113 @@ export default async function EventEditPage({
   const unpublishBound = changeStatusAction.bind(null, id, "draft");
   const archiveBound = changeStatusAction.bind(null, id, "archived");
 
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
-  const previewUrl = `https://${organizer.subdomain}.${rootDomain}/${event.slug}`;
+  const previewUrl = publicEventUrl(organizer.subdomain, event.slug);
 
   return (
     <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="min-w-0 shrink text-2xl font-semibold">{event.title}</h1>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-sm sm:justify-end">
-          <StatusBadge status={event.status} />
-          <Button
-            href={previewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="ghost"
-            size="sm"
-          >
-            Podgląd
-          </Button>
-          {event.status !== "published" && (
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <StatusBadge status={event.status} />
+          </div>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{event.title}</h1>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-sm sm:justify-end">
+          {event.status === "published" ? (
+            <>
+              <Button
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="ghost"
+                size="sm"
+              >
+                Podgląd
+              </Button>
+              <CopyLinkButton url={previewUrl} />
+              <form action={unpublishBound}>
+                <SubmitButton variant="secondary" size="sm">
+                  Ukryj
+                </SubmitButton>
+              </form>
+            </>
+          ) : (
             <form action={publishBound}>
               <SubmitButton variant="accent" size="sm">
                 Opublikuj
               </SubmitButton>
             </form>
           )}
-          {event.status === "published" && (
-            <form action={unpublishBound}>
-              <SubmitButton variant="secondary" size="sm">
-                Ukryj
+          {event.status !== "archived" && (
+            <form action={archiveBound}>
+              <SubmitButton variant="ghost" size="sm">
+                Archiwizuj
               </SubmitButton>
             </form>
           )}
-          <form action={archiveBound}>
-            <SubmitButton variant="secondary" size="sm">
-              Archiwizuj
-            </SubmitButton>
-          </form>
         </div>
       </div>
 
-      <EventEditForm
-        eventId={id}
-        event={{
-          title: event.title,
-          description: event.description,
-          location: event.location,
-          startsAt: event.startsAt,
-          endsAt: event.endsAt,
-          priceCents: event.priceCents,
-          capacity: event.capacity,
-          coverUrl: event.coverUrl,
-        }}
-        initialQuestions={questions}
-      />
+      {/* Status hint */}
+      {event.status === "draft" && (
+        <div className="mt-4 rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
+          <strong className="font-medium text-foreground">To jest szkic.</strong>{" "}
+          Tylko Ty widzisz tę stronę. Kliknij <em>Opublikuj</em>, aby inni mogli się zapisać.
+        </div>
+      )}
+      {event.status === "archived" && (
+        <div className="mt-4 rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
+          <strong className="font-medium text-foreground">Zarchiwizowane.</strong>{" "}
+          Wydarzenie nie jest już widoczne publicznie. Nadal możesz zobaczyć listę uczestników.
+        </div>
+      )}
 
-        <section className="mt-12">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Uczestnicy</h2>
-            <a
-              href={`/dashboard/events/${event.id}/export`}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
-              aria-label="Eksportuj uczestników do CSV"
+      {/* Edit form */}
+      <div className="mt-6">
+        <EventEditForm
+          eventId={id}
+          event={{
+            title: event.title,
+            description: event.description,
+            location: event.location,
+            startsAt: event.startsAt,
+            endsAt: event.endsAt,
+            priceCents: event.priceCents,
+            capacity: event.capacity,
+            coverUrl: event.coverUrl,
+          }}
+          initialQuestions={questions}
+        />
+      </div>
+
+      {/* Participants section */}
+      <section className="mt-12">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Uczestnicy</h2>
+          <a
+            href={`/dashboard/events/${event.id}/export`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Eksportuj uczestników do CSV"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden
+              className="h-3.5 w-3.5"
             >
-              Eksport CSV
-            </a>
-          </div>
+              <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.41a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.128V2.75z" />
+              <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+            </svg>
+            Eksport CSV
+          </a>
+        </div>
+        <div className="mt-4">
           <ParticipantsSection eventId={event.id} questions={questions} statusFilter={statusFilter} />
-        </section>
+        </div>
+      </section>
     </div>
   );
 }
@@ -127,9 +168,19 @@ async function ParticipantsSection({
       : active.filter((p) => p.status === statusFilter);
   const waitlist = all.filter((p) => p.status === "waitlisted");
 
+  if (all.length === 0) {
+    return (
+      <Card padding="lg" className="text-center">
+        <p className="text-sm text-muted-foreground">
+          Brak zgłoszeń. Jak tylko ktoś się zapisze, pojawi się tutaj.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <div>
-      <Suspense fallback={<div className="mt-4 h-8" aria-hidden />}>
+      <Suspense fallback={<div className="h-8" aria-hidden />}>
         <ParticipantFilters current={statusFilter} />
       </Suspense>
       <ParticipantsTable
@@ -139,7 +190,7 @@ async function ParticipantsSection({
       />
       {waitlist.length > 0 && (
         <>
-          <h3 className="mt-8 text-sm font-semibold uppercase text-neutral-500">
+          <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Lista rezerwowa ({waitlist.length})
           </h3>
           <ParticipantsTable participants={waitlist} questions={questions} />

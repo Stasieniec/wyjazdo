@@ -32,7 +32,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           colorText: "#111827",
           colorTextSecondary: "#6B7280",
           colorInputBackground: "#FAFAFA",
-          colorBackground: "#FAFAFA",
+          colorBackground: "#FFFFFF",
+          colorDanger: "#DC2626",
+          colorSuccess: "#059669",
+          colorWarning: "#D97706",
+          borderRadius: "0.5rem",
+          fontFamily: "var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif",
+        },
+        elements: {
+          // Soften Clerk's default card shadow/border to match our look
+          card: "shadow-sm border border-[#E5E7EB]",
+          // Make the primary action use our accent (coral) for emphasis
+          formButtonPrimary:
+            "bg-[#E8683A] hover:bg-[#E8683A]/90 text-white font-semibold normal-case",
+          footerActionLink: "text-[#1E3A5F] font-medium hover:text-[#1E3A5F]/80",
         },
       }}
     >

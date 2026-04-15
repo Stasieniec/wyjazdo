@@ -6,3 +6,4 @@ export { Select } from "./Select";
 export { Card } from "./Card";
 export { Badge, StatusBadge } from "./Badge";
 export { ImageUpload } from "./ImageUpload";
+export { BrandColorPicker } from "./BrandColorPicker";

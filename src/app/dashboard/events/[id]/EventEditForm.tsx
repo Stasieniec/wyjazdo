@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
-import { ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
+import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { saveEventAction, type SaveEventFormState } from "./actions";
 
 type Props = {
@@ -29,79 +29,108 @@ export function EventEditForm({ eventId, event, initialQuestions }: Props) {
   );
 
   return (
-    <form action={formAction} className="mt-8 max-w-xl space-y-4">
-      <Input
-        name="title"
-        label="Tytuł"
-        defaultValue={event.title}
-        required
-        maxLength={200}
-        error={state?.errors?.title}
-      />
-      <Textarea
-        name="description"
-        label="Opis"
-        defaultValue={event.description ?? ""}
-        rows={6}
-        error={state?.errors?.description}
-      />
-      <Input
-        name="location"
-        label="Miejsce"
-        defaultValue={event.location ?? ""}
-        error={state?.errors?.location}
-      />
-      <EventDateTimeRange
-        defaultStartsAt={event.startsAt}
-        defaultEndsAt={event.endsAt}
-        error={state?.errors?.startsAt ?? state?.errors?.endsAt}
-      />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <form action={formAction} className="max-w-2xl space-y-6">
+      <Section title="Podstawowe informacje">
         <Input
-          type="number"
-          name="price"
-          label="Cena (PLN)"
-          step="0.01"
-          min="0"
-          defaultValue={event.priceCents / 100}
+          name="title"
+          label="Tytuł"
+          defaultValue={event.title}
           required
-          error={state?.errors?.price ?? state?.errors?.priceCents}
+          maxLength={200}
+          error={state?.errors?.title}
+        />
+        <Textarea
+          name="description"
+          label="Opis"
+          defaultValue={event.description ?? ""}
+          rows={6}
+          error={state?.errors?.description}
         />
         <Input
-          type="number"
-          name="capacity"
-          label="Liczba miejsc"
-          min="1"
-          defaultValue={event.capacity}
-          required
-          error={state?.errors?.capacity}
+          name="location"
+          label="Miejsce"
+          defaultValue={event.location ?? ""}
+          error={state?.errors?.location}
         />
-      </div>
-      <ImageUpload
-        name="coverUrl"
-        label="Zdjęcie okładki"
-        defaultValue={event.coverUrl}
-        aspect="cover"
-        error={state?.errors?.coverUrl}
-      />
+      </Section>
 
-      <fieldset className="mt-4">
-        <legend className="text-sm font-medium">Pytania do uczestnika</legend>
-        <p className="text-xs text-muted-foreground">Odpowiedzi zostaną zapisane razem ze zgłoszeniem.</p>
+      <Section title="Termin i miejsca">
+        <EventDateTimeRange
+          defaultStartsAt={event.startsAt}
+          defaultEndsAt={event.endsAt}
+          error={state?.errors?.startsAt ?? state?.errors?.endsAt}
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            type="number"
+            name="price"
+            label="Cena (PLN)"
+            step="0.01"
+            min="0"
+            defaultValue={event.priceCents / 100}
+            required
+            error={state?.errors?.price ?? state?.errors?.priceCents}
+          />
+          <Input
+            type="number"
+            name="capacity"
+            label="Liczba miejsc"
+            min="1"
+            defaultValue={event.capacity}
+            required
+            error={state?.errors?.capacity}
+          />
+        </div>
+      </Section>
+
+      <Section title="Okładka">
+        <ImageUpload
+          name="coverUrl"
+          label="Zdjęcie okładki"
+          defaultValue={event.coverUrl}
+          aspect="cover"
+          error={state?.errors?.coverUrl}
+        />
+      </Section>
+
+      <Section
+        title="Pytania do uczestnika"
+        description="Dodatkowe informacje zbierane w formularzu zapisu — np. preferencje żywieniowe, rozmiar koszulki, kontakt awaryjny."
+      >
         {state?.errors?.customQuestions && (
-          <p className="mt-2 text-sm text-destructive" role="alert">
+          <p className="text-sm text-destructive" role="alert">
             {state.errors.customQuestions}
           </p>
         )}
-        <div className="mt-2">
-          <CustomQuestionsEditor initial={initialQuestions} name="customQuestions" />
-        </div>
-      </fieldset>
+        <CustomQuestionsEditor initial={initialQuestions} name="customQuestions" />
+      </Section>
 
-      {state && !state.errors && (
-        <p className="text-sm text-success">Zmiany zostały zapisane.</p>
-      )}
-      <SubmitButton>Zapisz</SubmitButton>
+      <div className="flex items-center gap-4">
+        <SubmitButton>Zapisz zmiany</SubmitButton>
+        {state && !state.errors && (
+          <p className="text-sm text-success">Zmiany zostały zapisane.</p>
+        )}
+      </div>
     </form>
+  );
+}
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      {description && (
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      )}
+      <div className="mt-5 space-y-4">{children}</div>
+    </Card>
   );
 }
