@@ -1,3 +1,5 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
 // Web-crypto HMAC-SHA256 utilities for participant-facing tokens and cookies.
 // No DB lookup required; secret rotation is the only invalidation mechanism.
 
@@ -120,4 +122,13 @@ export async function verifyMagicLinkOneTime(
   if (!decoded) return null;
   if (decoded.issuedAt + ONE_TIME_TTL_MS < nowMs) return null;
   return decoded;
+}
+
+// ── Environment binding accessor ───────────────────────────────────────────
+
+export function getParticipantAuthSecret(): string {
+  const { env } = getCloudflareContext();
+  const s = (env as unknown as { PARTICIPANT_AUTH_SECRET?: string }).PARTICIPANT_AUTH_SECRET;
+  if (!s) throw new Error("PARTICIPANT_AUTH_SECRET not set");
+  return s;
 }
