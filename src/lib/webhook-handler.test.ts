@@ -1,83 +1,105 @@
 import { describe, it, expect, vi } from "vitest";
 import { handleStripeEvent, type WebhookDeps } from "./webhook-handler";
+import type Stripe from "stripe";
 
-function makeDeps(overrides: Partial<WebhookDeps> = {}): WebhookDeps {
-  return {
-    markPaid: vi.fn(async () => {}),
-    cancel: vi.fn(async () => {}),
-    now: () => 1_700_000_000_000,
-    ...overrides,
+const deps = () => {
+  const calls = {
+    succeed: vi.fn(async () => true),
+    expire: vi.fn(async () => {}),
+    fail: vi.fn(async () => {}),
+    refund: vi.fn(async () => {}),
+    onboardingUpdate: vi.fn(async () => {}),
+    now: vi.fn(() => 42),
   };
-}
+  const d: WebhookDeps = {
+    markPaymentSucceeded: calls.succeed,
+    markPaymentExpired: calls.expire,
+    markPaymentFailed: calls.fail,
+    markPaymentRefunded: calls.refund,
+    syncOrganizerFromAccount: calls.onboardingUpdate,
+    now: calls.now,
+  };
+  return { d, calls };
+};
+
+const evt = <T extends Stripe.Event["type"]>(type: T, data: object, account?: string): Stripe.Event =>
+  ({
+    type,
+    account,
+    data: { object: data as never },
+  }) as Stripe.Event;
 
 describe("handleStripeEvent", () => {
-  it("marks paid on checkout.session.completed with metadata.participant_id", async () => {
-    const deps = makeDeps();
+  it("updates payment on checkout.session.completed", async () => {
+    const { d, calls } = deps();
     await handleStripeEvent(
-      {
-        type: "checkout.session.completed",
-        data: {
-          object: {
-            metadata: { participant_id: "P1" },
-            payment_intent: "pi_1",
-            amount_total: 12345,
-          },
-        },
-      } as any,
-      deps,
+      evt("checkout.session.completed", {
+        metadata: { payment_id: "pay_1" },
+        payment_intent: "pi_1",
+        amount_total: 1234,
+      }),
+      d,
     );
-    expect(deps.markPaid).toHaveBeenCalledWith({
-      participantId: "P1",
-      paymentIntentId: "pi_1",
-      amountCents: 12345,
-      paidAt: 1_700_000_000_000,
+    expect(calls.succeed).toHaveBeenCalledWith({
+      paymentId: "pay_1",
+      stripePaymentIntentId: "pi_1",
+      amountCents: 1234,
+      applicationFeeCents: null,
+      paidAt: 42,
     });
-    expect(deps.cancel).not.toHaveBeenCalled();
   });
 
-  it("cancels on checkout.session.expired", async () => {
-    const deps = makeDeps();
+  it("expires payment on session.expired", async () => {
+    const { d, calls } = deps();
     await handleStripeEvent(
-      {
-        type: "checkout.session.expired",
-        data: { object: { metadata: { participant_id: "P2" } } },
-      } as any,
-      deps,
+      evt("checkout.session.expired", { metadata: { payment_id: "pay_1" } }),
+      d,
     );
-    expect(deps.cancel).toHaveBeenCalledWith("P2");
+    expect(calls.expire).toHaveBeenCalledWith("pay_1");
   });
 
-  it("cancels on payment_intent.payment_failed via session lookup metadata", async () => {
-    const deps = makeDeps();
+  it("fails payment on payment_intent.payment_failed", async () => {
+    const { d, calls } = deps();
     await handleStripeEvent(
-      {
-        type: "payment_intent.payment_failed",
-        data: { object: { metadata: { participant_id: "P3" } } },
-      } as any,
-      deps,
+      evt("payment_intent.payment_failed", { metadata: { payment_id: "pay_1" } }),
+      d,
     );
-    expect(deps.cancel).toHaveBeenCalledWith("P3");
+    expect(calls.fail).toHaveBeenCalledWith("pay_1");
   });
 
-  it("ignores unknown event types", async () => {
-    const deps = makeDeps();
+  it("refunds by payment_intent on charge.refunded", async () => {
+    const { d, calls } = deps();
     await handleStripeEvent(
-      { type: "customer.created", data: { object: {} } } as any,
-      deps,
+      evt("charge.refunded", { payment_intent: "pi_9" }),
+      d,
     );
-    expect(deps.markPaid).not.toHaveBeenCalled();
-    expect(deps.cancel).not.toHaveBeenCalled();
+    expect(calls.refund).toHaveBeenCalledWith("pi_9");
   });
 
-  it("no-op when participant_id is missing", async () => {
-    const deps = makeDeps();
+  it("syncs organizer on account.updated", async () => {
+    const { d, calls } = deps();
     await handleStripeEvent(
-      {
-        type: "checkout.session.completed",
-        data: { object: { metadata: {}, payment_intent: "pi", amount_total: 100 } },
-      } as any,
-      deps,
+      evt("account.updated", {
+        id: "acct_1",
+        details_submitted: true,
+        charges_enabled: true,
+        payouts_enabled: true,
+      }),
+      d,
     );
-    expect(deps.markPaid).not.toHaveBeenCalled();
+    expect(calls.onboardingUpdate).toHaveBeenCalledWith({
+      accountId: "acct_1",
+      onboardingComplete: true,
+      payoutsEnabled: true,
+    });
+  });
+
+  it("ignores events without payment_id metadata", async () => {
+    const { d, calls } = deps();
+    await handleStripeEvent(
+      evt("checkout.session.completed", { metadata: {}, payment_intent: "pi_1", amount_total: 10 }),
+      d,
+    );
+    expect(calls.succeed).not.toHaveBeenCalled();
   });
 });
