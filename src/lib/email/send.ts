@@ -6,6 +6,8 @@ import {
   waitlistConfirmedHtml,
   newRegistrationSubject,
   newRegistrationHtml,
+  paymentConfirmedSubject,
+  paymentConfirmedHtml,
 } from "./templates";
 
 /**
@@ -76,5 +78,23 @@ export async function sendOrganizerNewRegistration(params: {
     to: params.to,
     subject: newRegistrationSubject(params.eventTitle, params.participantName),
     html: newRegistrationHtml(params),
+  });
+}
+
+export async function sendPaymentConfirmation(params: {
+  to: string;
+  participantName: string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string | null;
+  eventUrl: string;
+  organizerName: string;
+  paymentKind: "full" | "deposit" | "balance";
+  amountCents: number;
+}): Promise<void> {
+  await safeSend({
+    to: params.to,
+    subject: paymentConfirmedSubject(params.eventTitle, params.paymentKind),
+    html: paymentConfirmedHtml(params),
   });
 }

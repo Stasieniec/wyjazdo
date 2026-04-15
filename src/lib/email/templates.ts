@@ -129,3 +129,47 @@ export function newRegistrationHtml(params: {
     ${button(params.dashboardUrl, "Otwórz panel")}
   `);
 }
+
+// ─── Payment Confirmed ──────────────────────────────────────────────────────
+
+export function paymentConfirmedSubject(eventTitle: string, kind: "full" | "deposit" | "balance") {
+  switch (kind) {
+    case "deposit":
+      return `Potwierdzenie zaliczki — ${eventTitle}`;
+    case "balance":
+      return `Potwierdzenie pełnej płatności — ${eventTitle}`;
+    case "full":
+    default:
+      return `Potwierdzenie płatności — ${eventTitle}`;
+  }
+}
+
+export function paymentConfirmedHtml(params: {
+  participantName: string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string | null;
+  eventUrl: string;
+  organizerName: string;
+  paymentKind: "full" | "deposit" | "balance";
+  amountCents: number;
+}) {
+  const amount = (params.amountCents / 100).toFixed(2);
+  const locationLine = params.eventLocation ? `<p>Miejsce: ${params.eventLocation}</p>` : "";
+  const kindLabel =
+    params.paymentKind === "deposit"
+      ? "zaliczkę"
+      : params.paymentKind === "balance"
+        ? "dopłatę"
+        : "płatność";
+
+  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #111;">Dziękujemy za ${kindLabel}!</h2>
+    <p>Cześć ${params.participantName},</p>
+    <p>Otrzymaliśmy Twoją ${kindLabel} w wysokości <strong>${amount} zł</strong> za <strong>${params.eventTitle}</strong>.</p>
+    <p>Data: ${params.eventDate}</p>
+    ${locationLine}
+    <p><a href="${params.eventUrl}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Zobacz wydarzenie</a></p>
+    <p style="color: #555; margin-top: 32px;">— ${params.organizerName}</p>
+  </div>`;
+}
