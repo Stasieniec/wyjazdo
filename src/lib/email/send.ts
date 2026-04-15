@@ -10,6 +10,8 @@ import {
   paymentConfirmedHtml,
   magicLinkSubject,
   magicLinkHtml,
+  balanceReminderSubject,
+  balanceReminderHtml,
 } from "./templates";
 
 /**
@@ -106,5 +108,21 @@ export async function sendMagicLinkEmail(params: { to: string; link: string }): 
     to: params.to,
     subject: magicLinkSubject(),
     html: magicLinkHtml(params),
+  });
+}
+
+export async function sendBalanceReminder(params: {
+  to: string;
+  participantName: string;
+  eventTitle: string;
+  amountPln: string;
+  dueDate: string;
+  payUrl: string;
+  organizerName: string;
+}): Promise<void> {
+  await safeSend({
+    to: params.to,
+    subject: balanceReminderSubject(params.eventTitle),
+    html: balanceReminderHtml(params),
   });
 }

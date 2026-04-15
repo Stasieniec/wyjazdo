@@ -158,6 +158,27 @@ export function magicLinkHtml(params: { link: string }) {
   </div>`;
 }
 
+export function balanceReminderSubject(eventTitle: string) {
+  return `Przypomnienie o dopłacie — ${eventTitle}`;
+}
+
+export function balanceReminderHtml(params: {
+  participantName: string;
+  eventTitle: string;
+  amountPln: string;
+  dueDate: string;
+  payUrl: string;
+  organizerName: string;
+}) {
+  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <p>Cześć ${params.participantName},</p>
+    <p>Do opłacenia pozostało <strong>${params.amountPln} zł</strong> za <strong>${params.eventTitle}</strong>.</p>
+    <p>Termin dopłaty: ${params.dueDate}.</p>
+    <p><a href="${params.payUrl}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Opłać teraz</a></p>
+    <p style="color: #555; margin-top: 32px;">— ${params.organizerName}</p>
+  </div>`;
+}
+
 export function paymentConfirmedHtml(params: {
   participantName: string;
   eventTitle: string;
