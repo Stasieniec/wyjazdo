@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { UserMenu } from "@/components/dashboard/UserMenu";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
@@ -31,11 +31,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </summary>
               <nav className="absolute left-0 top-full z-50 mt-1 flex min-w-[12rem] flex-col gap-0.5 rounded-md border border-border bg-background p-2 text-sm shadow-md">
                 <NavLink href="/dashboard">Wydarzenia</NavLink>
+                <NavLink href="/dashboard/finance">Finanse</NavLink>
                 <NavLink href="/dashboard/settings">Ustawienia</NavLink>
               </nav>
             </details>
             <nav className="hidden items-center gap-1 text-sm sm:flex">
               <NavLink href="/dashboard">Wydarzenia</NavLink>
+              <NavLink href="/dashboard/finance">Finanse</NavLink>
               <NavLink href="/dashboard/settings">Ustawienia</NavLink>
             </nav>
           </div>
@@ -62,9 +64,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 </a>
               </>
             )}
-            <div className="shrink-0">
-              <UserButton />
-            </div>
+            <UserMenu />
           </div>
         </div>
       </header>

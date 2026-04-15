@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Show, UserButton } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
+import { UserMenu } from "@/components/dashboard/UserMenu";
 
 export default function MarketingPage() {
   return (
@@ -33,7 +34,7 @@ export default function MarketingPage() {
             >
               Panel organizatora
             </Link>
-            <UserButton />
+            <UserMenu />
           </div>
         </Show>
       </nav>
