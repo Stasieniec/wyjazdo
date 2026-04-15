@@ -83,3 +83,38 @@ export async function updateOrganizer(
     .set({ ...patch, updatedAt: Date.now() })
     .where(eq(schema.organizers.id, organizerId));
 }
+
+export async function setOrganizerStripeAccountId(organizerId: string, accountId: string) {
+  const db = getDb();
+  await db
+    .update(schema.organizers)
+    .set({ stripeAccountId: accountId, stripeAccountSyncedAt: Date.now(), updatedAt: Date.now() })
+    .where(eq(schema.organizers.id, organizerId));
+}
+
+export async function syncOrganizerStripeState(params: {
+  accountId: string;
+  onboardingComplete: boolean;
+  payoutsEnabled: boolean;
+}) {
+  const db = getDb();
+  await db
+    .update(schema.organizers)
+    .set({
+      stripeOnboardingComplete: params.onboardingComplete ? 1 : 0,
+      stripePayoutsEnabled: params.payoutsEnabled ? 1 : 0,
+      stripeAccountSyncedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    .where(eq(schema.organizers.stripeAccountId, params.accountId));
+}
+
+export async function getOrganizerByStripeAccount(accountId: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.organizers)
+    .where(eq(schema.organizers.stripeAccountId, accountId))
+    .limit(1);
+  return rows[0] ?? null;
+}
