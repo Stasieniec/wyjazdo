@@ -29,6 +29,7 @@ ALTER TABLE `organizers` ADD COLUMN `stripe_account_id` text;--> statement-break
 ALTER TABLE `organizers` ADD COLUMN `stripe_onboarding_complete` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE `organizers` ADD COLUMN `stripe_payouts_enabled` integer DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE `organizers` ADD COLUMN `stripe_account_synced_at` integer;--> statement-breakpoint
+CREATE UNIQUE INDEX `organizers_stripe_account_uniq` ON `organizers` (`stripe_account_id`);--> statement-breakpoint
 
 ALTER TABLE `events` ADD COLUMN `deposit_cents` integer;--> statement-breakpoint
 ALTER TABLE `events` ADD COLUMN `balance_due_at` integer;--> statement-breakpoint
