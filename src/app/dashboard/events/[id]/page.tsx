@@ -193,14 +193,28 @@ async function ParticipantsSection({
   statusFilter: ReturnType<typeof parseParticipantFilterStatus>;
 }) {
   const { listParticipantsForEvent } = await import("@/lib/db/queries/participants");
+  const { listPaymentsForParticipants } = await import("@/lib/db/queries/payments");
+  const { derivedStatus } = await import("@/lib/participant-status");
   const all = await listParticipantsForEvent(eventId);
+  const allPayments = await listPaymentsForParticipants(all.map((p) => p.id));
+  const now = Date.now();
 
-  const active = all.filter((p) => p.status !== "waitlisted");
+  const paymentsByParticipant = new Map<string, typeof allPayments>();
+  for (const pay of allPayments) {
+    const list = paymentsByParticipant.get(pay.participantId) ?? [];
+    list.push(pay);
+    paymentsByParticipant.set(pay.participantId, list);
+  }
+
+  const active = all.filter((p) => p.lifecycleStatus !== "waitlisted");
   const filtered =
     statusFilter === "all"
       ? active
-      : active.filter((p) => p.status === statusFilter);
-  const waitlist = all.filter((p) => p.status === "waitlisted");
+      : active.filter((p) => {
+          const ds = derivedStatus(p, paymentsByParticipant.get(p.id) ?? [], now);
+          return ds === statusFilter;
+        });
+  const waitlist = all.filter((p) => p.lifecycleStatus === "waitlisted");
 
   if (all.length === 0) {
     return (
@@ -219,6 +233,7 @@ async function ParticipantsSection({
       </Suspense>
       <ParticipantsTable
         participants={filtered}
+        payments={allPayments}
         questions={questions}
         emptyMessage={statusFilter === "all" ? undefined : "Brak zgłoszeń w tej kategorii."}
       />
@@ -227,7 +242,7 @@ async function ParticipantsSection({
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Lista rezerwowa ({waitlist.length})
           </h3>
-          <ParticipantsTable participants={waitlist} questions={questions} />
+          <ParticipantsTable participants={waitlist} payments={allPayments} questions={questions} />
         </>
       )}
     </div>

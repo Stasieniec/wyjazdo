@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
 import { listParticipantsForEvent } from "@/lib/db/queries/participants";
+import { listPaymentsForParticipants } from "@/lib/db/queries/payments";
+import { derivedStatus } from "@/lib/participant-status";
 import type { CustomQuestion } from "@/lib/validators/event";
 import { toCsvRow } from "@/lib/csv";
 
@@ -21,6 +23,16 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     ? JSON.parse(event.customQuestions)
     : [];
   const participants = await listParticipantsForEvent(event.id);
+  const payments = await listPaymentsForParticipants(participants.map((p) => p.id));
+  const now = Date.now();
+
+  // Group payments by participantId
+  const paymentsByParticipant = new Map<string, typeof payments>();
+  for (const pay of payments) {
+    const list = paymentsByParticipant.get(pay.participantId) ?? [];
+    list.push(pay);
+    paymentsByParticipant.set(pay.participantId, list);
+  }
 
   const headers = [
     "status",
@@ -39,16 +51,25 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     const answers: Record<string, string> = p.customAnswers
       ? JSON.parse(p.customAnswers)
       : {};
+    const participantPayments = paymentsByParticipant.get(p.id) ?? [];
+    const ds = derivedStatus(p, participantPayments, now);
+    const succeededPayments = participantPayments.filter((pay) => pay.status === "succeeded");
+    const totalPaidCents = succeededPayments.reduce((sum, pay) => sum + pay.amountCents, 0);
+    const latestPaidAt = succeededPayments
+      .map((pay) => pay.paidAt)
+      .filter((t): t is number => t !== null)
+      .sort((a, b) => b - a)[0] ?? null;
+
     lines.push(
       toCsvRow([
-        p.status,
+        ds,
         p.firstName,
         p.lastName,
         p.email,
         p.phone,
         new Date(p.createdAt).toISOString(),
-        p.paidAt ? new Date(p.paidAt).toISOString() : null,
-        p.amountPaidCents != null ? (p.amountPaidCents / 100).toFixed(2) : null,
+        latestPaidAt ? new Date(latestPaidAt).toISOString() : null,
+        totalPaidCents > 0 ? (totalPaidCents / 100).toFixed(2) : null,
         ...questions.map((q) => answers[q.id] ?? ""),
       ]),
     );

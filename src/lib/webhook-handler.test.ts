@@ -27,7 +27,7 @@ const evt = <T extends Stripe.Event["type"]>(type: T, data: object, account?: st
     type,
     account,
     data: { object: data as never },
-  }) as Stripe.Event;
+  }) as unknown as Stripe.Event;
 
 describe("handleStripeEvent", () => {
   it("updates payment on checkout.session.completed", async () => {
