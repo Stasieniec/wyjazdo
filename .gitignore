@@ -47,3 +47,6 @@ next-env.d.ts
 !.dev.vars.example
 .open-next/
 .wrangler/
+
+# worktrees
+.worktrees/
