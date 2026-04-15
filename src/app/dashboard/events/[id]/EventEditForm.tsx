@@ -29,7 +29,7 @@ export function EventEditForm({ eventId, event, initialQuestions }: Props) {
   );
 
   return (
-    <form action={formAction} className="max-w-2xl space-y-6">
+    <form action={formAction} className="space-y-6">
       <Section title="Podstawowe informacje">
         <Input
           name="title"
