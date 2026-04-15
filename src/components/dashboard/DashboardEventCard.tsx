@@ -24,7 +24,6 @@ export function DashboardEventCard({
 }: DashboardEventCardProps) {
   const editHref = `/dashboard/events/${id}`;
   const participantsHref = `/dashboard/events/${id}?tab=uczestnicy`;
-  const fillPct = capacity > 0 ? Math.min(100, Math.round((taken / capacity) * 100)) : 0;
   const isFull = capacity > 0 && taken >= capacity;
 
   const dateStr = new Date(startsAt).toLocaleDateString("pl-PL", {
@@ -35,14 +34,8 @@ export function DashboardEventCard({
   });
 
   return (
-    <article
-      className="group relative overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-[box-shadow,transform] hover:shadow-md"
-    >
-      <div
-        className="pointer-events-none absolute inset-y-3 left-0 w-1 rounded-r-full bg-gradient-to-b from-accent to-primary opacity-90"
-        aria-hidden
-      />
-      <div className="relative flex flex-col gap-5 p-5 pl-6 sm:flex-row sm:items-stretch sm:gap-6">
+    <article className="rounded-xl border border-border bg-background shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
@@ -71,61 +64,24 @@ export function DashboardEventCard({
               </>
             ) : null}
           </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            <span className="tabular-nums text-foreground">{taken}</span>
+            <span aria-hidden> / </span>
+            <span className="tabular-nums text-foreground">{capacity}</span>
+            <span> miejsc</span>
+            {isFull ? (
+              <span className="text-muted-foreground"> · pełny</span>
+            ) : null}
+          </p>
         </div>
 
-        <div className="flex shrink-0 flex-col items-stretch gap-3 sm:items-end sm:text-right">
-          <div
-            className={`rounded-xl border px-4 py-3 sm:min-w-[11rem] ${
-              isFull
-                ? "border-accent/40 bg-accent/[0.07]"
-                : "border-primary/15 bg-primary/[0.04]"
-            }`}
-          >
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Zapisów
-            </p>
-            <div className="mt-1 flex items-baseline justify-between gap-3 sm:justify-end">
-              <span
-                className={`font-mono text-4xl font-bold tabular-nums tracking-tight ${
-                  isFull ? "text-accent" : "text-primary"
-                }`}
-              >
-                {taken}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                z <span className="font-medium text-foreground">{capacity}</span> miejsc
-              </span>
-            </div>
-            <div
-              className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted sm:w-44"
-              role="progressbar"
-              aria-valuenow={taken}
-              aria-valuemin={0}
-              aria-valuemax={capacity}
-              aria-label={`Zajęte miejsca: ${taken} z ${capacity}`}
-            >
-              <div
-                className={`h-full rounded-full transition-[width] duration-500 ${
-                  isFull ? "bg-accent" : "bg-primary"
-                }`}
-                style={{ width: `${fillPct}%` }}
-              />
-            </div>
-            {isFull ? (
-              <p className="mt-2 text-xs font-medium text-accent">Brak wolnych miejsc</p>
-            ) : capacity > 0 && fillPct >= 75 ? (
-              <p className="mt-2 text-xs text-muted-foreground">Pozostało niewiele miejsc</p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button href={editHref} variant="secondary" size="sm" className="w-full sm:w-auto">
-              Edytuj
-            </Button>
-            <Button href={participantsHref} variant="accent" size="sm" className="w-full sm:w-auto">
-              Zobacz uczestników
-            </Button>
-          </div>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
+          <Button href={editHref} variant="secondary" size="sm" className="w-full sm:w-auto">
+            Edytuj
+          </Button>
+          <Button href={participantsHref} variant="accent" size="sm" className="w-full sm:w-auto">
+            Zobacz uczestników
+          </Button>
         </div>
       </div>
     </article>
