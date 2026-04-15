@@ -23,10 +23,6 @@
 		{
 			"binding": "R2_IMAGES",
 			"bucket_name": "wyjazdo-images"
-		},
-		{
-			"bucket_name": "wyjazdo-images",
-			"binding": "wyjazdo_images"
 		}
 	],
 	"d1_databases": [

@@ -1,12 +1,17 @@
 import type Stripe from "stripe";
 
 export type WebhookDeps = {
+  /**
+   * Implementation should be idempotent (safe to call on webhook retries).
+   * Return value is unused by the orchestrator but available for the caller
+   * to gate side effects (email sends, analytics, etc.) on the first transition.
+   */
   markPaid(params: {
     participantId: string;
     paymentIntentId: string;
     amountCents: number;
     paidAt: number;
-  }): Promise<void>;
+  }): Promise<unknown>;
   cancel(participantId: string): Promise<void>;
   now(): number;
 };

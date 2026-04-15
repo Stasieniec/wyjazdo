@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 
 export async function insertParticipant(row: typeof schema.participants.$inferInsert) {
@@ -43,14 +43,22 @@ export async function listParticipantsForEvent(eventId: string) {
     .all();
 }
 
+/**
+ * Atomically mark a pending participant as paid.
+ * Returns true if this call actually transitioned the row from pending → paid.
+ * Returns false if the row was already paid (e.g. webhook retry) or doesn't exist.
+ *
+ * Use the boolean to gate side effects like sending confirmation emails so
+ * they don't fire on every Stripe webhook retry.
+ */
 export async function markPaidIfPending(params: {
   participantId: string;
   paymentIntentId: string;
   amountCents: number;
   paidAt: number;
-}) {
+}): Promise<boolean> {
   const db = getDb();
-  await db
+  const updated = await db
     .update(schema.participants)
     .set({
       status: "paid",
@@ -65,7 +73,9 @@ export async function markPaidIfPending(params: {
         eq(schema.participants.id, params.participantId),
         eq(schema.participants.status, "pending"),
       ),
-    );
+    )
+    .returning({ id: schema.participants.id });
+  return updated.length > 0;
 }
 
 /**

@@ -11,13 +11,9 @@ import {
   sendRegistrationConfirmation,
   sendOrganizerNewRegistration,
 } from "@/lib/email/send";
+import { dashboardEventUrl, publicEventUrl } from "@/lib/urls";
 
 export const dynamic = "force-dynamic";
-
-function eventUrl(subdomain: string, slug: string): string {
-  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl";
-  return `https://${subdomain}.${root}/${slug}`;
-}
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature");
@@ -36,51 +32,48 @@ export async function POST(req: NextRequest) {
   try {
     await handleStripeEvent(event, {
       markPaid: async (params) => {
-        await markPaidIfPending(params);
+        // Atomic: only true if this call transitioned pending → paid.
+        // Stripe webhook retries on the same session will return false and skip emails.
+        const wasFirstTransition = await markPaidIfPending(params);
+        if (!wasFirstTransition) return;
 
-        // Send emails after successful payment
         const ctx = await getParticipantWithContext(params.participantId);
-        if (ctx && ctx.participant.status === "paid") {
-          const dateStr = new Date(ctx.event.startsAt).toLocaleDateString("pl-PL", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          });
-          const url = eventUrl(ctx.organizer.subdomain, ctx.event.slug);
+        if (!ctx) return;
 
-          // Fire both emails concurrently, don't block the webhook response
-          const emailPromises: Promise<void>[] = [];
+        const dateStr = new Date(ctx.event.startsAt).toLocaleDateString("pl-PL", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
 
+        const emailPromises: Promise<void>[] = [
+          sendRegistrationConfirmation({
+            to: ctx.participant.email,
+            participantName: ctx.participant.firstName,
+            eventTitle: ctx.event.title,
+            eventDate: dateStr,
+            eventLocation: ctx.event.location,
+            eventUrl: publicEventUrl(ctx.organizer.subdomain, ctx.event.slug),
+            organizerName: ctx.organizer.displayName,
+          }),
+        ];
+
+        if (ctx.organizer.contactEmail) {
+          const taken = await countTakenSpots(ctx.event.id, Date.now());
           emailPromises.push(
-            sendRegistrationConfirmation({
-              to: ctx.participant.email,
-              participantName: ctx.participant.firstName,
+            sendOrganizerNewRegistration({
+              to: ctx.organizer.contactEmail,
+              participantName: `${ctx.participant.firstName} ${ctx.participant.lastName}`,
+              participantEmail: ctx.participant.email,
               eventTitle: ctx.event.title,
-              eventDate: dateStr,
-              eventLocation: ctx.event.location,
-              eventUrl: url,
-              organizerName: ctx.organizer.displayName,
+              spotsInfo: `${taken} / ${ctx.event.capacity}`,
+              isWaitlisted: false,
+              dashboardUrl: dashboardEventUrl(ctx.event.id),
             }),
           );
-
-          if (ctx.organizer.contactEmail) {
-            const now = Date.now();
-            const taken = await countTakenSpots(ctx.event.id, now);
-            emailPromises.push(
-              sendOrganizerNewRegistration({
-                to: ctx.organizer.contactEmail,
-                participantName: `${ctx.participant.firstName} ${ctx.participant.lastName}`,
-                participantEmail: ctx.participant.email,
-                eventTitle: ctx.event.title,
-                spotsInfo: `${taken} / ${ctx.event.capacity}`,
-                isWaitlisted: false,
-                dashboardUrl: `https://wyjazdo.pl/dashboard/events/${ctx.event.id}`,
-              }),
-            );
-          }
-
-          await Promise.allSettled(emailPromises);
         }
+
+        await Promise.allSettled(emailPromises);
       },
       cancel: cancelIfPending,
       now: () => Date.now(),

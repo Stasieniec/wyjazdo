@@ -48,6 +48,7 @@ export async function createOrganizer(input: {
   subdomain: string;
   displayName: string;
   description?: string | null;
+  contactEmail?: string | null;
 }) {
   const db = getDb();
   const now = Date.now();
@@ -57,6 +58,7 @@ export async function createOrganizer(input: {
     subdomain: input.subdomain,
     displayName: input.displayName,
     description: input.description ?? null,
+    contactEmail: input.contactEmail ?? null,
     createdAt: now,
     updatedAt: now,
   });

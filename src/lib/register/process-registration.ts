@@ -15,6 +15,7 @@ import {
   sendWaitlistConfirmation,
   sendOrganizerNewRegistration,
 } from "@/lib/email/send";
+import { dashboardEventUrl } from "@/lib/urls";
 
 const PENDING_TTL_MS = 30 * 60 * 1000;
 
@@ -126,7 +127,7 @@ export async function processRegistration(
           eventTitle: event.title,
           spotsInfo: `${taken} / ${event.capacity} (pełne)`,
           isWaitlisted: true,
-          dashboardUrl: `https://wyjazdo.pl/dashboard/events/${event.id}`,
+          dashboardUrl: dashboardEventUrl(event.id),
         }),
       );
     }

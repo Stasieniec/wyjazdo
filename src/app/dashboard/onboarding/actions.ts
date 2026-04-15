@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { organizerProfileSchema } from "@/lib/validators/organizer";
 import { newId } from "@/lib/ids";
@@ -31,12 +31,22 @@ export async function createOrganizerAction(formData: FormData) {
     return { error: "Ta nazwa jest już zajęta" };
   }
 
+  // Pre-fill contactEmail with Clerk's primary email so organizer
+  // notifications work out of the box without visiting Settings.
+  // Organizers can override this later in /dashboard/settings.
+  const user = await currentUser();
+  const primaryEmail =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses?.[0]?.emailAddress ??
+    null;
+
   await createOrganizer({
     id: newId(),
     clerkUserId: userId,
     subdomain: parsed.data.subdomain,
     displayName: parsed.data.displayName,
     description: parsed.data.description ?? null,
+    contactEmail: primaryEmail,
   });
 
   redirect("/dashboard");

@@ -1,9 +1,9 @@
+import { RESERVED_SUBDOMAINS } from "@/lib/validators/organizer";
+
 export type TenantResolution =
   | { kind: "apex" }
   | { kind: "tenant"; subdomain: string }
   | { kind: "unknown" };
-
-const RESERVED = new Set(["www", "app", "api", "dashboard", "admin", "assets", "static"]);
 
 export function resolveTenant(host: string, rootDomain: string): TenantResolution {
   const normalized = host.toLowerCase();
@@ -17,6 +17,6 @@ export function resolveTenant(host: string, rootDomain: string): TenantResolutio
   const sub = normalized.slice(0, -suffix.length);
   // reject multi-level subdomains in MVP
   if (sub.includes(".")) return { kind: "unknown" };
-  if (RESERVED.has(sub)) return { kind: "apex" };
+  if (RESERVED_SUBDOMAINS.has(sub)) return { kind: "apex" };
   return { kind: "tenant", subdomain: sub };
 }
