@@ -144,6 +144,20 @@ export function paymentConfirmedSubject(eventTitle: string, kind: "full" | "depo
   }
 }
 
+// ─── Magic Link ────────────────────────────────────────────────────────────
+
+export function magicLinkSubject() {
+  return "Twój link do wyjazdo.pl";
+}
+
+export function magicLinkHtml(params: { link: string }) {
+  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <p>Kliknij, aby zobaczyć swoje wyjazdy:</p>
+    <p><a href="${params.link}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Otwórz wyjazdo.pl</a></p>
+    <p style="color: #555; font-size: 13px; margin-top: 24px;">Link wygaśnie za 15 minut. Jeśli nie prosiłeś/aś o ten link, zignoruj wiadomość.</p>
+  </div>`;
+}
+
 export function paymentConfirmedHtml(params: {
   participantName: string;
   eventTitle: string;

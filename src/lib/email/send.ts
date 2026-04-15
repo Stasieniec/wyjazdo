@@ -8,6 +8,8 @@ import {
   newRegistrationHtml,
   paymentConfirmedSubject,
   paymentConfirmedHtml,
+  magicLinkSubject,
+  magicLinkHtml,
 } from "./templates";
 
 /**
@@ -96,5 +98,13 @@ export async function sendPaymentConfirmation(params: {
     to: params.to,
     subject: paymentConfirmedSubject(params.eventTitle, params.paymentKind),
     html: paymentConfirmedHtml(params),
+  });
+}
+
+export async function sendMagicLinkEmail(params: { to: string; link: string }): Promise<void> {
+  await safeSend({
+    to: params.to,
+    subject: magicLinkSubject(),
+    html: magicLinkHtml(params),
   });
 }
