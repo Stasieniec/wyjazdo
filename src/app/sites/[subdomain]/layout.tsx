@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
+import { resolveTenant } from "@/lib/tenant";
 
 function marketingSiteUrl(): string {
   const host = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl";
@@ -14,6 +17,18 @@ export default async function OrganizerSiteLayout({
   params: Promise<{ subdomain: string }>;
 }) {
   const { subdomain } = await params;
+
+  // Defense-in-depth: this folder is only meant to be reached via middleware
+  // rewrite from a subdomain. If someone hits /sites/<x> directly on the apex
+  // domain, refuse to serve it (otherwise organizer pages leak under both
+  // org.wyjazdo.pl/event AND wyjazdo.pl/sites/org/event).
+  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl";
+  const host = (await headers()).get("host") ?? "";
+  const tenant = resolveTenant(host, root);
+  if (tenant.kind !== "tenant" || tenant.subdomain !== subdomain) {
+    notFound();
+  }
+
   const organizer = await getOrganizerBySubdomain(subdomain);
 
   if (!organizer) {

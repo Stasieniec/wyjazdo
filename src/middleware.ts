@@ -14,7 +14,7 @@ export default clerkMiddleware(async (auth, req) => {
     if (url.pathname.startsWith("/api") || url.pathname.startsWith("/_next")) {
       return NextResponse.next();
     }
-    url.pathname = `/_sites/${tenant.subdomain}${url.pathname}`;
+    url.pathname = `/sites/${tenant.subdomain}${url.pathname}`;
     return NextResponse.rewrite(url);
   }
 
