@@ -1,28 +1,36 @@
 import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 
-export const organizers = sqliteTable("organizers", {
-  id: text("id").primaryKey(),
-  clerkUserId: text("clerk_user_id").notNull().unique(),
-  subdomain: text("subdomain").notNull().unique(),
-  displayName: text("display_name").notNull(),
-  description: text("description"),
-  logoUrl: text("logo_url"),
-  coverUrl: text("cover_url"),
-  brandColor: text("brand_color"),
-  contactEmail: text("contact_email"),
-  contactPhone: text("contact_phone"),
-  socialLinks: text("social_links"),
-  createdAt: integer("created_at").notNull(),
-  updatedAt: integer("updated_at").notNull(),
-});
+export const organizers = sqliteTable(
+  "organizers",
+  {
+    id: text("id").primaryKey(),
+    clerkUserId: text("clerk_user_id").notNull().unique(),
+    subdomain: text("subdomain").notNull().unique(),
+    displayName: text("display_name").notNull(),
+    description: text("description"),
+    logoUrl: text("logo_url"),
+    coverUrl: text("cover_url"),
+    brandColor: text("brand_color"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    socialLinks: text("social_links"),
+    stripeAccountId: text("stripe_account_id"),
+    stripeOnboardingComplete: integer("stripe_onboarding_complete").notNull().default(0),
+    stripePayoutsEnabled: integer("stripe_payouts_enabled").notNull().default(0),
+    stripeAccountSyncedAt: integer("stripe_account_synced_at"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => ({
+    stripeAccountUniq: uniqueIndex("organizers_stripe_account_uniq").on(t.stripeAccountId),
+  }),
+);
 
 export const events = sqliteTable(
   "events",
   {
     id: text("id").primaryKey(),
-    organizerId: text("organizer_id")
-      .notNull()
-      .references(() => organizers.id),
+    organizerId: text("organizer_id").notNull().references(() => organizers.id),
     slug: text("slug").notNull(),
     title: text("title").notNull(),
     description: text("description"),
@@ -37,6 +45,8 @@ export const events = sqliteTable(
       .notNull()
       .default("draft"),
     customQuestions: text("custom_questions"),
+    depositCents: integer("deposit_cents"),
+    balanceDueAt: integer("balance_due_at"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
@@ -50,28 +60,48 @@ export const participants = sqliteTable(
   "participants",
   {
     id: text("id").primaryKey(),
-    eventId: text("event_id")
-      .notNull()
-      .references(() => events.id),
+    eventId: text("event_id").notNull().references(() => events.id),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
     email: text("email").notNull(),
     phone: text("phone"),
     customAnswers: text("custom_answers"),
-    status: text("status", {
-      enum: ["pending", "paid", "cancelled", "refunded", "waitlisted"],
+    lifecycleStatus: text("lifecycle_status", {
+      enum: ["active", "waitlisted", "cancelled"],
     }).notNull(),
-    expiresAt: integer("expires_at"),
-    stripeSessionId: text("stripe_session_id"),
-    stripePaymentIntentId: text("stripe_payment_intent_id"),
-    amountPaidCents: integer("amount_paid_cents"),
-    paidAt: integer("paid_at"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
   (t) => ({
-    eventStatusIdx: index("participants_event_status_idx").on(t.eventId, t.status),
-    stripeSessionIdx: index("participants_stripe_session_idx").on(t.stripeSessionId),
+    eventLifecycleIdx: index("participants_event_lifecycle_idx").on(t.eventId, t.lifecycleStatus),
+  }),
+);
+
+export const payments = sqliteTable(
+  "payments",
+  {
+    id: text("id").primaryKey(),
+    participantId: text("participant_id").notNull().references(() => participants.id),
+    kind: text("kind", { enum: ["full", "deposit", "balance"] }).notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull().default("PLN"),
+    status: text("status", {
+      enum: ["pending", "succeeded", "expired", "failed", "refunded"],
+    }).notNull(),
+    dueAt: integer("due_at"),
+    stripeSessionId: text("stripe_session_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    stripeApplicationFee: integer("stripe_application_fee"),
+    lastReminderAt: integer("last_reminder_at"),
+    paidAt: integer("paid_at"),
+    expiresAt: integer("expires_at"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => ({
+    participantIdx: index("payments_participant_idx").on(t.participantId),
+    stripeSessionIdx: index("payments_stripe_session_idx").on(t.stripeSessionId),
+    statusDueIdx: index("payments_status_due_idx").on(t.status, t.dueAt),
   }),
 );
 
@@ -81,3 +111,5 @@ export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 export type Participant = typeof participants.$inferSelect;
 export type NewParticipant = typeof participants.$inferInsert;
+export type Payment = typeof payments.$inferSelect;
+export type NewPayment = typeof payments.$inferInsert;
