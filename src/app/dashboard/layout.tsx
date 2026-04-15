@@ -46,7 +46,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   rel="noopener noreferrer"
                   className="hidden max-w-[min(100%,14rem)] truncate rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground sm:inline-flex"
                 >
-                  {organizer!.subdomain}.{rootDomain} &nearr;
+                  {organizer!.subdomain}.{rootDomain}{" "}
+                  <span aria-hidden>↗</span>
                 </a>
               </>
             )}
