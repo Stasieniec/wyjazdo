@@ -1,15 +1,39 @@
 import Link from "next/link";
 import { Show } from "@clerk/nextjs";
+import { WyjazdoMark } from "@/components/brand/WyjazdoMark";
 import { UserMenu } from "@/components/dashboard/UserMenu";
+import { siteOrigin } from "@/lib/urls";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Wyjazdo",
+  alternateName: "wyjazdo.pl",
+  url: siteOrigin(),
+  description:
+    "Platforma dla organizatorów wyjazdów, retreatów i warsztatów — zapisy, płatności online i panel uczestników.",
+  inLanguage: "pl-PL",
+  publisher: {
+    "@type": "Organization",
+    name: "Wyjazdo",
+    url: siteOrigin(),
+    logo: `${siteOrigin()}/logo.svg`,
+  },
+};
 
 export default function MarketingPage() {
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Nav */}
       <nav className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <span className="text-lg font-bold tracking-tight text-primary">
+        <Link href="/" className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-primary">
+          <WyjazdoMark className="h-9 w-9 shrink-0" />
           wyjazdo
-        </span>
+        </Link>
         <Show when="signed-out">
           <div className="flex items-center gap-3 text-sm">
             <Link

@@ -16,6 +16,11 @@ function protocol(): string {
   return rootDomain().startsWith("localhost") ? "http" : "https";
 }
 
+/** Origin for canonical URLs, Open Graph, and metadata (e.g. https://wyjazdo.pl). */
+export function siteOrigin(): string {
+  return `${protocol()}://${rootDomain()}`;
+}
+
 /** Absolute URL of an organizer's public event page. */
 export function publicEventUrl(subdomain: string, eventSlug: string): string {
   return `${protocol()}://${subdomain}.${rootDomain()}/${eventSlug}`;

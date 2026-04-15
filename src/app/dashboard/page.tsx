@@ -2,9 +2,10 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { countTakenSpots } from "@/lib/capacity";
+import { DashboardEventCard } from "@/components/dashboard/DashboardEventCard";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { listEventsForOrganizer } from "@/lib/db/queries/events-dashboard";
-import { Card, StatusBadge } from "@/components/ui";
+import { Card } from "@/components/ui";
 
 export default async function DashboardHome() {
   const { userId } = await auth();
@@ -68,42 +69,21 @@ export default async function DashboardHome() {
           </Link>
         </Card>
       ) : (
-        <Card padding="none" className="mt-8">
-          <ul className="divide-y divide-border">
-            {eventsWithTaken.map((e) => (
-              <li key={e.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div className="min-w-0">
-                  <Link href={`/dashboard/events/${e.id}`} className="font-medium hover:underline">
-                    {e.title}
-                  </Link>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                    <span>{new Date(e.startsAt).toLocaleDateString("pl-PL")}</span>
-                    <span>&middot;</span>
-                    <span>
-                      {e.taken}/{e.capacity}
-                    </span>
-                    {e.location ? (
-                      <>
-                        <span>&middot;</span>
-                        <span className="truncate" title={e.location}>
-                          {e.location}
-                        </span>
-                      </>
-                    ) : null}
-                    <span>&middot;</span>
-                    <StatusBadge status={e.status} />
-                  </div>
-                </div>
-                <Link
-                  href={`/dashboard/events/${e.id}`}
-                  className="hidden shrink-0 text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline sm:inline"
-                >
-                  Edytuj &rarr;
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <ul className="mt-8 grid list-none gap-4 p-0 sm:gap-5">
+          {eventsWithTaken.map((e) => (
+            <li key={e.id}>
+              <DashboardEventCard
+                id={e.id}
+                title={e.title}
+                startsAt={e.startsAt}
+                taken={e.taken}
+                capacity={e.capacity}
+                location={e.location}
+                status={e.status}
+              />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

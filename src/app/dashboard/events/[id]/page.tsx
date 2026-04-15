@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
 import type { CustomQuestion } from "@/lib/validators/event";
+import { parseEventDashboardTab } from "@/lib/eventDashboardTab";
 import { parseParticipantFilterStatus } from "@/lib/participantFilterStatus";
 import { ParticipantFilters } from "@/components/dashboard/ParticipantFilters";
 import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
@@ -18,10 +20,11 @@ export default async function EventEditPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; tab?: string }>;
 }) {
   const { id } = await params;
-  const { status: statusParam } = await searchParams;
+  const { status: statusParam, tab: tabParam } = await searchParams;
+  const dashboardTab = parseEventDashboardTab(tabParam);
   const statusFilter = parseParticipantFilterStatus(statusParam);
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
@@ -39,6 +42,8 @@ export default async function EventEditPage({
   const archiveBound = changeStatusAction.bind(null, id, "archived");
 
   const previewUrl = publicEventUrl(organizer.subdomain, event.slug);
+  const editHref = `/dashboard/events/${id}`;
+  const participantsHref = `/dashboard/events/${id}?tab=uczestnicy`;
 
   return (
     <div>
@@ -101,50 +106,79 @@ export default async function EventEditPage({
         </div>
       )}
 
-      {/* Edit form */}
-      <div className="mt-6">
-        <EventEditForm
-          eventId={id}
-          event={{
-            title: event.title,
-            description: event.description,
-            location: event.location,
-            startsAt: event.startsAt,
-            endsAt: event.endsAt,
-            priceCents: event.priceCents,
-            capacity: event.capacity,
-            coverUrl: event.coverUrl,
-          }}
-          initialQuestions={questions}
-        />
-      </div>
+      {/* View switcher: edycja vs uczestnicy */}
+      <nav
+        className="mt-6 flex gap-1 rounded-xl border border-border bg-muted/40 p-1"
+        aria-label="Widok wydarzenia"
+      >
+        <Link
+          href={editHref}
+          className={`flex-1 rounded-lg px-3 py-2 text-center text-sm font-medium transition-colors sm:flex-none sm:px-5 ${
+            dashboardTab === "edycja"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          aria-current={dashboardTab === "edycja" ? "page" : undefined}
+        >
+          Edycja
+        </Link>
+        <Link
+          href={participantsHref}
+          className={`flex-1 rounded-lg px-3 py-2 text-center text-sm font-medium transition-colors sm:flex-none sm:px-5 ${
+            dashboardTab === "uczestnicy"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          aria-current={dashboardTab === "uczestnicy" ? "page" : undefined}
+        >
+          Uczestnicy
+        </Link>
+      </nav>
 
-      {/* Participants section */}
-      <section className="mt-12">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Uczestnicy</h2>
-          <a
-            href={`/dashboard/events/${event.id}/export`}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Eksportuj uczestników do CSV"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden
-              className="h-3.5 w-3.5"
+      {dashboardTab === "edycja" ? (
+        <div className="mt-6">
+          <EventEditForm
+            eventId={id}
+            event={{
+              title: event.title,
+              description: event.description,
+              location: event.location,
+              startsAt: event.startsAt,
+              endsAt: event.endsAt,
+              priceCents: event.priceCents,
+              capacity: event.capacity,
+              coverUrl: event.coverUrl,
+            }}
+            initialQuestions={questions}
+          />
+        </div>
+      ) : (
+        <section className="mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">Lista zgłoszeń</h2>
+            <a
+              href={`/dashboard/events/${event.id}/export`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Eksportuj uczestników do CSV"
             >
-              <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.41a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.128V2.75z" />
-              <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
-            </svg>
-            Eksport CSV
-          </a>
-        </div>
-        <div className="mt-4">
-          <ParticipantsSection eventId={event.id} questions={questions} statusFilter={statusFilter} />
-        </div>
-      </section>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden
+                className="h-3.5 w-3.5"
+              >
+                <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.41a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.128V2.75z" />
+                <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+              </svg>
+              Eksport CSV
+            </a>
+          </div>
+          <div className="mt-4">
+            <ParticipantsSection eventId={event.id} questions={questions} statusFilter={statusFilter} />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

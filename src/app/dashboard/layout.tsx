@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
+import { WyjazdoMark } from "@/components/brand/WyjazdoMark";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { UserMenu } from "@/components/dashboard/UserMenu";
 
@@ -18,8 +19,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <div className="flex min-w-0 items-center gap-2 sm:gap-6">
             <Link
               href="/dashboard"
-              className="shrink-0 text-lg font-bold tracking-tight text-primary"
+              className="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-primary"
             >
+              <WyjazdoMark className="h-8 w-8 shrink-0" />
               wyjazdo
             </Link>
             <details className="group relative sm:hidden">
