@@ -4,7 +4,12 @@ import { Fragment, useState } from "react";
 import type { Participant, Payment, ParticipantConsent } from "@/lib/db/schema";
 import { derivedStatus, type DerivedStatus } from "@/lib/participant-status";
 import type { CustomQuestion } from "@/lib/validators/event";
-import { extendBalanceDeadlineAction, cancelParticipantAction } from "@/app/dashboard/events/[id]/actions";
+import {
+  extendBalanceDeadlineAction,
+  cancelParticipantAction,
+  promoteFromWaitlistAction,
+  resendPaymentLinkAction,
+} from "@/app/dashboard/events/[id]/actions";
 import { formatPlnFromCents } from "@/lib/format-currency";
 
 export default function ParticipantsTable({
@@ -114,13 +119,39 @@ export default function ParticipantsTable({
                           Zgody ({participantConsents.length})
                         </button>
                       )}
-                      {ds === "overdue" && balancePayment && (
-                        <>
-                          <form action={extendBalanceDeadlineAction} className="flex items-center gap-1">
-                            <input type="hidden" name="paymentId" value={balancePayment.id} />
+
+                      {/* Cancel — any non-terminal status */}
+                      {ds !== "cancelled" && ds !== "refunded" && (
+                        <form
+                          action={cancelParticipantAction}
+                          onSubmit={(e) => {
+                            const hasPaid = ds === "paid" || ds === "deposit_paid" || ds === "overdue";
+                            const msg = hasPaid
+                              ? `Czy na pewno chcesz anulować uczestnika ${p.firstName} ${p.lastName}? Uczestnik dokonał płatności — zwrot środków należy wykonać ręcznie przez panel Stripe.`
+                              : `Czy na pewno chcesz anulować uczestnika ${p.firstName} ${p.lastName}?`;
+                            if (!window.confirm(msg)) {
+                              e.preventDefault();
+                            }
+                          }}
+                        >
+                          <input type="hidden" name="participantId" value={p.id} />
+                          <button
+                            type="submit"
+                            className="rounded border border-destructive/40 bg-background px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10"
+                          >
+                            Anuluj
+                          </button>
+                        </form>
+                      )}
+
+                      {/* Promote from waitlist */}
+                      {ds === "waitlisted" && (
+                        <form action={promoteFromWaitlistAction}>
+                          <input type="hidden" name="participantId" value={p.id} />
+                          <div className="flex items-center gap-1">
                             <input
                               type="datetime-local"
-                              name="dueAt"
+                              name="expiresAt"
                               required
                               className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                             />
@@ -128,26 +159,49 @@ export default function ParticipantsTable({
                               type="submit"
                               className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-muted"
                             >
-                              Przedłuż termin
+                              Przenieś z listy
                             </button>
-                          </form>
-                          <form
-                            action={cancelParticipantAction}
-                            onSubmit={(e) => {
-                              if (!window.confirm(`Anulować uczestnika ${p.firstName} ${p.lastName} i zwolnić miejsce?`)) {
-                                e.preventDefault();
-                              }
-                            }}
+                          </div>
+                        </form>
+                      )}
+
+                      {/* Extend balance deadline — overdue with balance payment */}
+                      {ds === "overdue" && balancePayment && (
+                        <form action={extendBalanceDeadlineAction} className="flex items-center gap-1">
+                          <input type="hidden" name="paymentId" value={balancePayment.id} />
+                          <input
+                            type="datetime-local"
+                            name="dueAt"
+                            required
+                            className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                          />
+                          <button
+                            type="submit"
+                            className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-muted"
                           >
-                            <input type="hidden" name="participantId" value={p.id} />
-                            <button
-                              type="submit"
-                              className="rounded border border-destructive/40 bg-background px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10"
-                            >
-                              Anuluj i zwolnij miejsce
-                            </button>
-                          </form>
-                        </>
+                            Przedłuż termin
+                          </button>
+                        </form>
+                      )}
+
+                      {/* Resend payment link — active lifecycle, no succeeded payments */}
+                      {p.lifecycleStatus === "active" && !participantPayments.some((pay) => pay.status === "succeeded") && ds !== "cancelled" && (
+                        <form
+                          action={resendPaymentLinkAction}
+                          onSubmit={(e) => {
+                            if (!window.confirm(`Wyślić ponownie link do płatności dla ${p.firstName} ${p.lastName}?`)) {
+                              e.preventDefault();
+                            }
+                          }}
+                        >
+                          <input type="hidden" name="participantId" value={p.id} />
+                          <button
+                            type="submit"
+                            className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-muted"
+                          >
+                            Wyślij link do płatności
+                          </button>
+                        </form>
                       )}
                     </div>
                   </td>
