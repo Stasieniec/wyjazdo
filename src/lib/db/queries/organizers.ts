@@ -49,6 +49,8 @@ export async function createOrganizer(input: {
   displayName: string;
   description?: string | null;
   contactEmail?: string | null;
+  termsAcceptedAt?: number | null;
+  dpaAcceptedAt?: number | null;
 }) {
   const db = getDb();
   const now = Date.now();
@@ -59,6 +61,8 @@ export async function createOrganizer(input: {
     displayName: input.displayName,
     description: input.description ?? null,
     contactEmail: input.contactEmail ?? null,
+    termsAcceptedAt: input.termsAcceptedAt ?? null,
+    dpaAcceptedAt: input.dpaAcceptedAt ?? null,
     createdAt: now,
     updatedAt: now,
   });
