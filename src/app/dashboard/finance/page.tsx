@@ -55,7 +55,7 @@ export default async function FinancePage() {
   return (
     <div>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Finanse</h1>
+        <h1 className="text-xl font-bold sm:text-2xl">Finanse</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Podsumowanie płatności ze wszystkich Twoich wydarzeń.
         </p>
@@ -66,7 +66,7 @@ export default async function FinancePage() {
         <h2 className="text-lg font-semibold">Wypłaty Stripe</h2>
 
         {!organizer.stripeAccountId || organizer.stripeOnboardingComplete !== 1 ? (
-          <Card className="mt-4" padding="lg">
+          <Card className="mt-4 border-amber-300 bg-amber-50" padding="lg">
             <p className="text-sm text-muted-foreground">
               Aby zarządzać wypłatami, dokończ konfigurację Stripe.{" "}
               <Link href="/dashboard/settings/stripe" className="text-primary underline underline-offset-2">
@@ -136,7 +136,7 @@ export default async function FinancePage() {
                   <input type="hidden" name="currency" value="pln" />
                   <button
                     type="submit"
-                    className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                    className="inline-flex items-center rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-[--shadow-warm] transition-all duration-150 hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
                   >
                     Wypłać {formatPlnFromCents(plnAvailable.amount)}
                   </button>
@@ -223,7 +223,7 @@ export default async function FinancePage() {
       </div>
 
       {!hasAnyRevenue ? (
-        <Card className="mt-8 text-center" padding="lg">
+        <Card className="mt-8 text-center shadow-sm" padding="lg">
           <h2 className="text-lg font-semibold text-foreground">
             Jeszcze nie masz żadnych płatności
           </h2>

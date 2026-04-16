@@ -15,7 +15,7 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Ustawienia</h1>
+      <h1 className="text-xl font-bold sm:text-2xl">Ustawienia</h1>
       <SettingsForm
         defaults={{
           displayName: organizer.displayName,
