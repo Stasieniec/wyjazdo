@@ -46,7 +46,7 @@ export default async function OrganizerProfilePage({
     >
       {/* Cover */}
       {organizer.coverUrl ? (
-        <div className="relative h-48 w-full sm:h-64">
+        <div className="relative z-0 h-48 w-full sm:h-64">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={organizer.coverUrl}
@@ -56,14 +56,13 @@ export default async function OrganizerProfilePage({
         </div>
       ) : (
         <div
-          className="h-32 w-full sm:h-48"
+          className="relative z-0 h-32 w-full sm:h-48"
           style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}dd)` }}
         />
       )}
 
-      <div className="mx-auto max-w-3xl px-6">
-        {/* Profile header */}
-        <div className="-mt-10 flex items-end gap-4">
+      <div className="relative z-10 mx-auto max-w-3xl px-6">
+        <div className="-mt-6 flex items-end gap-4 sm:-mt-8">
           {organizer.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

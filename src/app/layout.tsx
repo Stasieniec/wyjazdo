@@ -58,7 +58,7 @@ export const metadata: Metadata = {
       "Platforma dla organizatorów wyjazdów, retreatów i warsztatów.",
   },
   icons: {
-    icon: [{ url: "/logo.svg", type: "image/svg+xml", sizes: "any" }],
+    icon: [{ url: "/logo.png", type: "image/png", sizes: "any" }],
     apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
   },
   alternates: {

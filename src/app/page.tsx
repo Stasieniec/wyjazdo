@@ -17,7 +17,7 @@ const jsonLd = {
     "@type": "Organization",
     name: "Wyjazdo",
     url: siteOrigin(),
-    logo: `${siteOrigin()}/logo.svg`,
+    logo: `${siteOrigin()}/logo.png`,
   },
 };
 
