@@ -1,7 +1,12 @@
 import { headers } from "next/headers";
 import { registrationBaseSchema } from "@/lib/validators/registration";
 import type { CustomQuestion } from "@/lib/validators/event";
+import type { ConsentConfigItem } from "@/lib/validators/consent";
 import { zodIssuesToRecord } from "@/lib/zod-errors";
+import {
+  getLatestDocument,
+  insertParticipantConsents,
+} from "@/lib/db/queries/legal";
 import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
@@ -31,6 +36,49 @@ async function eventSiteOrigin(subdomain: string, requestProtocol?: string) {
     proto = p.endsWith(":") ? p : `${p}:`;
   }
   return `${proto}//${rootHost}`;
+}
+
+async function recordParticipantConsents(
+  participantId: string,
+  form: FormData,
+  eventConsents: ConsentConfigItem[],
+  ip: string | null,
+) {
+  const [regulamin, privacyPolicy] = await Promise.all([
+    getLatestDocument("regulamin"),
+    getLatestDocument("privacy_policy"),
+  ]);
+
+  const consentRows: Array<{
+    consentKey: string;
+    consentLabel: string;
+    accepted: boolean;
+    documentId: string | null;
+  }> = [
+    {
+      consentKey: "platform_regulamin",
+      consentLabel: "Akceptacja Regulaminu serwisu wyjazdo.pl",
+      accepted: form.get("consent_regulamin") === "true",
+      documentId: regulamin?.id ?? null,
+    },
+    {
+      consentKey: "platform_privacy",
+      consentLabel: "Zapoznanie się z Polityką Prywatności",
+      accepted: form.get("consent_privacy") === "true",
+      documentId: privacyPolicy?.id ?? null,
+    },
+  ];
+
+  for (const consent of eventConsents) {
+    consentRows.push({
+      consentKey: `event_${consent.id}`,
+      consentLabel: consent.label,
+      accepted: form.get(`consent_${consent.id}`) === "true",
+      documentId: null,
+    });
+  }
+
+  await insertParticipantConsents(participantId, consentRows, ip);
 }
 
 export async function processRegistration(
@@ -75,6 +123,28 @@ export async function processRegistration(
   }
   if (Object.keys(errors).length > 0) return { errors };
 
+  // ── Consent validation ──
+  const consents: ConsentConfigItem[] = event.consentConfig
+    ? JSON.parse(event.consentConfig)
+    : [];
+
+  // Platform-required consents
+  if (form.get("consent_regulamin") !== "true") {
+    errors.consent_regulamin = "Akceptacja regulaminu jest wymagana.";
+  }
+  if (form.get("consent_privacy") !== "true") {
+    errors.consent_privacy = "Zapoznanie się z polityką prywatności jest wymagane.";
+  }
+
+  // Event-specific required consents
+  for (const consent of consents) {
+    if (consent.required && form.get(`consent_${consent.id}`) !== "true") {
+      errors[`consent_${consent.id}`] = "Ta zgoda jest wymagana.";
+    }
+  }
+
+  if (Object.keys(errors).length > 0) return { errors };
+
   const answers: Record<string, string> = {};
   for (const q of questions) {
     const v = form.get(`q_${q.id}`);
@@ -101,6 +171,10 @@ export async function processRegistration(
       createdAt: now,
       updatedAt: now,
     });
+
+    const h = await headers();
+    const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    recordParticipantConsents(participantId, form, consents, ip).catch(() => {});
 
     const emailPromises: Promise<void>[] = [
       (async () => {
@@ -147,6 +221,10 @@ export async function processRegistration(
     createdAt: now,
     updatedAt: now,
   });
+
+  const h = await headers();
+  const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  recordParticipantConsents(participantId, form, consents, ip).catch(() => {});
 
   const depositMode =
     event.depositCents != null &&
