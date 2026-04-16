@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { createEventAction, type CreateEventFormState } from "./actions";
@@ -10,6 +10,11 @@ export default function NewEventPage() {
     createEventAction,
     null,
   );
+  const [slugPreview, setSlugPreview] = useState("");
+
+  const rootDomain = typeof window !== "undefined"
+    ? (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl")
+    : "wyjazdo.pl";
 
   return (
     <div>
@@ -31,16 +36,22 @@ export default function NewEventPage() {
             maxLength={200}
             error={state?.errors?.title}
           />
-          <Input
-            name="slug"
-            label="Nazwa w URL"
-            required
-            pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
-            minLength={3}
-            maxLength={64}
-            placeholder="np. warsztaty-kwietniowe"
-            error={state?.errors?.slug}
-          />
+          <div>
+            <Input
+              name="slug"
+              label="Nazwa w URL"
+              required
+              pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
+              minLength={3}
+              maxLength={64}
+              placeholder="np. warsztaty-kwietniowe"
+              error={state?.errors?.slug}
+              onChange={(e) => setSlugPreview(e.target.value.toLowerCase())}
+            />
+            <p className="mt-1.5 rounded-lg bg-muted/60 px-3 py-1.5 font-mono text-xs text-muted-foreground">
+              twoja-nazwa.{rootDomain}/<strong className="text-foreground">{slugPreview || "..."}</strong>
+            </p>
+          </div>
           <Textarea name="description" label="Opis" rows={4} error={state?.errors?.description} />
           <Input name="location" label="Miejsce" error={state?.errors?.location} />
           <EventDateTimeRange

@@ -207,17 +207,19 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
         aria-hidden
       />
 
-      <div className="flex justify-center overflow-x-auto rounded-xl border border-border bg-muted/80 p-3 shadow-sm sm:p-4">
-        <DayPicker
-          mode="range"
-          locale={pl}
-          weekStartsOn={1}
-          numberOfMonths={1}
-          defaultMonth={defaultMonth}
-          selected={range}
-          onSelect={handleRangeSelect}
-          className="mx-auto [--rdp-accent-color:#171717] [--rdp-accent-background-color:#e5e5e5]"
-        />
+      <div className="flex justify-center">
+        <div className="inline-flex overflow-x-auto rounded-xl border border-border bg-muted/80 p-3 shadow-sm sm:p-4">
+          <DayPicker
+            mode="range"
+            locale={pl}
+            weekStartsOn={1}
+            numberOfMonths={1}
+            defaultMonth={defaultMonth}
+            selected={range}
+            onSelect={handleRangeSelect}
+            className="[--rdp-accent-color:var(--primary)] [--rdp-accent-background-color:var(--primary)/0.1]"
+          />
+        </div>
       </div>
 
       {range?.from && range?.to && (
