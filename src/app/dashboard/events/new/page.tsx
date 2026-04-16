@@ -13,9 +13,7 @@ export default function NewEventPage() {
   const [slugPreview, setSlugPreview] = useState(state?.values?.slug ?? "");
   const v = state?.values ?? {};
 
-  const rootDomain = typeof window !== "undefined"
-    ? (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl")
-    : "wyjazdo.pl";
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl";
 
   return (
     <div>

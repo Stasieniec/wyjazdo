@@ -153,48 +153,9 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
   return (
     <fieldset className="relative space-y-3">
       <legend className="text-sm font-medium">Termin wydarzenia</legend>
-      <p className="text-xs text-muted-foreground">
-        Użyj kalendarza albo wpisz daty ręcznie (dd/mm/rrrr), potem ustaw godziny rozpoczęcia i zakończenia.
-      </p>
       {error && (
         <p className="text-sm text-destructive" role="alert">
           {error}
-        </p>
-      )}
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-xs font-medium text-muted-foreground">Data początku</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="dd/mm/rrrr"
-            value={startDateStr}
-            onChange={(e) => setStartDateStr(formatDdMmYyyyInput(e.target.value))}
-            onBlur={applyManualDates}
-            className="mt-1 w-full rounded-md border px-3 py-2 tabular-nums"
-            aria-invalid={Boolean(manualDateError)}
-          />
-        </label>
-        <label className="block">
-          <span className="text-xs font-medium text-muted-foreground">Data końca</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="dd/mm/rrrr"
-            value={endDateStr}
-            onChange={(e) => setEndDateStr(formatDdMmYyyyInput(e.target.value))}
-            onBlur={applyManualDates}
-            className="mt-1 w-full rounded-md border px-3 py-2 tabular-nums"
-            aria-invalid={Boolean(manualDateError)}
-          />
-        </label>
-      </div>
-      {manualDateError && (
-        <p className="text-xs text-red-600" role="alert">
-          {manualDateError}
         </p>
       )}
 
@@ -207,8 +168,10 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
         aria-hidden
       />
 
-      <div className="flex justify-center">
-        <div className="inline-flex overflow-x-auto rounded-xl border border-border bg-muted/80 p-3 shadow-sm sm:p-4">
+      {/* Calendar + date/time inputs side by side on desktop */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        {/* Calendar */}
+        <div className="shrink-0 self-center overflow-x-auto rounded-xl border border-border bg-muted/80 p-3 shadow-sm sm:self-start">
           <DayPicker
             mode="range"
             locale={pl}
@@ -220,41 +183,74 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
             className="[--rdp-accent-color:var(--primary)] [--rdp-accent-background-color:var(--primary)/0.1]"
           />
         </div>
-      </div>
 
-      {range?.from && range?.to && (
-        <p className="text-center text-sm text-muted-foreground">
-          <span className="tabular-nums">{format(range.from, "EEE d MMM", { locale: pl })}</span>
-          <span className="mx-1.5 text-muted-foreground">·</span>
-          <span className="tabular-nums">{startTimeStr}</span>
-          <span className="mx-2 text-muted-foreground" aria-hidden>
-            →
-          </span>
-          <span className="tabular-nums">{format(range.to, "EEE d MMM", { locale: pl })}</span>
-          <span className="mx-1.5 text-muted-foreground">·</span>
-          <span className="tabular-nums">{endTimeStr}</span>
-          {durationHint && (
-            <span className="text-muted-foreground"> ({durationHint})</span>
+        {/* Date inputs + time pickers */}
+        <div className="flex flex-1 flex-col gap-3">
+          {/* Start */}
+          <div className="rounded-xl border border-border bg-white/60 p-3">
+            <span className="text-xs font-medium text-muted-foreground">Początek</span>
+            <div className="mt-2 flex items-end gap-2">
+              <label className="flex-1">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="dd/mm/rrrr"
+                  value={startDateStr}
+                  onChange={(e) => setStartDateStr(formatDdMmYyyyInput(e.target.value))}
+                  onBlur={applyManualDates}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  aria-label="Data początku"
+                  aria-invalid={Boolean(manualDateError)}
+                />
+              </label>
+              <TimePickerSelects idPrefix={`${id}-start`} timeStr={startTimeStr} setTimeStr={setStartTimeStr} />
+            </div>
+          </div>
+
+          {/* End */}
+          <div className="rounded-xl border border-border bg-white/60 p-3">
+            <span className="text-xs font-medium text-muted-foreground">Koniec</span>
+            <div className="mt-2 flex items-end gap-2">
+              <label className="flex-1">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="dd/mm/rrrr"
+                  value={endDateStr}
+                  onChange={(e) => setEndDateStr(formatDdMmYyyyInput(e.target.value))}
+                  onBlur={applyManualDates}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  aria-label="Data końca"
+                  aria-invalid={Boolean(manualDateError)}
+                />
+              </label>
+              <TimePickerSelects idPrefix={`${id}-end`} timeStr={endTimeStr} setTimeStr={setEndTimeStr} />
+            </div>
+          </div>
+
+          {manualDateError && (
+            <p className="text-xs text-destructive" role="alert">
+              {manualDateError}
+            </p>
           )}
-        </p>
-      )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-white/60 px-3 py-3">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Godzina rozpoczęcia
-          </span>
-          <div className="mt-2 flex justify-start">
-            <TimePickerSelects idPrefix={`${id}-start`} timeStr={startTimeStr} setTimeStr={setStartTimeStr} />
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-white/60 px-3 py-3">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Godzina zakończenia
-          </span>
-          <div className="mt-2 flex justify-start">
-            <TimePickerSelects idPrefix={`${id}-end`} timeStr={endTimeStr} setTimeStr={setEndTimeStr} />
-          </div>
+          {/* Summary */}
+          {range?.from && range?.to && (
+            <p className="text-sm text-muted-foreground">
+              <span className="tabular-nums">{format(range.from, "EEE d MMM", { locale: pl })}</span>
+              <span className="mx-1 text-muted-foreground">·</span>
+              <span className="tabular-nums">{startTimeStr}</span>
+              <span className="mx-1.5 text-muted-foreground" aria-hidden>→</span>
+              <span className="tabular-nums">{format(range.to, "EEE d MMM", { locale: pl })}</span>
+              <span className="mx-1 text-muted-foreground">·</span>
+              <span className="tabular-nums">{endTimeStr}</span>
+              {durationHint && (
+                <span className="text-muted-foreground"> ({durationHint})</span>
+              )}
+            </p>
+          )}
         </div>
       </div>
 

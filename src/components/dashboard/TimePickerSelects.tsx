@@ -20,70 +20,60 @@ export function TimePickerSelects({
   const minuteVal = parsed ? String(parsed.min).padStart(2, "0") : "";
 
   return (
-    <div className="flex shrink-0 items-end gap-1">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] font-medium text-muted-foreground" id={`${idPrefix}-hour-hint`}>
-          Godz.
-        </span>
-        <div className="relative">
-          <select
-            id={`${idPrefix}-hour`}
-            aria-labelledby={`${idPrefix}-hour-hint`}
-            className="h-10 min-w-[4.85rem] cursor-pointer appearance-none rounded-md border border-border pl-2 pr-8 text-sm tabular-nums text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25"
-            value={hourVal}
-            required
-            onChange={(e) => {
-              const h = e.target.value;
-              if (!h) {
-                setTimeStr("");
-                return;
-              }
-              setTimeStr(`${h}:${minuteVal || "00"}`);
-            }}
-          >
-            <option value="">—</option>
-            {HOURS.map((h) => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
-          <SelectChevron className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" />
-        </div>
+    <div className="flex shrink-0 items-center gap-0.5">
+      <div className="relative">
+        <select
+          id={`${idPrefix}-hour`}
+          aria-label="Godzina"
+          className="h-8 w-14 cursor-pointer appearance-none rounded-lg border border-border bg-background pl-2 pr-6 text-sm tabular-nums text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25"
+          value={hourVal}
+          required
+          onChange={(e) => {
+            const h = e.target.value;
+            if (!h) {
+              setTimeStr("");
+              return;
+            }
+            setTimeStr(`${h}:${minuteVal || "00"}`);
+          }}
+        >
+          <option value="">—</option>
+          {HOURS.map((h) => (
+            <option key={h} value={h}>
+              {h}
+            </option>
+          ))}
+        </select>
+        <SelectChevron className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2" />
       </div>
-      <span className="mb-2 select-none text-sm text-muted-foreground" aria-hidden>
+      <span className="select-none text-sm font-medium text-muted-foreground" aria-hidden>
         :
       </span>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] font-medium text-muted-foreground" id={`${idPrefix}-min-hint`}>
-          Min.
-        </span>
-        <div className="relative">
-          <select
-            id={`${idPrefix}-minute`}
-            aria-labelledby={`${idPrefix}-min-hint`}
-            disabled={!hourVal}
-            className="h-10 min-w-[4.85rem] cursor-pointer appearance-none rounded-md border border-border pl-2 pr-8 text-sm tabular-nums text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-            value={hourVal ? minuteVal : ""}
-            required={Boolean(hourVal)}
-            onChange={(e) => {
-              const m = e.target.value;
-              if (!hourVal || !m) return;
-              setTimeStr(`${hourVal}:${m}`);
-            }}
-          >
-            {!hourVal ? (
-              <option value="">—</option>
-            ) : (
-              MINUTES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))
-            )}
-          </select>
-          <SelectChevron className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" />
-        </div>
+      <div className="relative">
+        <select
+          id={`${idPrefix}-minute`}
+          aria-label="Minuty"
+          disabled={!hourVal}
+          className="h-8 w-14 cursor-pointer appearance-none rounded-lg border border-border bg-background pl-2 pr-6 text-sm tabular-nums text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+          value={hourVal ? minuteVal : ""}
+          required={Boolean(hourVal)}
+          onChange={(e) => {
+            const m = e.target.value;
+            if (!hourVal || !m) return;
+            setTimeStr(`${hourVal}:${m}`);
+          }}
+        >
+          {!hourVal ? (
+            <option value="">—</option>
+          ) : (
+            MINUTES.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))
+          )}
+        </select>
+        <SelectChevron className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2" />
       </div>
     </div>
   );
