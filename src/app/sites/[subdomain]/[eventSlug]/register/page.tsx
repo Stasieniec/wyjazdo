@@ -3,6 +3,7 @@ import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
 import type { CustomQuestion } from "@/lib/validators/event";
+import type { ConsentConfigItem } from "@/lib/validators/consent";
 import { formatPlnFromCents, isDepositPricingMode } from "@/lib/format-currency";
 import { DepositPriceBreakdown } from "@/components/sites/DepositPriceBreakdown";
 import { RegisterForm } from "./RegisterForm";
@@ -22,6 +23,9 @@ export default async function RegisterPage({
   const isFull = taken >= event.capacity;
   const questions: CustomQuestion[] = event.customQuestions
     ? JSON.parse(event.customQuestions)
+    : [];
+  const consents: ConsentConfigItem[] = event.consentConfig
+    ? JSON.parse(event.consentConfig)
     : [];
 
   const brandColor = organizer.brandColor ?? "#1E3A5F";
@@ -86,6 +90,7 @@ export default async function RegisterPage({
         eventSlug={eventSlug}
         isFull={isFull}
         questions={questions}
+        consents={consents}
       />
     </main>
   );

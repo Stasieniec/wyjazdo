@@ -2,7 +2,9 @@
 
 import { useActionState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
+import type { ConsentConfigItem } from "@/lib/validators/consent";
 import { Card, Input, Select, SubmitButton, Textarea } from "@/components/ui";
+import { ConsentCheckboxes } from "@/components/sites/ConsentCheckboxes";
 import { registerAction, type RegisterFormState } from "./actions";
 
 type Props = {
@@ -11,9 +13,10 @@ type Props = {
   eventSlug: string;
   isFull: boolean;
   questions: CustomQuestion[];
+  consents: ConsentConfigItem[];
 };
 
-export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions }: Props) {
+export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions, consents }: Props) {
   const [state, formAction, pending] = useActionState<RegisterFormState, FormData>(
     registerAction,
     null,
@@ -90,6 +93,8 @@ export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions 
             />
           );
         })}
+
+        <ConsentCheckboxes eventConsents={consents} errors={state?.errors} />
 
         {state?.errors?._form && (
           <p className="text-sm text-destructive" role="alert">
