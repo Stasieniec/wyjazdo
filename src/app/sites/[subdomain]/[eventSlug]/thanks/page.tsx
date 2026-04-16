@@ -119,6 +119,29 @@ export default async function ThanksPage({
           </Card>
           {organizerFooter}
         </>
+      ) : status === "deposit_paid" ? (
+        <>
+          <Card className="mt-6 text-left">
+            <EventSummary title={event.title} dateLabel={eventDateLabel} />
+            <div className="text-center">
+              <h1 className="text-2xl font-semibold">Zaliczka zaksięgowana!</h1>
+              <p className="mt-4 leading-relaxed text-muted-foreground">
+                Twoje miejsce na <strong>{event.title}</strong> zostało zarezerwowane.
+              </p>
+              {event.balanceDueAt && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Dopłata{" "}
+                  {event.depositCents != null
+                    ? `${((event.priceCents - event.depositCents) / 100).toFixed(2)} zł`
+                    : ""}{" "}
+                  do {new Date(event.balanceDueAt).toLocaleDateString("pl-PL")}.
+                  Wyślemy przypomnienie mailem.
+                </p>
+              )}
+            </div>
+          </Card>
+          {organizerFooter}
+        </>
       ) : status === "pending" ? (
         <>
           <Card className="mt-6 text-left">
