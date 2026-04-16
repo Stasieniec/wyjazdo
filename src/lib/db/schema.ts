@@ -108,23 +108,29 @@ export const payments = sqliteTable(
   }),
 );
 
-export const legalDocuments = sqliteTable("legal_documents", {
-  id: text("id").primaryKey(),
-  type: text("type", {
-    enum: [
-      "regulamin",
-      "privacy_policy",
-      "organizer_terms",
-      "dpa",
-      "cookie_policy",
-    ],
-  }).notNull(),
-  version: integer("version").notNull(),
-  title: text("title").notNull(),
-  content: text("content").notNull(),
-  effectiveAt: integer("effective_at").notNull(),
-  createdAt: integer("created_at").notNull(),
-});
+export const legalDocuments = sqliteTable(
+  "legal_documents",
+  {
+    id: text("id").primaryKey(),
+    type: text("type", {
+      enum: [
+        "regulamin",
+        "privacy_policy",
+        "organizer_terms",
+        "dpa",
+        "cookie_policy",
+      ],
+    }).notNull(),
+    version: integer("version").notNull(),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    effectiveAt: integer("effective_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => ({
+    typeVersionUniq: uniqueIndex("legal_documents_type_version_uniq").on(t.type, t.version),
+  }),
+);
 
 export const organizerConsents = sqliteTable(
   "organizer_consents",

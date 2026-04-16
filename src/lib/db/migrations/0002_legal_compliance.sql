@@ -12,6 +12,8 @@ CREATE TABLE `legal_documents` (
   `created_at` integer NOT NULL
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `legal_documents_type_version_uniq` ON `legal_documents` (`type`, `version`);
+--> statement-breakpoint
 
 CREATE TABLE `organizer_consents` (
   `id` text PRIMARY KEY NOT NULL,

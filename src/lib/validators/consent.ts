@@ -15,9 +15,3 @@ export const consentConfigItemSchema = z.object({
 export type ConsentConfigItem = z.infer<typeof consentConfigItemSchema>;
 
 export const consentConfigSchema = z.array(consentConfigItemSchema).max(20).default([]);
-
-/**
- * Consent payload submitted by a participant during registration.
- * Keys are consent IDs, values are booleans.
- */
-export const consentPayloadSchema = z.record(z.string(), z.boolean());

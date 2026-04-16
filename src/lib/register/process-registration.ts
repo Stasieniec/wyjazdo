@@ -174,7 +174,9 @@ export async function processRegistration(
 
     const h = await headers();
     const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-    recordParticipantConsents(participantId, form, consents, ip).catch(() => {});
+    recordParticipantConsents(participantId, form, consents, ip).catch((err) => {
+      console.error("[consent-recording] Failed to record consents for participant", participantId, err);
+    });
 
     const emailPromises: Promise<void>[] = [
       (async () => {
@@ -224,7 +226,9 @@ export async function processRegistration(
 
   const h = await headers();
   const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-  recordParticipantConsents(participantId, form, consents, ip).catch(() => {});
+  recordParticipantConsents(participantId, form, consents, ip).catch((err) => {
+    console.error("[consent-recording] Failed to record consents for participant", participantId, err);
+  });
 
   const depositMode =
     event.depositCents != null &&
