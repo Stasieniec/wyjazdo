@@ -6,6 +6,8 @@ import { countTakenSpots } from "@/lib/capacity";
 import { myTripsRequestLinkUrl } from "@/lib/urls";
 import { formatPlnFromCents, isDepositPricingMode } from "@/lib/format-currency";
 import { DepositPriceBreakdown } from "@/components/sites/DepositPriceBreakdown";
+import { listPhotosForEvent } from "@/lib/db/queries/event-photos";
+import { PhotoGallery } from "@/components/sites/PhotoGallery";
 import type { Metadata } from "next";
 
 export async function generateMetadata({
@@ -50,6 +52,9 @@ export default async function EventPage({
   const isFull = spotsLeft === 0;
   const depositMode = isDepositPricingMode(event.priceCents, event.depositCents);
 
+  const eventPhotos = await listPhotosForEvent(event.id);
+  const galleryPhotos = eventPhotos.map((p) => ({ url: p.url, position: p.position }));
+
   const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", {
     day: "numeric",
     month: "long",
@@ -84,6 +89,13 @@ export default async function EventPage({
           className="h-32 w-full sm:h-48"
           style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}dd)` }}
         />
+      )}
+
+      {/* Gallery thumbnails */}
+      {galleryPhotos.length > 0 && (
+        <div className="mx-auto max-w-3xl">
+          <PhotoGallery photos={galleryPhotos} />
+        </div>
       )}
 
       <div className="mx-auto max-w-3xl px-6">
