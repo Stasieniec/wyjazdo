@@ -192,6 +192,78 @@ export function balanceReminderHtml(params: {
   `);
 }
 
+// ─── Waitlist Promoted ─────────────────────────────────────────────────────
+
+export function waitlistPromotedSubject(eventTitle: string): string {
+  return `Zwolniło się miejsce — ${eventTitle}`;
+}
+
+export function waitlistPromotedHtml(params: {
+  participantName: string;
+  eventTitle: string;
+  paymentUrl: string;
+  expiryDate: string;
+  eventDate: string;
+  eventLocation: string | null;
+  organizerName: string;
+}): string {
+  return layout(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Zwolniło się miejsce!</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
+      Cześć ${params.participantName}, mamy dobrą wiadomość — zwolniło się miejsce
+      na <strong>${params.eventTitle}</strong>. Aby potwierdzić udział, opłać rezerwację
+      klikając poniższy przycisk.
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:24px;">
+      <tr><td>
+        <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Wydarzenie</p>
+        <p style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;">${params.eventTitle}</p>
+        <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Termin</p>
+        <p style="margin:0 0 12px;font-size:15px;color:#111827;">${params.eventDate}</p>
+        ${params.eventLocation ? `
+        <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Miejsce</p>
+        <p style="margin:0;font-size:15px;color:#111827;">${params.eventLocation}</p>
+        ` : ""}
+      </td></tr>
+    </table>
+    ${button(params.paymentUrl, "Opłać i potwierdź udział")}
+    <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
+      Link ważny do: <strong>${params.expiryDate}</strong>
+    </p>
+    <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
+      Organizator: ${params.organizerName}
+    </p>
+  `);
+}
+
+// ─── Resend Payment Link ───────────────────────────────────────────────────
+
+export function resendPaymentLinkSubject(eventTitle: string): string {
+  return `Nowy link do płatności — ${eventTitle}`;
+}
+
+export function resendPaymentLinkHtml(params: {
+  participantName: string;
+  eventTitle: string;
+  paymentUrl: string;
+  organizerName: string;
+}): string {
+  return layout(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Nowy link do płatności</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
+      Cześć ${params.participantName}, wygenerowaliśmy nowy link do płatności
+      za <strong>${params.eventTitle}</strong>. Kliknij poniższy przycisk, aby dokończyć płatność.
+    </p>
+    ${button(params.paymentUrl, "Opłać teraz")}
+    <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
+      Link wygaśnie za 30 minut.
+    </p>
+    <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
+      Organizator: ${params.organizerName}
+    </p>
+  `);
+}
+
 export function paymentConfirmedHtml(params: {
   participantName: string;
   eventTitle: string;

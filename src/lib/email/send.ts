@@ -12,6 +12,10 @@ import {
   magicLinkHtml,
   balanceReminderSubject,
   balanceReminderHtml,
+  waitlistPromotedSubject,
+  waitlistPromotedHtml,
+  resendPaymentLinkSubject,
+  resendPaymentLinkHtml,
 } from "./templates";
 
 /**
@@ -126,5 +130,36 @@ export async function sendBalanceReminder(params: {
     to: params.to,
     subject: balanceReminderSubject(params.eventTitle),
     html: balanceReminderHtml(params),
+  });
+}
+
+export async function sendWaitlistPromoted(params: {
+  to: string;
+  participantName: string;
+  eventTitle: string;
+  paymentUrl: string;
+  expiryDate: string;
+  eventDate: string;
+  eventLocation: string | null;
+  organizerName: string;
+}): Promise<void> {
+  await safeSend({
+    to: params.to,
+    subject: waitlistPromotedSubject(params.eventTitle),
+    html: waitlistPromotedHtml(params),
+  });
+}
+
+export async function sendResendPaymentLink(params: {
+  to: string;
+  participantName: string;
+  eventTitle: string;
+  paymentUrl: string;
+  organizerName: string;
+}): Promise<void> {
+  await safeSend({
+    to: params.to,
+    subject: resendPaymentLinkSubject(params.eventTitle),
+    html: resendPaymentLinkHtml(params),
   });
 }
