@@ -13,6 +13,7 @@ import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
 import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
 import { Button, Card, StatusBadge, SubmitButton } from "@/components/ui";
 import { publicEventUrl } from "@/lib/urls";
+import { listPhotosForEvent } from "@/lib/db/queries/event-photos";
 import { changeStatusAction } from "./actions";
 import { EventEditForm } from "./EventEditForm";
 
@@ -41,6 +42,9 @@ export default async function EventEditPage({
   const initialConsents: ConsentConfigItem[] = event.consentConfig
     ? JSON.parse(event.consentConfig)
     : [];
+
+  const eventPhotos = await listPhotosForEvent(id);
+  const initialPhotos = eventPhotos.map((p) => ({ url: p.url, position: p.position }));
 
   const publishBound = changeStatusAction.bind(null, id, "published");
   const unpublishBound = changeStatusAction.bind(null, id, "draft");
@@ -182,6 +186,7 @@ export default async function EventEditPage({
             }}
             initialQuestions={questions}
             initialConsents={initialConsents}
+            initialPhotos={initialPhotos}
           />
         </div>
       ) : (

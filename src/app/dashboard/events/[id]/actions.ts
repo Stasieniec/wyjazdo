@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eventBaseSchema, customQuestionSchema } from "@/lib/validators/event";
 import { consentConfigSchema } from "@/lib/validators/consent";
+import { syncEventPhotos } from "@/lib/db/queries/event-photos";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
 import { getEventById } from "@/lib/db/queries/events";
@@ -122,6 +123,27 @@ export async function saveEventAction(
     depositCents: parsed.data.depositCents ?? null,
     balanceDueAt: parsed.data.balanceDueAt ?? null,
   });
+
+  // Sync gallery photos
+  let galleryPhotos: { url: string; position: number }[] = [];
+  try {
+    const galleryRaw = String(formData.get("galleryPhotos") ?? "[]");
+    const parsed = JSON.parse(galleryRaw);
+    if (Array.isArray(parsed)) {
+      galleryPhotos = parsed
+        .filter(
+          (p: unknown): p is { url: string; position: number } =>
+            typeof p === "object" &&
+            p !== null &&
+            typeof (p as Record<string, unknown>).url === "string" &&
+            typeof (p as Record<string, unknown>).position === "number",
+        )
+        .slice(0, 5);
+    }
+  } catch {
+    // Ignore malformed gallery data — keep existing photos
+  }
+  await syncEventPhotos(eventId, galleryPhotos);
 
   revalidatePath(`/dashboard/events/${eventId}`);
   return {};

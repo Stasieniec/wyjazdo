@@ -7,11 +7,12 @@ import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor"
 import EventConsentsEditor from "@/components/dashboard/EventConsentsEditor";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
+import { GalleryUpload } from "@/components/dashboard/GalleryUpload";
 import { saveEventAction, type SaveEventFormState } from "./actions";
 
 type Props = {
   eventId: string;
-  /** Draft-only: show “krok 2” onboarding after creating from the wizard. */
+  /** Draft-only: show "krok 2" onboarding after creating from the wizard. */
   showCreationStep2?: boolean;
   event: {
     title: string;
@@ -27,6 +28,7 @@ type Props = {
   };
   initialQuestions: CustomQuestion[];
   initialConsents: ConsentConfigItem[];
+  initialPhotos: { url: string; position: number }[];
 };
 
 export function EventEditForm({
@@ -34,6 +36,7 @@ export function EventEditForm({
   event,
   initialQuestions,
   initialConsents,
+  initialPhotos,
   showCreationStep2 = false,
 }: Props) {
   const [state, formAction] = useActionState<SaveEventFormState, FormData>(
@@ -158,6 +161,15 @@ export function EventEditForm({
           defaultValue={event.coverUrl}
           aspect="cover"
           error={state?.errors?.coverUrl}
+        />
+      </Section>
+
+      <Section title="Galeria zdjęć" description="Dodaj do 5 zdjęć prezentujących wydarzenie — np. miejsce, poprzednie edycje, atrakcje.">
+        <GalleryUpload
+          name="galleryPhotos"
+          defaultValue={initialPhotos}
+          max={5}
+          error={state?.errors?.galleryPhotos}
         />
       </Section>
 
