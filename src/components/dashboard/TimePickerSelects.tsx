@@ -22,14 +22,14 @@ export function TimePickerSelects({
   return (
     <div className="flex shrink-0 items-end gap-1">
       <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] font-medium text-neutral-500" id={`${idPrefix}-hour-hint`}>
+        <span className="text-[10px] font-medium text-muted-foreground" id={`${idPrefix}-hour-hint`}>
           Godz.
         </span>
         <div className="relative">
           <select
             id={`${idPrefix}-hour`}
             aria-labelledby={`${idPrefix}-hour-hint`}
-            className="h-10 min-w-[4.85rem] cursor-pointer appearance-none rounded-md border pl-2 pr-8 text-sm tabular-nums text-neutral-900 focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500/25"
+            className="h-10 min-w-[4.85rem] cursor-pointer appearance-none rounded-md border border-border pl-2 pr-8 text-sm tabular-nums text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25"
             value={hourVal}
             required
             onChange={(e) => {
@@ -51,11 +51,11 @@ export function TimePickerSelects({
           <SelectChevron className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" />
         </div>
       </div>
-      <span className="mb-2 select-none text-sm text-neutral-400" aria-hidden>
+      <span className="mb-2 select-none text-sm text-muted-foreground" aria-hidden>
         :
       </span>
       <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] font-medium text-neutral-500" id={`${idPrefix}-min-hint`}>
+        <span className="text-[10px] font-medium text-muted-foreground" id={`${idPrefix}-min-hint`}>
           Min.
         </span>
         <div className="relative">
@@ -63,7 +63,7 @@ export function TimePickerSelects({
             id={`${idPrefix}-minute`}
             aria-labelledby={`${idPrefix}-min-hint`}
             disabled={!hourVal}
-            className="h-10 min-w-[4.85rem] cursor-pointer appearance-none rounded-md border pl-2 pr-8 text-sm tabular-nums text-neutral-900 focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-500/25 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400"
+            className="h-10 min-w-[4.85rem] cursor-pointer appearance-none rounded-md border border-border pl-2 pr-8 text-sm tabular-nums text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             value={hourVal ? minuteVal : ""}
             required={Boolean(hourVal)}
             onChange={(e) => {
@@ -92,7 +92,7 @@ export function TimePickerSelects({
 function SelectChevron({ className }: { className?: string }) {
   return (
     <svg
-      className={`${className ?? ""} h-4 w-4 text-neutral-500`}
+      className={`${className ?? ""} h-4 w-4 text-muted-foreground`}
       viewBox="0 0 20 20"
       fill="currentColor"
       aria-hidden
