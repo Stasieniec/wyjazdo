@@ -2,7 +2,9 @@
 
 import { useActionState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
+import type { ConsentConfigItem } from "@/lib/validators/consent";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
+import EventConsentsEditor from "@/components/dashboard/EventConsentsEditor";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { saveEventAction, type SaveEventFormState } from "./actions";
@@ -24,12 +26,14 @@ type Props = {
     balanceDueAt: number | null;
   };
   initialQuestions: CustomQuestion[];
+  initialConsents: ConsentConfigItem[];
 };
 
 export function EventEditForm({
   eventId,
   event,
   initialQuestions,
+  initialConsents,
   showCreationStep2 = false,
 }: Props) {
   const [state, formAction] = useActionState<SaveEventFormState, FormData>(
@@ -167,6 +171,18 @@ export function EventEditForm({
           </p>
         )}
         <CustomQuestionsEditor initial={initialQuestions} name="customQuestions" />
+      </Section>
+
+      <Section
+        title="Zgody i regulaminy"
+        description="Zgody platformy są obowiązkowe i wyświetlane automatycznie. Możesz dodać własne zgody, np. na wykorzystanie wizerunku, przetwarzanie danych o zdrowiu lub akceptację regulaminu wydarzenia."
+      >
+        {state?.errors?.consentConfig && (
+          <p className="text-sm text-destructive" role="alert">
+            {state.errors.consentConfig}
+          </p>
+        )}
+        <EventConsentsEditor initial={initialConsents} name="consentConfig" />
       </Section>
 
       <div className="flex items-center gap-4">

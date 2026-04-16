@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
 import type { CustomQuestion } from "@/lib/validators/event";
+import type { ConsentConfigItem } from "@/lib/validators/consent";
 import { parseEventDashboardTab } from "@/lib/eventDashboardTab";
 import { parseParticipantFilterStatus } from "@/lib/participantFilterStatus";
 import { ParticipantFilters } from "@/components/dashboard/ParticipantFilters";
@@ -35,6 +36,10 @@ export default async function EventEditPage({
 
   const questions: CustomQuestion[] = event.customQuestions
     ? JSON.parse(event.customQuestions)
+    : [];
+
+  const initialConsents: ConsentConfigItem[] = event.consentConfig
+    ? JSON.parse(event.consentConfig)
     : [];
 
   const publishBound = changeStatusAction.bind(null, id, "published");
@@ -176,6 +181,7 @@ export default async function EventEditPage({
               balanceDueAt: event.balanceDueAt ?? null,
             }}
             initialQuestions={questions}
+            initialConsents={initialConsents}
           />
         </div>
       ) : (

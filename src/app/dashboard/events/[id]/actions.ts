@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eventBaseSchema, customQuestionSchema } from "@/lib/validators/event";
+import { consentConfigSchema } from "@/lib/validators/consent";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
 import { getEventById } from "@/lib/db/queries/events";
@@ -41,6 +42,22 @@ export async function saveEventAction(
     };
   }
 
+  let consentsParsed;
+  try {
+    const consentsRaw = String(formData.get("consentConfig") ?? "[]");
+    consentsParsed = consentConfigSchema.safeParse(JSON.parse(consentsRaw));
+  } catch {
+    return { errors: { consentConfig: "Nieprawidłowy format listy zgód." } };
+  }
+  if (!consentsParsed.success) {
+    return {
+      errors: {
+        consentConfig:
+          consentsParsed.error.issues[0]?.message ?? "Błąd walidacji zgód.",
+      },
+    };
+  }
+
   const depositRaw = formData.get("deposit") as string;
   const balanceDueAtRaw = formData.get("balanceDueAt") as string;
   const depositCents =
@@ -64,6 +81,7 @@ export async function saveEventAction(
     capacity: Number(formData.get("capacity") ?? 0),
     coverUrl: (formData.get("coverUrl") as string) || undefined,
     customQuestions: questionsParsed.data,
+    consentConfig: consentsParsed.data,
     depositCents,
     balanceDueAt,
   };
@@ -95,6 +113,7 @@ export async function saveEventAction(
     capacity: parsed.data.capacity,
     coverUrl: parsed.data.coverUrl || null,
     customQuestions: JSON.stringify(parsed.data.customQuestions),
+    consentConfig: JSON.stringify(parsed.data.consentConfig),
     depositCents: parsed.data.depositCents ?? null,
     balanceDueAt: parsed.data.balanceDueAt ?? null,
   });

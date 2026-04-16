@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { consentConfigSchema } from "./consent";
 
 export const customQuestionSchema = z.object({
   id: z.string().min(1),
@@ -35,6 +36,7 @@ export const eventBaseSchema = z
     customQuestions: z.array(customQuestionSchema).max(20).default([]),
     depositCents: z.coerce.number().int().nonnegative().nullable().optional(),
     balanceDueAt: z.coerce.number().int().positive().nullable().optional(),
+    consentConfig: consentConfigSchema,
   })
   .refine(
     (d) =>
