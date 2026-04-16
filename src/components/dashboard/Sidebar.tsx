@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { WyjazdoMark } from "@/components/brand/WyjazdoMark";
+import { UserMenu } from "@/components/dashboard/UserMenu";
 
 const NAV_ITEMS = [
   {
@@ -33,8 +34,9 @@ const NAV_ITEMS = [
     label: "Finanse",
     icon: (
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9" cy="9" r="7.25" />
-        <path d="M9 4.5v4l3 2" />
+        <rect x="1.5" y="3.5" width="15" height="11" rx="2" />
+        <path d="M1.5 7.5h15" />
+        <path d="M5 11.5h3" />
       </svg>
     ),
   },
@@ -43,8 +45,8 @@ const NAV_ITEMS = [
     label: "Ustawienia",
     icon: (
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7.5 1.5h3l.5 2.1a6 6 0 011.3.7l2-.8 1.5 2.6-1.5 1.4a6 6 0 010 1.5l1.5 1.4-1.5 2.6-2-.8a6 6 0 01-1.3.7l-.5 2.1h-3l-.5-2.1a6 6 0 01-1.3-.7l-2 .8-1.5-2.6 1.5-1.4a6 6 0 010-1.5L2.2 6.1l1.5-2.6 2 .8a6 6 0 011.3-.7z" />
         <circle cx="9" cy="9" r="2.5" />
-        <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.05 3.05l1.4 1.4M13.55 13.55l1.4 1.4M3.05 14.95l1.4-1.4M13.55 4.45l1.4-1.4" />
       </svg>
     ),
   },
@@ -61,12 +63,11 @@ function isActive(pathname: string, item: (typeof NAV_ITEMS)[number]): boolean {
 }
 
 interface SidebarProps {
-  userName: string;
-  userEmail: string;
-  userInitial: string;
+  publicUrl: string | null;
+  publicLabel: string | null;
 }
 
-export function Sidebar({ userName, userEmail, userInitial }: SidebarProps) {
+export function Sidebar({ publicUrl, publicLabel }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -90,10 +91,22 @@ export function Sidebar({ userName, userEmail, userInitial }: SidebarProps) {
       }`}
     >
       {/* Logo */}
-      <div className={`flex items-center gap-2 px-5 pb-6 pt-5 ${collapsed ? "justify-center px-0" : ""}`}>
-        <WyjazdoMark className="h-7 w-7 shrink-0" />
-        {!collapsed && (
-          <span className="text-base font-bold tracking-tight">Wyjazdo</span>
+      <div className={`px-5 pb-4 pt-5 ${collapsed ? "flex justify-center px-0" : ""}`}>
+        <div className={`flex items-center gap-2 ${collapsed ? "justify-center" : ""}`}>
+          <WyjazdoMark className="h-7 w-7 shrink-0" />
+          {!collapsed && (
+            <span className="text-base font-bold tracking-tight">Wyjazdo</span>
+          )}
+        </div>
+        {!collapsed && publicUrl && publicLabel && (
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 block truncate rounded-lg bg-white/8 px-2.5 py-1.5 text-[11px] text-white/50 transition-colors hover:bg-white/12 hover:text-white/70"
+          >
+            {publicLabel} <span aria-hidden>↗</span>
+          </a>
         )}
       </div>
 
@@ -123,8 +136,8 @@ export function Sidebar({ userName, userEmail, userInitial }: SidebarProps) {
       {/* Collapse toggle */}
       <button
         onClick={toggle}
-        className={`mx-3 mt-3 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] text-white/40 transition-colors hover:text-white/60 ${
-          collapsed ? "justify-center px-0" : ""
+        className={`mx-3 mt-4 flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/50 transition-all hover:border-white/20 hover:bg-white/8 hover:text-white/70 ${
+          collapsed ? "justify-center px-0 mx-2 border-transparent" : ""
         }`}
         aria-label={collapsed ? "Rozwiń panel" : "Zwiń panel"}
       >
@@ -137,26 +150,16 @@ export function Sidebar({ userName, userEmail, userInitial }: SidebarProps) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
+          className={`shrink-0 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
         >
           <path d="M10 4L6 8l4 4" />
         </svg>
         {!collapsed && <span>Zwiń panel</span>}
       </button>
 
-      {/* User */}
-      <div className={`mt-auto border-t border-white/10 px-4 py-3 ${collapsed ? "flex justify-center px-0" : ""}`}>
-        <div className={`flex items-center gap-2.5 ${collapsed ? "justify-center" : ""}`}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent/80 text-sm font-bold text-white">
-            {userInitial}
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <div className="truncate text-xs font-semibold">{userName}</div>
-              <div className="truncate text-[10px] text-white/50">{userEmail}</div>
-            </div>
-          )}
-        </div>
+      {/* User menu */}
+      <div className={`mt-auto border-t border-white/10 px-4 py-3 ${collapsed ? "flex justify-center px-2" : ""}`}>
+        <UserMenu />
       </div>
     </aside>
   );

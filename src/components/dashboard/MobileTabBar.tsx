@@ -31,8 +31,9 @@ const TABS = [
     label: "Finanse",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="10" cy="10" r="8" />
-        <path d="M10 5v5l3.5 2" />
+        <rect x="1.5" y="4" width="17" height="12" rx="2" />
+        <path d="M1.5 8.5h17" />
+        <path d="M5.5 13h3.5" />
       </svg>
     ),
   },
@@ -41,8 +42,8 @@ const TABS = [
     label: "Ustawienia",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="10" cy="10" r="3" />
-        <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M3.5 3.5l1.4 1.4M15.1 15.1l1.4 1.4M3.5 16.5l1.4-1.4M15.1 4.9l1.4-1.4" />
+        <path d="M8.5 1.5h3l.5 2.3a7 7 0 011.4.8l2.2-.9 1.5 2.6-1.7 1.5a7 7 0 010 1.6l1.7 1.5-1.5 2.6-2.2-.9a7 7 0 01-1.4.8l-.5 2.3h-3l-.5-2.3a7 7 0 01-1.4-.8l-2.2.9-1.5-2.6 1.7-1.5a7 7 0 010-1.6L3.4 6.3l1.5-2.6 2.2.9a7 7 0 011.4-.8z" />
+        <circle cx="10" cy="10" r="2.75" />
       </svg>
     ),
   },
