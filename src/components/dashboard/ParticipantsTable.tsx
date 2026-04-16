@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 import type { Participant, Payment, ParticipantConsent } from "@/lib/db/schema";
 import { derivedStatus, type DerivedStatus } from "@/lib/participant-status";
 import type { CustomQuestion } from "@/lib/validators/event";
-import { extendBalanceDeadlineAction, cancelAndFreeSpotAction } from "@/app/dashboard/events/[id]/actions";
+import { extendBalanceDeadlineAction, cancelParticipantAction } from "@/app/dashboard/events/[id]/actions";
 import { formatPlnFromCents } from "@/lib/format-currency";
 
 export default function ParticipantsTable({
@@ -132,7 +132,7 @@ export default function ParticipantsTable({
                             </button>
                           </form>
                           <form
-                            action={cancelAndFreeSpotAction}
+                            action={cancelParticipantAction}
                             onSubmit={(e) => {
                               if (!window.confirm(`Anulować uczestnika ${p.firstName} ${p.lastName} i zwolnić miejsce?`)) {
                                 e.preventDefault();
