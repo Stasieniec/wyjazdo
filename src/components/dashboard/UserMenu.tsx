@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 
-export function UserMenu() {
+export function UserMenu({ dropUp }: { dropUp?: boolean } = {}) {
   const { user, isLoaded } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const [open, setOpen] = useState(false);
@@ -62,7 +62,11 @@ export function UserMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-lg border border-border bg-background shadow-lg"
+          className={`absolute z-50 w-56 overflow-hidden rounded-lg border border-border bg-background shadow-lg ${
+            dropUp
+              ? "bottom-full left-0 mb-2"
+              : "right-0 top-full mt-2"
+          }`}
         >
           <div className="border-b border-border px-3 py-2.5">
             <p className="truncate text-sm font-medium text-foreground">{name}</p>

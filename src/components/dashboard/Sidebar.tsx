@@ -93,7 +93,7 @@ export function Sidebar({ publicUrl, publicLabel }: SidebarProps) {
       {/* Logo */}
       <div className={`px-5 pb-4 pt-5 ${collapsed ? "flex justify-center px-0" : ""}`}>
         <div className={`flex items-center gap-2 ${collapsed ? "justify-center" : ""}`}>
-          <WyjazdoMark className="h-7 w-7 shrink-0" />
+          <WyjazdoMark className="h-7 w-7 shrink-0" invert />
           {!collapsed && (
             <span className="text-base font-bold tracking-tight">Wyjazdo</span>
           )}
@@ -159,7 +159,7 @@ export function Sidebar({ publicUrl, publicLabel }: SidebarProps) {
 
       {/* User menu */}
       <div className={`mt-auto border-t border-white/10 px-4 py-3 ${collapsed ? "flex justify-center px-2" : ""}`}>
-        <UserMenu />
+        <UserMenu dropUp />
       </div>
     </aside>
   );
