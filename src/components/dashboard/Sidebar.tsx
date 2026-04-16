@@ -86,7 +86,7 @@ export function Sidebar({ publicUrl, publicLabel }: SidebarProps) {
 
   return (
     <aside
-      className={`hidden sm:flex flex-col bg-primary text-white transition-all duration-200 ${
+      className={`hidden sm:flex sticky top-0 h-screen flex-col bg-primary text-white transition-all duration-200 ${
         collapsed ? "w-16" : "w-[220px]"
       }`}
     >
