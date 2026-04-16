@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
+import { GalleryUpload } from "@/components/dashboard/GalleryUpload";
 import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { createEventAction, type CreateEventFormState } from "./actions";
 
@@ -123,6 +124,9 @@ export default function NewEventPage() {
             aspect="cover"
             error={state?.errors?.coverUrl}
           />
+          <div>
+            <GalleryUpload name="galleryPhotos" max={5} />
+          </div>
 
           {state?.errors?._form && (
             <p className="text-sm text-destructive" role="alert">

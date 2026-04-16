@@ -7,6 +7,7 @@ import { newId } from "@/lib/ids";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { insertEvent, isSlugTakenForOrganizer } from "@/lib/db/queries/events-dashboard";
 import { zodIssuesToRecord } from "@/lib/zod-errors";
+import { insertEventPhotos } from "@/lib/db/queries/event-photos";
 
 export type CreateEventFormState = {
   errors?: Record<string, string>;
@@ -100,6 +101,27 @@ export async function createEventAction(
     createdAt: now,
     updatedAt: now,
   });
+
+  // Insert gallery photos
+  let galleryPhotos: { url: string; position: number }[] = [];
+  try {
+    const galleryRaw = String(formData.get("galleryPhotos") ?? "[]");
+    const parsed = JSON.parse(galleryRaw);
+    if (Array.isArray(parsed)) {
+      galleryPhotos = parsed
+        .filter(
+          (p: unknown): p is { url: string; position: number } =>
+            typeof p === "object" &&
+            p !== null &&
+            typeof (p as Record<string, unknown>).url === "string" &&
+            typeof (p as Record<string, unknown>).position === "number",
+        )
+        .slice(0, 5);
+    }
+  } catch {
+    // Ignore malformed gallery data
+  }
+  await insertEventPhotos(id, galleryPhotos);
 
   redirect(`/dashboard/events/${id}`);
 }
