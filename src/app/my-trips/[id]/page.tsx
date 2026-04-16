@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { getTripView } from "@/lib/db/queries/trip-view";
