@@ -10,6 +10,7 @@ import {
 } from "@/lib/participant-auth";
 import { derivedStatus } from "@/lib/participant-status";
 import { payBalanceAction } from "./actions";
+import { formatPlnFromCents } from "@/lib/format-currency";
 
 export default async function TripPage({
   params,
@@ -54,8 +55,6 @@ export default async function TripPage({
 
   const showPayBalance = status === "deposit_paid" || status === "overdue";
 
-  const fmt = (cents: number) => (cents / 100).toFixed(2);
-
   return (
     <div className="max-w-2xl mx-auto p-8 space-y-6">
       <div>
@@ -72,18 +71,18 @@ export default async function TripPage({
         {full && (
           <p className="text-sm">
             {full.status === "succeeded" ? "Opłacone" : "Oczekuje"}:{" "}
-            {fmt(full.amountCents)} zł
+            {formatPlnFromCents(full.amountCents)}
           </p>
         )}
         {deposit && (
           <p className="text-sm">
-            Zaliczka: {fmt(deposit.amountCents)} zł —{" "}
+            Zaliczka: {formatPlnFromCents(deposit.amountCents)} —{" "}
             {deposit.status === "succeeded" ? "opłacona" : "oczekuje"}
           </p>
         )}
         {balance && (
           <p className="text-sm">
-            Dopłata: {fmt(balance.amountCents)} zł —{" "}
+            Dopłata: {formatPlnFromCents(balance.amountCents)} —{" "}
             {balance.status === "succeeded" ? "opłacona" : "oczekuje"}
           </p>
         )}

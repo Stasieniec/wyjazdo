@@ -4,6 +4,8 @@ import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
 import { myTripsRequestLinkUrl } from "@/lib/urls";
+import { formatPlnFromCents, isDepositPricingMode } from "@/lib/format-currency";
+import { DepositPriceBreakdown } from "@/components/sites/DepositPriceBreakdown";
 import type { Metadata } from "next";
 
 export async function generateMetadata({
@@ -17,16 +19,13 @@ export async function generateMetadata({
   const event = await getPublishedEventBySlug(organizer.id, eventSlug);
   if (!event) return {};
 
-  const priceFormatted = new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: event.currency,
-  }).format(event.priceCents / 100);
+  const priceLabel = formatPlnFromCents(event.priceCents);
 
   return {
     title: `${event.title} — ${organizer.displayName}`,
     description: event.description
       ? event.description.slice(0, 160)
-      : `${event.title} · ${priceFormatted} · ${organizer.displayName}`,
+      : `${event.title} · ${priceLabel} · ${organizer.displayName}`,
     openGraph: {
       title: event.title,
       description: event.description?.slice(0, 160) ?? "",
@@ -49,15 +48,7 @@ export default async function EventPage({
   const taken = await countTakenSpots(event.id, Date.now());
   const spotsLeft = Math.max(0, event.capacity - taken);
   const isFull = spotsLeft === 0;
-  const priceFormatted = new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: event.currency,
-  }).format(event.priceCents / 100);
-
-  const isDepositMode =
-    event.depositCents != null &&
-    event.depositCents > 0 &&
-    event.depositCents < event.priceCents;
+  const depositMode = isDepositPricingMode(event.priceCents, event.depositCents);
 
   const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", {
     day: "numeric",
@@ -113,24 +104,14 @@ export default async function EventPage({
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <InfoCard label="Termin" value={dateStart === dateEnd ? dateStart : `${dateStart} — ${dateEnd}`} />
           <InfoCard label="Miejsce" value={event.location ?? "Do ustalenia"} />
-          {isDepositMode ? (
-            <div className="rounded-lg border border-border bg-muted/50 p-3">
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Cena
-              </dt>
-              <dd className="mt-1 space-y-0.5 text-sm font-semibold text-foreground">
-                <p>Całkowita: {(event.priceCents / 100).toFixed(2)} zł</p>
-                <p>Zaliczka: {(event.depositCents! / 100).toFixed(2)} zł</p>
-                <p>
-                  Dopłata: {((event.priceCents - event.depositCents!) / 100).toFixed(2)} zł
-                  {event.balanceDueAt
-                    ? ` do ${new Date(event.balanceDueAt).toLocaleDateString("pl-PL")}`
-                    : ""}
-                </p>
-              </dd>
-            </div>
+          {depositMode ? (
+            <DepositPriceBreakdown
+              priceCents={event.priceCents}
+              depositCents={event.depositCents!}
+              balanceDueAt={event.balanceDueAt}
+            />
           ) : (
-            <InfoCard label="Cena" value={priceFormatted} />
+            <InfoCard label="Cena" value={formatPlnFromCents(event.priceCents)} />
           )}
           <InfoCard
             label="Dostępność"

@@ -1,7 +1,7 @@
 # wyjazdo.pl — Participants, Deposits, and Payouts
 
 **Date:** 2026-04-15
-**Status:** Approved (pending written-spec review)
+**Status:** Implemented (2026-04-16)
 **Supersedes fragments of:** `2026-04-13-wyjazdo-mvp-design.md` (participants status set, single-payment flow, extension points for multi-phase payments, refunds, and payouts)
 
 ## 1. Product summary
@@ -97,15 +97,15 @@ Derivation function `derivedStatus(participant, payments)`:
 
 1. If `lifecycle_status = 'waitlisted'` → `waitlisted` (regardless of payments; a waitlisted person has no payment rows in practice).
 2. If `lifecycle_status = 'cancelled'` → `cancelled`.
-3. Otherwise compute from payments:
-   - No payments, or all payments in `{expired, failed}` → `cancelled`
+3. Otherwise compute from payments (evaluated in this priority order in the implementation):
+   - Any `refunded` payment → `refunded` (checked first; terminal for display)
    - Any payment in `{pending}` → `pending`
    - One `full` with `status='succeeded'` → `paid`
    - `deposit` succeeded + `balance` succeeded → `paid`
    - `deposit` succeeded, no `balance` row → `deposit_paid`
    - `deposit` succeeded, `balance` row in `pending` → `deposit_paid`
    - `deposit` succeeded, `balance` row in `expired`/`failed` with `balance.due_at <= now()` → `overdue`
-   - Any `refunded` payment → `refunded` (terminal for display purposes)
+   - No payments, or all payments in `{expired, failed}` → `cancelled` (fallthrough)
 
 Implemented in `src/lib/participant-status.ts` with pure-function unit tests. Dashboard queries either join and compute in SQL or call the function in TS after a join.
 
@@ -129,7 +129,7 @@ Deposit-balance events (new):
 
 ### 3.5 Balance flow
 
-**Reminder cron.** A Cloudflare Cron Trigger runs nightly at 08:00 Europe/Warsaw. Pseudocode:
+**Reminder cron.** A Cloudflare Cron Trigger runs nightly at 08:00 UTC (`0 8 * * *` in `wrangler.jsonc`; approximately 09:00–10:00 Warsaw time depending on DST). Pseudocode:
 
 ```
 for each participant whose derived status is 'deposit_paid':
@@ -263,7 +263,7 @@ MVP: `application_fee_amount: 0`. When ready to monetize, add `platform_fee_bps 
 ### 5.1 Altered tables
 
 **`organizers`** — add columns:
-- `stripe_account_id TEXT`
+- `stripe_account_id TEXT` (with `UNIQUE INDEX organizers_stripe_account_uniq`)
 - `stripe_onboarding_complete INTEGER DEFAULT 0`
 - `stripe_payouts_enabled INTEGER DEFAULT 0`
 - `stripe_account_synced_at INTEGER`

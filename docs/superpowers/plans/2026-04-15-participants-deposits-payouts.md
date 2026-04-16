@@ -1,6 +1,8 @@
 # Participants, Deposits, and Payouts Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+**Status: COMPLETED** — 2026-04-16
+
+> **For agentic workers:** This plan has been fully implemented. No further work needed.
 
 **Goal:** Deliver the three-topic design from `docs/superpowers/specs/2026-04-15-participants-deposits-payouts-design.md` — participant magic-link experience, two-phase deposit/balance payments, and Stripe Connect Express payouts.
 

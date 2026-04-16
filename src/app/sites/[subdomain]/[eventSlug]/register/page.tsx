@@ -3,6 +3,8 @@ import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
 import type { CustomQuestion } from "@/lib/validators/event";
+import { formatPlnFromCents, isDepositPricingMode } from "@/lib/format-currency";
+import { DepositPriceBreakdown } from "@/components/sites/DepositPriceBreakdown";
 import { RegisterForm } from "./RegisterForm";
 
 export default async function RegisterPage({
@@ -24,10 +26,7 @@ export default async function RegisterPage({
 
   const brandColor = organizer.brandColor ?? "#1E3A5F";
 
-  const priceFormatted = new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: event.currency,
-  }).format(event.priceCents / 100);
+  const depositMode = isDepositPricingMode(event.priceCents, event.depositCents);
 
   const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", {
     day: "numeric",
@@ -56,16 +55,25 @@ export default async function RegisterPage({
 
       <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4">
         <h1 className="text-lg font-semibold text-foreground">{event.title}</h1>
-        <dl className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+        <div className="mt-3 space-y-3 text-sm text-muted-foreground">
           <div className="flex gap-2">
-            <dt className="shrink-0 font-medium text-foreground/80">Termin</dt>
-            <dd>{dateSummary}</dd>
+            <span className="shrink-0 font-medium text-foreground/80">Termin</span>
+            <span>{dateSummary}</span>
           </div>
-          <div className="flex gap-2">
-            <dt className="shrink-0 font-medium text-foreground/80">Cena</dt>
-            <dd>{priceFormatted}</dd>
-          </div>
-        </dl>
+          {depositMode ? (
+            <DepositPriceBreakdown
+              priceCents={event.priceCents}
+              depositCents={event.depositCents!}
+              balanceDueAt={event.balanceDueAt}
+              className="text-left"
+            />
+          ) : (
+            <div className="flex gap-2">
+              <span className="shrink-0 font-medium text-foreground/80">Cena</span>
+              <span className="text-foreground">{formatPlnFromCents(event.priceCents)}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <p className="mt-6 text-sm text-muted-foreground">

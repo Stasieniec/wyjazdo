@@ -4,6 +4,7 @@ import type { Participant, Payment } from "@/lib/db/schema";
 import { derivedStatus, type DerivedStatus } from "@/lib/participant-status";
 import type { CustomQuestion } from "@/lib/validators/event";
 import { extendBalanceDeadlineAction, cancelAndFreeSpotAction } from "@/app/dashboard/events/[id]/actions";
+import { formatPlnFromCents } from "@/lib/format-currency";
 
 export default function ParticipantsTable({
   participants,
@@ -72,7 +73,7 @@ export default function ParticipantsTable({
                 <td className="py-2 pr-4">{p.email}</td>
                 <td className="py-2 pr-4">{p.phone ?? "—"}</td>
                 <td className="py-2 pr-4">
-                  {totalPaidCents > 0 ? (totalPaidCents / 100).toFixed(2) + " PLN" : "—"}
+                  {totalPaidCents > 0 ? formatPlnFromCents(totalPaidCents) : "—"}
                 </td>
                 {questions.map((q) => (
                   <td key={q.id} className="py-2 pr-4 max-w-[16rem] truncate">

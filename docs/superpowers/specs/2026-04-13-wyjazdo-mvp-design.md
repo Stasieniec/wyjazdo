@@ -1,7 +1,9 @@
 # wyjazdo.pl — MVP Design
 
 **Date:** 2026-04-13
-**Status:** Approved (pending written-spec review)
+**Status:** Implemented. Partially superseded by [2026-04-15 Participants, Deposits, and Payouts](2026-04-15-participants-deposits-payouts-design.md).
+
+> **Note:** The payments model, participant status lifecycle, webhook handling, and several environment details described below were replaced by the 2026-04-15 spec. Specifically: `participants` no longer stores payment state (moved to a `payments` table); status is derived, not stored; Checkout Sessions use Stripe Connect direct charges; and the middleware rewrites to `/sites/[subdomain]/...` (not `/_sites/`). This document remains useful as architectural context for routing, multi-tenancy, and the original product model.
 
 ## 1. Product summary
 

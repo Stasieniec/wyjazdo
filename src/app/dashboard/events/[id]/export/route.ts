@@ -7,6 +7,7 @@ import { listPaymentsForParticipants } from "@/lib/db/queries/payments";
 import { derivedStatus } from "@/lib/participant-status";
 import type { CustomQuestion } from "@/lib/validators/event";
 import { toCsvRow } from "@/lib/csv";
+import { formatPlnFromCents } from "@/lib/format-currency";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         p.phone,
         new Date(p.createdAt).toISOString(),
         latestPaidAt ? new Date(latestPaidAt).toISOString() : null,
-        totalPaidCents > 0 ? (totalPaidCents / 100).toFixed(2) : null,
+        totalPaidCents > 0 ? formatPlnFromCents(totalPaidCents) : null,
         ...questions.map((q) => answers[q.id] ?? ""),
       ]),
     );

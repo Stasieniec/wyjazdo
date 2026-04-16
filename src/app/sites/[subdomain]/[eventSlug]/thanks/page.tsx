@@ -7,6 +7,7 @@ import { getParticipantById } from "@/lib/db/queries/participants";
 import { listPaymentsForParticipant } from "@/lib/db/queries/payments";
 import { derivedStatus } from "@/lib/participant-status";
 import { Card, SubmitButton } from "@/components/ui";
+import { formatPlnFromCents } from "@/lib/format-currency";
 
 export const dynamic = "force-dynamic";
 
@@ -132,7 +133,7 @@ export default async function ThanksPage({
                 <p className="mt-2 text-sm text-muted-foreground">
                   Dopłata{" "}
                   {event.depositCents != null
-                    ? `${((event.priceCents - event.depositCents) / 100).toFixed(2)} zł`
+                    ? formatPlnFromCents(event.priceCents - event.depositCents)
                     : ""}{" "}
                   do {new Date(event.balanceDueAt).toLocaleDateString("pl-PL")}.
                   Wyślemy przypomnienie mailem.

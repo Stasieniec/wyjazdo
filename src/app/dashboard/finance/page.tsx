@@ -10,22 +10,7 @@ import {
 import { fetchConnectBalance, fetchRecentPayouts } from "@/lib/stripe-finance";
 import { payoutAvailableAction, openExpressDashboardAction } from "./actions";
 import { Card } from "@/components/ui";
-
-function formatPln(cents: number): string {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: "PLN",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
-
-function formatPlnDetailed(cents: number): string {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: "PLN",
-  }).format(cents / 100);
-}
+import { formatPlnFromCents } from "@/lib/format-currency";
 
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString("pl-PL", {
@@ -104,11 +89,15 @@ export default async function FinancePage() {
                   Dostępne saldo
                 </p>
                 {connectData.balance.available.length === 0 ? (
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-foreground">0 zł</p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-foreground">
+                    {formatPlnFromCents(0)}
+                  </p>
                 ) : (
                   connectData.balance.available.map((b) => (
                     <p key={b.currency} className="mt-2 text-2xl font-bold tabular-nums text-primary">
-                      {(b.amount / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {b.currency.toUpperCase()}
+                      {b.currency.toLowerCase() === "pln"
+                        ? formatPlnFromCents(b.amount)
+                        : `${(b.amount / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${b.currency.toUpperCase()}`}
                     </p>
                   ))
                 )}
@@ -119,11 +108,15 @@ export default async function FinancePage() {
                   Saldo oczekujące
                 </p>
                 {connectData.balance.pending.length === 0 ? (
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-foreground">0 zł</p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-foreground">
+                    {formatPlnFromCents(0)}
+                  </p>
                 ) : (
                   connectData.balance.pending.map((b) => (
                     <p key={b.currency} className="mt-2 text-2xl font-bold tabular-nums text-foreground">
-                      {(b.amount / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {b.currency.toUpperCase()}
+                      {b.currency.toLowerCase() === "pln"
+                        ? formatPlnFromCents(b.amount)
+                        : `${(b.amount / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${b.currency.toUpperCase()}`}
                     </p>
                   ))
                 )}
@@ -145,7 +138,7 @@ export default async function FinancePage() {
                     type="submit"
                     className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                   >
-                    Wypłać {(plnAvailable.amount / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                    Wypłać {formatPlnFromCents(plnAvailable.amount)}
                   </button>
                 </form>
               );
@@ -172,7 +165,9 @@ export default async function FinancePage() {
                             {p.id}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums font-medium">
-                            {(p.amount / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {p.currency.toUpperCase()}
+                            {p.currency.toLowerCase() === "pln"
+                              ? formatPlnFromCents(p.amount)
+                              : `${(p.amount / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${p.currency.toUpperCase()}`}
                           </td>
                           <td className="px-4 py-3 capitalize text-muted-foreground">{p.status}</td>
                           <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
@@ -207,7 +202,7 @@ export default async function FinancePage() {
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="Łączny przychód"
-          value={formatPln(summary.totalRevenueCents)}
+          value={formatPlnFromCents(summary.totalRevenueCents)}
           hint={`${summary.paidCount} ${summary.paidCount === 1 ? "płatność" : "płatności"}`}
           accent
         />
@@ -218,7 +213,7 @@ export default async function FinancePage() {
         />
         <StatCard
           label="Zwroty"
-          value={summary.refundedCount > 0 ? formatPln(summary.refundedCents) : "—"}
+          value={summary.refundedCount > 0 ? formatPlnFromCents(summary.refundedCents) : "—"}
           hint={
             summary.refundedCount > 0
               ? `${summary.refundedCount} ${summary.refundedCount === 1 ? "zwrot" : "zwroty"}`
@@ -266,7 +261,7 @@ export default async function FinancePage() {
                         {e.paidCount}/{e.capacity}
                       </td>
                       <td className="px-4 py-3 text-right font-medium tabular-nums">
-                        {formatPlnDetailed(e.revenueCents)}
+                        {formatPlnFromCents(e.revenueCents)}
                       </td>
                     </tr>
                   ))}
@@ -315,7 +310,7 @@ export default async function FinancePage() {
                           </Link>
                         </td>
                         <td className="px-4 py-3 text-right font-medium tabular-nums">
-                          {formatPlnDetailed(p.amountCents)}
+                          {formatPlnFromCents(p.amountCents)}
                         </td>
                       </tr>
                     ))}

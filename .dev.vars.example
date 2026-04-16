@@ -1,8 +1,21 @@
 # Copy to .dev.vars and fill in values for local `wrangler dev`
+
+# Clerk
 CLERK_SECRET_KEY=sk_test_replace
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_replace
+
+# Stripe
 STRIPE_SECRET_KEY=sk_test_replace
 STRIPE_WEBHOOK_SECRET=whsec_replace
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_replace
+STRIPE_CONNECT_WEBHOOK_SECRET=whsec_replace
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_replace
+
+# Participant auth (generate with: openssl rand -hex 32)
+PARTICIPANT_AUTH_SECRET=replace-with-random-64-hex-chars
+
+# Email (Resend)
+RESEND_API_KEY=re_replace
+
+# Misc
 NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
 CRON_SECRET=replace-with-random-32-chars

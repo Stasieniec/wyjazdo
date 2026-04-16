@@ -1,6 +1,8 @@
 # wyjazdo.pl MVP Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+**Status: COMPLETED** — 2026-04-15
+
+> **For agentic workers:** This plan has been fully implemented. No further work needed.
 
 **Goal:** Build the MVP of wyjazdo.pl — a multi-tenant platform for Polish trip/retreat/workshop organizers covering profile creation, event publishing, participant signup, Stripe payment, waitlist, and a dashboard with CSV export.
 

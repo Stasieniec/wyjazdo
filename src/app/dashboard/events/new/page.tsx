@@ -12,11 +12,15 @@ export default function NewEventPage() {
   );
 
   return (
-    <div className="max-w-xl">
-      <h1 className="text-2xl font-semibold">Nowe wydarzenie</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Uzupełnij podstawowe informacje. Wydarzenie utworzy się jako szkic — możesz je
-        opublikować później.
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+        Krok 1 z 2: Detale
+      </p>
+      <h1 className="mt-1 text-2xl font-semibold">Nowe wydarzenie</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Uzupełnij podstawowe informacje. Po kliknięciu <em>Kontynuuj</em> przejdziesz do
+        edycji — tam dodasz pytania do uczestników i opublikujesz wydarzenie, gdy będzie
+        gotowe. Na razie widzisz tylko Ty (szkic).
       </p>
       <Card className="mt-6">
         <form action={formAction} className="space-y-4">
@@ -42,11 +46,19 @@ export default function NewEventPage() {
           <EventDateTimeRange
             error={state?.errors?.startsAt ?? state?.errors?.endsAt}
           />
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Cena całkowita</span> to kwota,
+              którą uczestnik zapłaci łącznie za udział.{" "}
+              <span className="font-medium text-foreground">Zaliczka</span> to pierwsza część
+              tej kwoty (płatna przy zapisie), a nie dodatkowa opłata obok ceny.
+            </p>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               type="number"
               name="price"
-              label="Cena (PLN)"
+              label="Cena całkowita (PLN)"
               step="0.01"
               min="0"
               required
@@ -66,24 +78,24 @@ export default function NewEventPage() {
               <Input
                 type="number"
                 name="deposit"
-                label="Zaliczka (zł) — opcjonalnie"
+                label="Zaliczka przy zapisie (PLN) — opcjonalnie"
                 step="0.01"
                 min="0"
                 error={state?.errors?.depositCents}
               />
               <p className="text-xs text-muted-foreground">
-                Jeśli zostawisz puste, wymagana będzie pełna płatność przy rejestracji.
+                Część ceny całkowitej płatna od razu. Puste = cała kwota przy rejestracji.
               </p>
             </div>
             <div className="space-y-1">
               <Input
                 type="datetime-local"
                 name="balanceDueAt"
-                label="Termin dopłaty — opcjonalnie"
+                label="Termin dopłaty reszty — opcjonalnie"
                 error={state?.errors?.balanceDueAt}
               />
               <p className="text-xs text-muted-foreground">
-                Wymagane, gdy zaliczka jest niższa niż cena.
+                Gdy zaliczka jest niższa niż cena całkowita — kiedy ma być dopłata reszty.
               </p>
             </div>
           </div>
@@ -100,7 +112,7 @@ export default function NewEventPage() {
             </p>
           )}
 
-          <SubmitButton>Utwórz jako szkic</SubmitButton>
+          <SubmitButton>Kontynuuj</SubmitButton>
         </form>
       </Card>
     </div>

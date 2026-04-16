@@ -160,6 +160,9 @@ export default async function EventEditPage({
         <div className="mt-6">
           <EventEditForm
             eventId={id}
+            showCreationStep2={
+              event.status === "draft" && event.createdAt === event.updatedAt
+            }
             event={{
               title: event.title,
               description: event.description,
