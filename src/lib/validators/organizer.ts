@@ -16,12 +16,12 @@ export const organizerProfileSchema = z.object({
   displayName: z.string().min(1).max(100),
   description: z.string().max(2000).optional(),
   acceptTerms: z.literal(true, {
-    errorMap: () => ({ message: "Akceptacja regulaminu jest wymagana." }),
+    message: "Akceptacja regulaminu jest wymagana.",
   }),
   acceptPrivacy: z.literal(true, {
-    errorMap: () => ({ message: "Zapoznanie się z polityką prywatności jest wymagane." }),
+    message: "Zapoznanie się z polityką prywatności jest wymagane.",
   }),
   acceptDpa: z.literal(true, {
-    errorMap: () => ({ message: "Akceptacja umowy powierzenia danych jest wymagana." }),
+    message: "Akceptacja umowy powierzenia danych jest wymagana.",
   }),
 });
