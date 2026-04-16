@@ -20,6 +20,8 @@ export const organizers = sqliteTable(
     stripeAccountSyncedAt: integer("stripe_account_synced_at"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
+    termsAcceptedAt: integer("terms_accepted_at"),
+    dpaAcceptedAt: integer("dpa_accepted_at"),
   },
   (t) => ({
     stripeAccountUniq: uniqueIndex("organizers_stripe_account_uniq").on(t.stripeAccountId),
@@ -47,6 +49,7 @@ export const events = sqliteTable(
     customQuestions: text("custom_questions"),
     depositCents: integer("deposit_cents"),
     balanceDueAt: integer("balance_due_at"),
+    consentConfig: text("consent_config"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
@@ -105,6 +108,65 @@ export const payments = sqliteTable(
   }),
 );
 
+export const legalDocuments = sqliteTable("legal_documents", {
+  id: text("id").primaryKey(),
+  type: text("type", {
+    enum: [
+      "regulamin",
+      "privacy_policy",
+      "organizer_terms",
+      "dpa",
+      "cookie_policy",
+    ],
+  }).notNull(),
+  version: integer("version").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  effectiveAt: integer("effective_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+
+export const organizerConsents = sqliteTable(
+  "organizer_consents",
+  {
+    id: text("id").primaryKey(),
+    organizerId: text("organizer_id")
+      .notNull()
+      .references(() => organizers.id),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => legalDocuments.id),
+    acceptedAt: integer("accepted_at").notNull(),
+    ipAddress: text("ip_address"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => ({
+    organizerIdx: index("organizer_consents_organizer_idx").on(t.organizerId),
+  }),
+);
+
+export const participantConsents = sqliteTable(
+  "participant_consents",
+  {
+    id: text("id").primaryKey(),
+    participantId: text("participant_id")
+      .notNull()
+      .references(() => participants.id),
+    consentKey: text("consent_key").notNull(),
+    consentLabel: text("consent_label").notNull(),
+    accepted: integer("accepted").notNull(),
+    documentId: text("document_id"),
+    acceptedAt: integer("accepted_at").notNull(),
+    ipAddress: text("ip_address"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => ({
+    participantIdx: index("participant_consents_participant_idx").on(
+      t.participantId,
+    ),
+  }),
+);
+
 export type Organizer = typeof organizers.$inferSelect;
 export type NewOrganizer = typeof organizers.$inferInsert;
 export type Event = typeof events.$inferSelect;
@@ -113,3 +175,9 @@ export type Participant = typeof participants.$inferSelect;
 export type NewParticipant = typeof participants.$inferInsert;
 export type Payment = typeof payments.$inferSelect;
 export type NewPayment = typeof payments.$inferInsert;
+export type LegalDocument = typeof legalDocuments.$inferSelect;
+export type NewLegalDocument = typeof legalDocuments.$inferInsert;
+export type OrganizerConsent = typeof organizerConsents.$inferSelect;
+export type NewOrganizerConsent = typeof organizerConsents.$inferInsert;
+export type ParticipantConsent = typeof participantConsents.$inferSelect;
+export type NewParticipantConsent = typeof participantConsents.$inferInsert;
