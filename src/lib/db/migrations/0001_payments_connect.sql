@@ -34,14 +34,14 @@ CREATE UNIQUE INDEX `organizers_stripe_account_uniq` ON `organizers` (`stripe_ac
 ALTER TABLE `events` ADD COLUMN `deposit_cents` integer;--> statement-breakpoint
 ALTER TABLE `events` ADD COLUMN `balance_due_at` integer;--> statement-breakpoint
 
+DROP INDEX IF EXISTS `participants_event_status_idx`;--> statement-breakpoint
+DROP INDEX IF EXISTS `participants_stripe_session_idx`;--> statement-breakpoint
 ALTER TABLE `participants` RENAME COLUMN `status` TO `lifecycle_status`;--> statement-breakpoint
 ALTER TABLE `participants` DROP COLUMN `expires_at`;--> statement-breakpoint
 ALTER TABLE `participants` DROP COLUMN `stripe_session_id`;--> statement-breakpoint
 ALTER TABLE `participants` DROP COLUMN `stripe_payment_intent_id`;--> statement-breakpoint
 ALTER TABLE `participants` DROP COLUMN `amount_paid_cents`;--> statement-breakpoint
 ALTER TABLE `participants` DROP COLUMN `paid_at`;--> statement-breakpoint
-DROP INDEX IF EXISTS `participants_event_status_idx`;--> statement-breakpoint
-DROP INDEX IF EXISTS `participants_stripe_session_idx`;--> statement-breakpoint
 CREATE INDEX `participants_event_lifecycle_idx` ON `participants` (`event_id`,`lifecycle_status`);--> statement-breakpoint
 
 -- Any existing rows in dev: collapse to the new value set.
