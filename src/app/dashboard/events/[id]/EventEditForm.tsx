@@ -18,6 +18,8 @@ type Props = {
     priceCents: number;
     capacity: number;
     coverUrl: string | null;
+    depositCents: number | null;
+    balanceDueAt: number | null;
   };
   initialQuestions: CustomQuestion[];
 };
@@ -80,6 +82,42 @@ export function EventEditForm({ eventId, event, initialQuestions }: Props) {
             required
             error={state?.errors?.capacity}
           />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Input
+              type="number"
+              name="deposit"
+              label="Zaliczka (zł) — opcjonalnie"
+              step="0.01"
+              min="0"
+              defaultValue={
+                event.depositCents != null ? event.depositCents / 100 : undefined
+              }
+              error={state?.errors?.depositCents}
+            />
+            <p className="text-xs text-muted-foreground">
+              Jeśli zostawisz puste, wymagana będzie pełna płatność przy rejestracji.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Input
+              type="datetime-local"
+              name="balanceDueAt"
+              label="Termin dopłaty — opcjonalnie"
+              defaultValue={
+                event.balanceDueAt != null
+                  ? new Date(event.balanceDueAt - new Date(event.balanceDueAt).getTimezoneOffset() * 60_000)
+                      .toISOString()
+                      .slice(0, 16)
+                  : undefined
+              }
+              error={state?.errors?.balanceDueAt}
+            />
+            <p className="text-xs text-muted-foreground">
+              Wymagane, gdy zaliczka jest niższa niż cena.
+            </p>
+          </div>
         </div>
       </Section>
 

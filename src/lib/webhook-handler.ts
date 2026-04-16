@@ -1,48 +1,74 @@
 import type Stripe from "stripe";
 
 export type WebhookDeps = {
-  /**
-   * Implementation should be idempotent (safe to call on webhook retries).
-   * Return value is unused by the orchestrator but available for the caller
-   * to gate side effects (email sends, analytics, etc.) on the first transition.
-   */
-  markPaid(params: {
-    participantId: string;
-    paymentIntentId: string;
+  markPaymentSucceeded(params: {
+    paymentId: string;
+    stripePaymentIntentId: string;
     amountCents: number;
+    applicationFeeCents: number | null;
     paidAt: number;
-  }): Promise<unknown>;
-  cancel(participantId: string): Promise<void>;
+  }): Promise<boolean>;
+  markPaymentExpired(paymentId: string): Promise<void>;
+  markPaymentFailed(paymentId: string): Promise<void>;
+  markPaymentRefunded(paymentIntentId: string): Promise<void>;
+  syncOrganizerFromAccount(params: {
+    accountId: string;
+    onboardingComplete: boolean;
+    payoutsEnabled: boolean;
+  }): Promise<void>;
   now(): number;
 };
+
+function paymentIdFromMetadata(meta: Stripe.Metadata | null | undefined): string | null {
+  if (!meta) return null;
+  const v = meta.payment_id;
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
 
 export async function handleStripeEvent(event: Stripe.Event, deps: WebhookDeps): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed": {
       const s = event.data.object as Stripe.Checkout.Session;
-      const pid = s.metadata?.participant_id;
-      if (!pid) return;
-      await deps.markPaid({
-        participantId: pid,
-        paymentIntentId:
-          typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id ?? "",
+      const paymentId = paymentIdFromMetadata(s.metadata);
+      if (!paymentId) return;
+      const pi = typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id ?? "";
+      await deps.markPaymentSucceeded({
+        paymentId,
+        stripePaymentIntentId: pi,
         amountCents: s.amount_total ?? 0,
+        applicationFeeCents: null,
         paidAt: deps.now(),
       });
       return;
     }
     case "checkout.session.expired": {
       const s = event.data.object as Stripe.Checkout.Session;
-      const pid = s.metadata?.participant_id;
-      if (!pid) return;
-      await deps.cancel(pid);
+      const paymentId = paymentIdFromMetadata(s.metadata);
+      if (!paymentId) return;
+      await deps.markPaymentExpired(paymentId);
       return;
     }
     case "payment_intent.payment_failed": {
       const pi = event.data.object as Stripe.PaymentIntent;
-      const pid = pi.metadata?.participant_id;
-      if (!pid) return;
-      await deps.cancel(pid);
+      const paymentId = paymentIdFromMetadata(pi.metadata);
+      if (!paymentId) return;
+      await deps.markPaymentFailed(paymentId);
+      return;
+    }
+    case "charge.refunded": {
+      const ch = event.data.object as Stripe.Charge;
+      const pi = typeof ch.payment_intent === "string" ? ch.payment_intent : ch.payment_intent?.id;
+      if (!pi) return;
+      await deps.markPaymentRefunded(pi);
+      return;
+    }
+    case "account.updated": {
+      const a = event.data.object as Stripe.Account;
+      await deps.syncOrganizerFromAccount({
+        accountId: a.id,
+        onboardingComplete: Boolean(a.details_submitted) && Boolean(a.charges_enabled),
+        payoutsEnabled: Boolean(a.payouts_enabled),
+      });
       return;
     }
     default:

@@ -6,11 +6,24 @@ import handler from "./.open-next/worker.js";
 export default {
   fetch: handler.fetch,
   async scheduled(
-    _controller: ScheduledController,
+    controller: ScheduledController,
     env: CloudflareEnv,
-    _ctx: ExecutionContext,
+    ctx: ExecutionContext,
   ) {
-    // Call our own cleanup endpoint, authenticated with CRON_SECRET.
+    if (controller.cron === "0 8 * * *") {
+      // Nightly balance-reminder emails.
+      ctx.waitUntil((async () => {
+        try {
+          const { runBalanceReminders } = await import("./src/lib/cron/balance-reminders");
+          await runBalanceReminders();
+        } catch (err) {
+          console.error("balance reminders cron failed", err);
+        }
+      })());
+      return;
+    }
+
+    // Default: call our own cleanup endpoint, authenticated with CRON_SECRET.
     const res = await fetch(
       `https://${env.NEXT_PUBLIC_ROOT_DOMAIN}/api/cron/cleanup-pending`,
       {

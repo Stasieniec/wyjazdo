@@ -129,3 +129,82 @@ export function newRegistrationHtml(params: {
     ${button(params.dashboardUrl, "Otwórz panel")}
   `);
 }
+
+// ─── Payment Confirmed ──────────────────────────────────────────────────────
+
+export function paymentConfirmedSubject(eventTitle: string, kind: "full" | "deposit" | "balance") {
+  switch (kind) {
+    case "deposit":
+      return `Potwierdzenie zaliczki — ${eventTitle}`;
+    case "balance":
+      return `Potwierdzenie pełnej płatności — ${eventTitle}`;
+    case "full":
+    default:
+      return `Potwierdzenie płatności — ${eventTitle}`;
+  }
+}
+
+// ─── Magic Link ────────────────────────────────────────────────────────────
+
+export function magicLinkSubject() {
+  return "Twój link do wyjazdo.pl";
+}
+
+export function magicLinkHtml(params: { link: string }) {
+  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <p>Kliknij, aby zobaczyć swoje wyjazdy:</p>
+    <p><a href="${params.link}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Otwórz wyjazdo.pl</a></p>
+    <p style="color: #555; font-size: 13px; margin-top: 24px;">Link wygaśnie za 15 minut. Jeśli nie prosiłeś/aś o ten link, zignoruj wiadomość.</p>
+  </div>`;
+}
+
+export function balanceReminderSubject(eventTitle: string) {
+  return `Przypomnienie o dopłacie — ${eventTitle}`;
+}
+
+export function balanceReminderHtml(params: {
+  participantName: string;
+  eventTitle: string;
+  amountPln: string;
+  dueDate: string;
+  payUrl: string;
+  organizerName: string;
+}) {
+  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <p>Cześć ${params.participantName},</p>
+    <p>Do opłacenia pozostało <strong>${params.amountPln} zł</strong> za <strong>${params.eventTitle}</strong>.</p>
+    <p>Termin dopłaty: ${params.dueDate}.</p>
+    <p><a href="${params.payUrl}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Opłać teraz</a></p>
+    <p style="color: #555; margin-top: 32px;">— ${params.organizerName}</p>
+  </div>`;
+}
+
+export function paymentConfirmedHtml(params: {
+  participantName: string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string | null;
+  eventUrl: string;
+  organizerName: string;
+  paymentKind: "full" | "deposit" | "balance";
+  amountCents: number;
+}) {
+  const amount = (params.amountCents / 100).toFixed(2);
+  const locationLine = params.eventLocation ? `<p>Miejsce: ${params.eventLocation}</p>` : "";
+  const kindLabel =
+    params.paymentKind === "deposit"
+      ? "zaliczkę"
+      : params.paymentKind === "balance"
+        ? "dopłatę"
+        : "płatność";
+
+  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #111;">Dziękujemy za ${kindLabel}!</h2>
+    <p>Cześć ${params.participantName},</p>
+    <p>Otrzymaliśmy Twoją ${kindLabel} w wysokości <strong>${amount} zł</strong> za <strong>${params.eventTitle}</strong>.</p>
+    <p>Data: ${params.eventDate}</p>
+    ${locationLine}
+    <p><a href="${params.eventUrl}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Zobacz wydarzenie</a></p>
+    <p style="color: #555; margin-top: 32px;">— ${params.organizerName}</p>
+  </div>`;
+}

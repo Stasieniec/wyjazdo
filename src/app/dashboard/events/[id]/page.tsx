@@ -40,6 +40,8 @@ export default async function EventEditPage({
   const publishBound = changeStatusAction.bind(null, id, "published");
   const unpublishBound = changeStatusAction.bind(null, id, "draft");
   const archiveBound = changeStatusAction.bind(null, id, "archived");
+  const stripeReady =
+    organizer.stripeOnboardingComplete === 1 && organizer.stripePayoutsEnabled === 1;
 
   const previewUrl = publicEventUrl(organizer.subdomain, event.slug);
   const editHref = `/dashboard/events/${id}`;
@@ -76,11 +78,30 @@ export default async function EventEditPage({
               </form>
             </>
           ) : (
-            <form action={publishBound}>
-              <SubmitButton variant="accent" size="sm">
-                Opublikuj
-              </SubmitButton>
-            </form>
+            <>
+              <form action={publishBound}>
+                <SubmitButton
+                  variant="accent"
+                  size="sm"
+                  disabled={!stripeReady}
+                  title={
+                    !stripeReady
+                      ? "Dokończ konfigurację Stripe, aby opublikować wydarzenie"
+                      : undefined
+                  }
+                >
+                  Opublikuj
+                </SubmitButton>
+              </form>
+              {!stripeReady && (
+                <Link
+                  href="/dashboard/onboarding/payouts"
+                  className="text-xs text-yellow-700 underline"
+                >
+                  Dokończ konfigurację Stripe
+                </Link>
+              )}
+            </>
           )}
           {event.status !== "archived" && (
             <form action={archiveBound}>
@@ -148,6 +169,8 @@ export default async function EventEditPage({
               priceCents: event.priceCents,
               capacity: event.capacity,
               coverUrl: event.coverUrl,
+              depositCents: event.depositCents ?? null,
+              balanceDueAt: event.balanceDueAt ?? null,
             }}
             initialQuestions={questions}
           />
@@ -193,14 +216,28 @@ async function ParticipantsSection({
   statusFilter: ReturnType<typeof parseParticipantFilterStatus>;
 }) {
   const { listParticipantsForEvent } = await import("@/lib/db/queries/participants");
+  const { listPaymentsForParticipants } = await import("@/lib/db/queries/payments");
+  const { derivedStatus } = await import("@/lib/participant-status");
   const all = await listParticipantsForEvent(eventId);
+  const allPayments = await listPaymentsForParticipants(all.map((p) => p.id));
+  const now = Date.now();
 
-  const active = all.filter((p) => p.status !== "waitlisted");
+  const paymentsByParticipant = new Map<string, typeof allPayments>();
+  for (const pay of allPayments) {
+    const list = paymentsByParticipant.get(pay.participantId) ?? [];
+    list.push(pay);
+    paymentsByParticipant.set(pay.participantId, list);
+  }
+
+  const active = all.filter((p) => p.lifecycleStatus !== "waitlisted");
   const filtered =
     statusFilter === "all"
       ? active
-      : active.filter((p) => p.status === statusFilter);
-  const waitlist = all.filter((p) => p.status === "waitlisted");
+      : active.filter((p) => {
+          const ds = derivedStatus(p, paymentsByParticipant.get(p.id) ?? [], now);
+          return ds === statusFilter;
+        });
+  const waitlist = all.filter((p) => p.lifecycleStatus === "waitlisted");
 
   if (all.length === 0) {
     return (
@@ -219,6 +256,7 @@ async function ParticipantsSection({
       </Suspense>
       <ParticipantsTable
         participants={filtered}
+        payments={allPayments}
         questions={questions}
         emptyMessage={statusFilter === "all" ? undefined : "Brak zgłoszeń w tej kategorii."}
       />
@@ -227,7 +265,7 @@ async function ParticipantsSection({
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Lista rezerwowa ({waitlist.length})
           </h3>
-          <ParticipantsTable participants={waitlist} questions={questions} />
+          <ParticipantsTable participants={waitlist} payments={allPayments} questions={questions} />
         </>
       )}
     </div>

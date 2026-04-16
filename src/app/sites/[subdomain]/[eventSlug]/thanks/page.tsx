@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { getParticipantById } from "@/lib/db/queries/participants";
+import { listPaymentsForParticipant } from "@/lib/db/queries/payments";
+import { derivedStatus } from "@/lib/participant-status";
 import { Card, SubmitButton } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -90,7 +92,12 @@ export default async function ThanksPage({
   }
 
   const participant = pid ? await getParticipantById(pid) : null;
-  const status = participant?.status ?? "unknown";
+  const participantPayments = participant
+    ? await listPaymentsForParticipant(participant.id)
+    : [];
+  const status = participant
+    ? derivedStatus(participant, participantPayments, Date.now())
+    : "cancelled";
 
   return (
     <main className="mx-auto max-w-xl px-6 py-16 text-center" style={cssVars}>

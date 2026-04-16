@@ -6,6 +6,9 @@ import { z } from "zod";
 import { eventBaseSchema, customQuestionSchema } from "@/lib/validators/event";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
+import { getEventById } from "@/lib/db/queries/events";
+import { getPaymentById, setBalanceDueAtForPayment } from "@/lib/db/queries/payments";
+import { getParticipantById, cancelParticipant } from "@/lib/db/queries/participants";
 import { zodIssuesToRecord } from "@/lib/zod-errors";
 
 export type SaveEventFormState = { errors?: Record<string, string> } | null;
@@ -38,6 +41,17 @@ export async function saveEventAction(
     };
   }
 
+  const depositRaw = formData.get("deposit") as string;
+  const balanceDueAtRaw = formData.get("balanceDueAt") as string;
+  const depositCents =
+    depositRaw && depositRaw.trim() !== ""
+      ? Math.round(Number(depositRaw) * 100)
+      : null;
+  const balanceDueAt =
+    balanceDueAtRaw && balanceDueAtRaw.trim() !== ""
+      ? new Date(balanceDueAtRaw).getTime()
+      : null;
+
   const raw = {
     slug: existing.slug,
     title: String(formData.get("title") ?? ""),
@@ -50,6 +64,8 @@ export async function saveEventAction(
     capacity: Number(formData.get("capacity") ?? 0),
     coverUrl: (formData.get("coverUrl") as string) || undefined,
     customQuestions: questionsParsed.data,
+    depositCents,
+    balanceDueAt,
   };
   const parsed = eventBaseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -79,6 +95,8 @@ export async function saveEventAction(
     capacity: parsed.data.capacity,
     coverUrl: parsed.data.coverUrl || null,
     customQuestions: JSON.stringify(parsed.data.customQuestions),
+    depositCents: parsed.data.depositCents ?? null,
+    balanceDueAt: parsed.data.balanceDueAt ?? null,
   });
 
   revalidatePath(`/dashboard/events/${eventId}`);
@@ -94,6 +112,50 @@ export async function changeStatusAction(eventId: string, status: string) {
   if (!organizer) throw new Error("No organizer");
   const parsed = statusSchema.safeParse(status);
   if (!parsed.success) throw new Error("Invalid status");
+  if (parsed.data === "published") {
+    if (organizer.stripeOnboardingComplete !== 1 || organizer.stripePayoutsEnabled !== 1) {
+      throw new Error("Publikacja wymaga ukończenia konfiguracji Stripe.");
+    }
+  }
   await updateEvent(organizer.id, eventId, { status: parsed.data });
   revalidatePath(`/dashboard/events/${eventId}`);
+}
+
+export async function extendBalanceDeadlineAction(form: FormData): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("no organizer");
+
+  const paymentId = String(form.get("paymentId") ?? "");
+  const newDueStr = String(form.get("dueAt") ?? "");
+  if (!paymentId || !newDueStr) throw new Error("missing fields");
+  const newDue = new Date(newDueStr).getTime();
+  if (!Number.isFinite(newDue) || newDue <= Date.now()) throw new Error("invalid date");
+
+  const payment = await getPaymentById(paymentId);
+  if (!payment || payment.kind !== "balance") throw new Error("invalid payment");
+  const participant = await getParticipantById(payment.participantId);
+  if (!participant) throw new Error("no participant");
+  const event = await getEventById(participant.eventId);
+  if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
+
+  await setBalanceDueAtForPayment(paymentId, newDue);
+  revalidatePath(`/dashboard/events/${event.id}`);
+}
+
+export async function cancelAndFreeSpotAction(form: FormData): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("no organizer");
+
+  const participantId = String(form.get("participantId") ?? "");
+  const participant = await getParticipantById(participantId);
+  if (!participant) throw new Error("no participant");
+  const event = await getEventById(participant.eventId);
+  if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
+
+  await cancelParticipant(participantId);
+  revalidatePath(`/dashboard/events/${event.id}`);
 }

@@ -19,6 +19,17 @@ export async function createEventAction(
   const organizer = await getOrganizerByClerkUserId(userId);
   if (!organizer) throw new Error("No organizer");
 
+  const depositRaw = formData.get("deposit") as string;
+  const balanceDueAtRaw = formData.get("balanceDueAt") as string;
+  const depositCents =
+    depositRaw && depositRaw.trim() !== ""
+      ? Math.round(Number(depositRaw) * 100)
+      : null;
+  const balanceDueAt =
+    balanceDueAtRaw && balanceDueAtRaw.trim() !== ""
+      ? new Date(balanceDueAtRaw).getTime()
+      : null;
+
   const raw = {
     slug: String(formData.get("slug") ?? "").toLowerCase(),
     title: String(formData.get("title") ?? ""),
@@ -31,6 +42,8 @@ export async function createEventAction(
     capacity: Number(formData.get("capacity") ?? 0),
     coverUrl: (formData.get("coverUrl") as string) || undefined,
     customQuestions: [],
+    depositCents,
+    balanceDueAt,
   };
 
   const parsed = eventBaseSchema.safeParse(raw);
@@ -71,6 +84,8 @@ export async function createEventAction(
     coverUrl: parsed.data.coverUrl || null,
     status: "draft",
     customQuestions: JSON.stringify([]),
+    depositCents: parsed.data.depositCents ?? null,
+    balanceDueAt: parsed.data.balanceDueAt ?? null,
     createdAt: now,
     updatedAt: now,
   });

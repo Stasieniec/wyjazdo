@@ -1,14 +1,21 @@
-import type { Participant } from "@/lib/db/schema";
+"use client";
+
+import type { Participant, Payment } from "@/lib/db/schema";
+import { derivedStatus, type DerivedStatus } from "@/lib/participant-status";
 import type { CustomQuestion } from "@/lib/validators/event";
+import { extendBalanceDeadlineAction, cancelAndFreeSpotAction } from "@/app/dashboard/events/[id]/actions";
 
 export default function ParticipantsTable({
   participants,
+  payments,
   questions,
   emptyMessage,
 }: {
   participants: Participant[];
+  /** All payments for ALL participants passed in, keyed implicitly by participantId. */
+  payments: Payment[];
   questions: CustomQuestion[];
-  /** When set (e.g. filtered list), shown instead of the default “Brak zgłoszeń.” */
+  /** When set (e.g. filtered list), shown instead of the default "Brak zgłoszeń." */
   emptyMessage?: string;
 }) {
   if (participants.length === 0) {
@@ -16,6 +23,15 @@ export default function ParticipantsTable({
       <p className="mt-4 text-muted-foreground">{emptyMessage ?? "Brak zgłoszeń."}</p>
     );
   }
+
+  const now = Date.now();
+  const paymentsByParticipant = new Map<string, Payment[]>();
+  for (const pay of payments) {
+    const list = paymentsByParticipant.get(pay.participantId) ?? [];
+    list.push(pay);
+    paymentsByParticipant.set(pay.participantId, list);
+  }
+
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full text-sm">
@@ -30,6 +46,7 @@ export default function ParticipantsTable({
               <th key={q.id} scope="col" className="py-2 pr-4">{q.label}</th>
             ))}
             <th scope="col" className="py-2 pr-4">Data zapisu</th>
+            <th scope="col" className="py-2 pr-4">Akcje</th>
           </tr>
         </thead>
         <tbody>
@@ -37,18 +54,25 @@ export default function ParticipantsTable({
             const answers: Record<string, string> = p.customAnswers
               ? JSON.parse(p.customAnswers)
               : {};
+            const participantPayments = paymentsByParticipant.get(p.id) ?? [];
+            const ds = derivedStatus(p, participantPayments, now);
+            const totalPaidCents = participantPayments
+              .filter((pay) => pay.status === "succeeded")
+              .reduce((sum, pay) => sum + pay.amountCents, 0);
+            const balancePayment = participantPayments.find((pay) => pay.kind === "balance");
+
             return (
               <tr key={p.id} className="border-b border-border last:border-0">
                 <td className="py-2 pr-4">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${statusColor(p.status)}`}>
-                    {p.status}
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${statusColor(ds)}`}>
+                    {ds}
                   </span>
                 </td>
                 <td className="py-2 pr-4">{p.firstName} {p.lastName}</td>
                 <td className="py-2 pr-4">{p.email}</td>
                 <td className="py-2 pr-4">{p.phone ?? "—"}</td>
                 <td className="py-2 pr-4">
-                  {p.amountPaidCents != null ? (p.amountPaidCents / 100).toFixed(2) + " PLN" : "—"}
+                  {totalPaidCents > 0 ? (totalPaidCents / 100).toFixed(2) + " PLN" : "—"}
                 </td>
                 {questions.map((q) => (
                   <td key={q.id} className="py-2 pr-4 max-w-[16rem] truncate">
@@ -57,6 +81,43 @@ export default function ParticipantsTable({
                 ))}
                 <td className="py-2 pr-4">
                   {new Date(p.createdAt).toLocaleString("pl-PL")}
+                </td>
+                <td className="py-2 pr-4">
+                  {ds === "overdue" && balancePayment && (
+                    <div className="flex flex-col gap-2">
+                      <form action={extendBalanceDeadlineAction} className="flex items-center gap-1">
+                        <input type="hidden" name="paymentId" value={balancePayment.id} />
+                        <input
+                          type="datetime-local"
+                          name="dueAt"
+                          required
+                          className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-muted"
+                        >
+                          Przedłuż termin
+                        </button>
+                      </form>
+                      <form
+                        action={cancelAndFreeSpotAction}
+                        onSubmit={(e) => {
+                          if (!window.confirm(`Anulować uczestnika ${p.firstName} ${p.lastName} i zwolnić miejsce?`)) {
+                            e.preventDefault();
+                          }
+                        }}
+                      >
+                        <input type="hidden" name="participantId" value={p.id} />
+                        <button
+                          type="submit"
+                          className="rounded border border-destructive/40 bg-background px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10"
+                        >
+                          Anuluj i zwolnij miejsce
+                        </button>
+                      </form>
+                    </div>
+                  )}
                 </td>
               </tr>
             );
@@ -67,9 +128,11 @@ export default function ParticipantsTable({
   );
 }
 
-function statusColor(status: string): string {
+function statusColor(status: DerivedStatus): string {
   switch (status) {
     case "paid": return "bg-green-100 text-green-800";
+    case "deposit_paid": return "bg-emerald-100 text-emerald-700";
+    case "overdue": return "bg-orange-100 text-orange-800";
     case "pending": return "bg-yellow-100 text-yellow-800";
     case "waitlisted": return "bg-blue-100 text-blue-800";
     case "cancelled": return "bg-neutral-100 text-neutral-600";

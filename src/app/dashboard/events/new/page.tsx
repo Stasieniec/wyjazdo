@@ -61,6 +61,32 @@ export default function NewEventPage() {
               error={state?.errors?.capacity}
             />
           </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Input
+                type="number"
+                name="deposit"
+                label="Zaliczka (zł) — opcjonalnie"
+                step="0.01"
+                min="0"
+                error={state?.errors?.depositCents}
+              />
+              <p className="text-xs text-muted-foreground">
+                Jeśli zostawisz puste, wymagana będzie pełna płatność przy rejestracji.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Input
+                type="datetime-local"
+                name="balanceDueAt"
+                label="Termin dopłaty — opcjonalnie"
+                error={state?.errors?.balanceDueAt}
+              />
+              <p className="text-xs text-muted-foreground">
+                Wymagane, gdy zaliczka jest niższa niż cena.
+              </p>
+            </div>
+          </div>
           <ImageUpload
             name="coverUrl"
             label="Zdjęcie okładki (opcjonalnie)"

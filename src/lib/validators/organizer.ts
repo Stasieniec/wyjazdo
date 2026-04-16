@@ -8,7 +8,7 @@ export const subdomainSchema = z
 
 export const RESERVED_SUBDOMAINS = new Set([
   "www", "app", "api", "dashboard", "admin", "assets", "static",
-  "help", "support", "mail", "blog",
+  "help", "support", "mail", "blog", "my-trips",
 ]);
 
 export const organizerProfileSchema = z.object({
