@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import type { Metadata } from "next";
 import { getLatestDocument } from "@/lib/db/queries/legal";
 import { markdownToHtml } from "@/lib/legal/markdown-to-html";

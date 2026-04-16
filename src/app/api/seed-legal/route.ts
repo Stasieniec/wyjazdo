@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { seedLegalDocuments } from "@/lib/legal/seed-documents";
 import { NextResponse } from "next/server";
 
