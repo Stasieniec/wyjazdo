@@ -241,13 +241,13 @@ export default function ParticipantsTable({
 
 function statusColor(status: DerivedStatus): string {
   switch (status) {
-    case "paid": return "bg-green-100 text-green-800";
-    case "deposit_paid": return "bg-emerald-100 text-emerald-700";
-    case "overdue": return "bg-orange-100 text-orange-800";
-    case "pending": return "bg-yellow-100 text-yellow-800";
-    case "waitlisted": return "bg-blue-100 text-blue-800";
-    case "cancelled": return "bg-neutral-100 text-neutral-600";
-    case "refunded": return "bg-purple-100 text-purple-800";
-    default: return "bg-neutral-100 text-neutral-600";
+    case "paid": return "bg-success/10 text-success";
+    case "deposit_paid": return "bg-success/10 text-success";
+    case "overdue": return "bg-amber-50 text-amber-700";
+    case "pending": return "bg-amber-50 text-amber-700";
+    case "waitlisted": return "bg-primary/10 text-primary";
+    case "cancelled": return "bg-muted text-muted-foreground";
+    case "refunded": return "bg-destructive/10 text-destructive";
+    default: return "bg-muted text-muted-foreground";
   }
 }
