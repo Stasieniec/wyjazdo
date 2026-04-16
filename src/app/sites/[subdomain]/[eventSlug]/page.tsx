@@ -200,7 +200,7 @@ function InfoCard({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-muted/50 p-3">
+    <div className="rounded-xl border border-border bg-muted/50 p-3 shadow-sm">
       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </dt>
