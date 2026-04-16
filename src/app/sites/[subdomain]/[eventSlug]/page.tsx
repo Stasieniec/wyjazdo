@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
+import { myTripsRequestLinkUrl } from "@/lib/urls";
 import type { Metadata } from "next";
 
 export async function generateMetadata({
@@ -162,6 +163,12 @@ export default async function EventPage({
               Wszystkie miejsca zajęte. Możesz zapisać się na listę rezerwową.
             </p>
           )}
+          <p className="mt-4 text-sm text-muted-foreground">
+            Masz już rejestrację?{" "}
+            <a href={myTripsRequestLinkUrl()} className="underline underline-offset-4 hover:text-foreground">
+              Sprawdź status
+            </a>
+          </p>
         </div>
 
         {/* Organizer card */}

@@ -35,3 +35,13 @@ export function publicOrganizerUrl(subdomain: string): string {
 export function dashboardEventUrl(eventId: string): string {
   return `${protocol()}://${rootDomain()}/dashboard/events/${eventId}`;
 }
+
+/** Absolute URL of a participant's trip page (unsigned — append ?t=token for auth). */
+export function participantTripUrl(participantId: string): string {
+  return `${protocol()}://${rootDomain()}/my-trips/${participantId}`;
+}
+
+/** Absolute URL of the my-trips request-link page. */
+export function myTripsRequestLinkUrl(): string {
+  return `${protocol()}://${rootDomain()}/my-trips/request-link`;
+}

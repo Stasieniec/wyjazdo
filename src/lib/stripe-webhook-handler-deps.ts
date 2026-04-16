@@ -8,8 +8,9 @@ import {
 import { getParticipantWithContext } from "@/lib/db/queries/participants";
 import { syncOrganizerStripeState } from "@/lib/db/queries/organizers";
 import { sendPaymentConfirmation, sendOrganizerNewRegistration } from "@/lib/email/send";
-import { dashboardEventUrl, publicEventUrl } from "@/lib/urls";
+import { dashboardEventUrl, publicEventUrl, participantTripUrl } from "@/lib/urls";
 import { countTakenSpots } from "@/lib/capacity";
+import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
 import type { WebhookDeps } from "@/lib/webhook-handler";
 
 export function buildWebhookDeps(): WebhookDeps {
@@ -28,6 +29,10 @@ export function buildWebhookDeps(): WebhookDeps {
         year: "numeric",
       });
 
+      const secret = getParticipantAuthSecret();
+      const token = await signParticipantToken(payment.participantId, secret);
+      const myTripsUrl = `${participantTripUrl(payment.participantId)}?t=${encodeURIComponent(token)}`;
+
       const emailPromises: Promise<void>[] = [
         sendPaymentConfirmation({
           to: ctx.participant.email,
@@ -39,6 +44,7 @@ export function buildWebhookDeps(): WebhookDeps {
           organizerName: ctx.organizer.displayName,
           paymentKind: payment.kind,
           amountCents: payment.amountCents,
+          myTripsUrl,
         }),
       ];
 

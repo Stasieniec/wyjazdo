@@ -61,6 +61,7 @@ export async function sendWaitlistConfirmation(params: {
   eventTitle: string;
   eventUrl: string;
   organizerName: string;
+  myTripsUrl?: string;
 }): Promise<void> {
   await safeSend({
     to: params.to,
@@ -95,6 +96,7 @@ export async function sendPaymentConfirmation(params: {
   organizerName: string;
   paymentKind: "full" | "deposit" | "balance";
   amountCents: number;
+  myTripsUrl?: string;
 }): Promise<void> {
   await safeSend({
     to: params.to,

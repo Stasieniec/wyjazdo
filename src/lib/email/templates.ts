@@ -85,6 +85,7 @@ export function waitlistConfirmedHtml(params: {
   eventTitle: string;
   eventUrl: string;
   organizerName: string;
+  myTripsUrl?: string;
 }): string {
   return layout(`
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Jesteś na liście rezerwowej</h1>
@@ -93,7 +94,7 @@ export function waitlistConfirmedHtml(params: {
       aktualnie wyprzedane. Zapisaliśmy Cię na listę rezerwową — organizator
       skontaktuje się z Tobą, jeśli zwolni się miejsce.
     </p>
-    ${button(params.eventUrl, "Zobacz wydarzenie")}
+    ${params.myTripsUrl ? button(params.myTripsUrl, "Sprawdź status") : button(params.eventUrl, "Zobacz wydarzenie")}
     <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">
       Organizator: ${params.organizerName}
     </p>
@@ -151,11 +152,16 @@ export function magicLinkSubject() {
 }
 
 export function magicLinkHtml(params: { link: string }) {
-  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-    <p>Kliknij, aby zobaczyć swoje wyjazdy:</p>
-    <p><a href="${params.link}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Otwórz wyjazdo.pl</a></p>
-    <p style="color: #555; font-size: 13px; margin-top: 24px;">Link wygaśnie za 15 minut. Jeśli nie prosiłeś/aś o ten link, zignoruj wiadomość.</p>
-  </div>`;
+  return layout(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Twój link logowania</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
+      Kliknij poniżej, aby zobaczyć swoje wyjazdy:
+    </p>
+    ${button(params.link, "Otwórz moje wyjazdy")}
+    <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">
+      Link wygaśnie za 15 minut. Jeśli nie prosiłeś/aś o ten link, zignoruj wiadomość.
+    </p>
+  `);
 }
 
 export function balanceReminderSubject(eventTitle: string) {
@@ -170,13 +176,20 @@ export function balanceReminderHtml(params: {
   payUrl: string;
   organizerName: string;
 }) {
-  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-    <p>Cześć ${params.participantName},</p>
-    <p>Do opłacenia pozostało <strong>${params.amountPln} zł</strong> za <strong>${params.eventTitle}</strong>.</p>
-    <p>Termin dopłaty: ${params.dueDate}.</p>
-    <p><a href="${params.payUrl}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Opłać teraz</a></p>
-    <p style="color: #555; margin-top: 32px;">— ${params.organizerName}</p>
-  </div>`;
+  return layout(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Przypomnienie o dopłacie</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
+      Cześć ${params.participantName}, do opłacenia pozostało <strong>${params.amountPln} zł</strong>
+      za <strong>${params.eventTitle}</strong>.
+    </p>
+    <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">
+      Termin dopłaty: <strong>${params.dueDate}</strong>
+    </p>
+    ${button(params.payUrl, "Opłać teraz")}
+    <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">
+      Organizator: ${params.organizerName}
+    </p>
+  `);
 }
 
 export function paymentConfirmedHtml(params: {
@@ -188,9 +201,9 @@ export function paymentConfirmedHtml(params: {
   organizerName: string;
   paymentKind: "full" | "deposit" | "balance";
   amountCents: number;
+  myTripsUrl?: string;
 }) {
   const amount = (params.amountCents / 100).toFixed(2);
-  const locationLine = params.eventLocation ? `<p>Miejsce: ${params.eventLocation}</p>` : "";
   const kindLabel =
     params.paymentKind === "deposit"
       ? "zaliczkę"
@@ -198,13 +211,27 @@ export function paymentConfirmedHtml(params: {
         ? "dopłatę"
         : "płatność";
 
-  return `<div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-    <h2 style="color: #111;">Dziękujemy za ${kindLabel}!</h2>
-    <p>Cześć ${params.participantName},</p>
-    <p>Otrzymaliśmy Twoją ${kindLabel} w wysokości <strong>${amount} zł</strong> za <strong>${params.eventTitle}</strong>.</p>
-    <p>Data: ${params.eventDate}</p>
-    ${locationLine}
-    <p><a href="${params.eventUrl}" style="display: inline-block; padding: 10px 16px; background: #111; color: #fff; text-decoration: none; border-radius: 6px;">Zobacz wydarzenie</a></p>
-    <p style="color: #555; margin-top: 32px;">— ${params.organizerName}</p>
-  </div>`;
+  return layout(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Dziękujemy za ${kindLabel}!</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
+      Cześć ${params.participantName}, otrzymaliśmy Twoją ${kindLabel} w wysokości <strong>${amount} zł</strong>
+      za <strong>${params.eventTitle}</strong>.
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:24px;">
+      <tr><td>
+        <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Wydarzenie</p>
+        <p style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;">${params.eventTitle}</p>
+        <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Termin</p>
+        <p style="margin:0;font-size:15px;color:#111827;">${params.eventDate}</p>
+        ${params.eventLocation ? `
+        <p style="margin:12px 0 4px;font-size:13px;color:#6b7280;">Miejsce</p>
+        <p style="margin:0;font-size:15px;color:#111827;">${params.eventLocation}</p>
+        ` : ""}
+      </td></tr>
+    </table>
+    ${params.myTripsUrl ? button(params.myTripsUrl, "Zarządzaj wyjazdem") : button(params.eventUrl, "Zobacz wydarzenie")}
+    <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">
+      Organizator: ${params.organizerName}
+    </p>
+  `);
 }

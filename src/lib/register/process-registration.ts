@@ -13,7 +13,8 @@ import {
   sendWaitlistConfirmation,
   sendOrganizerNewRegistration,
 } from "@/lib/email/send";
-import { dashboardEventUrl } from "@/lib/urls";
+import { dashboardEventUrl, participantTripUrl } from "@/lib/urls";
+import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
 
 const PENDING_TTL_MS = 30 * 60 * 1000;
 
@@ -102,13 +103,19 @@ export async function processRegistration(
     });
 
     const emailPromises: Promise<void>[] = [
-      sendWaitlistConfirmation({
-        to: parsed.data.email,
-        participantName: parsed.data.firstName,
-        eventTitle: event.title,
-        eventUrl: `${origin}/${slug}`,
-        organizerName: organizer.displayName,
-      }),
+      (async () => {
+        const secret = getParticipantAuthSecret();
+        const token = await signParticipantToken(participantId, secret);
+        const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
+        await sendWaitlistConfirmation({
+          to: parsed.data.email,
+          participantName: parsed.data.firstName,
+          eventTitle: event.title,
+          eventUrl: `${origin}/${slug}`,
+          organizerName: organizer.displayName,
+          myTripsUrl,
+        });
+      })(),
     ];
     if (organizer.contactEmail) {
       emailPromises.push(
