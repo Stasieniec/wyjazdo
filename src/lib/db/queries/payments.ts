@@ -124,10 +124,17 @@ export async function setBalanceDueAtForPayment(paymentId: string, at: number): 
     .where(eq(schema.payments.id, paymentId));
 }
 
-export async function resetPaymentToPending(paymentId: string, expiresAt: number): Promise<void> {
+export async function resetPaymentToPending(paymentId: string, expiresAt: number): Promise<boolean> {
   const db = getDb();
-  await db
+  const updated = await db
     .update(schema.payments)
     .set({ status: "pending", expiresAt, updatedAt: Date.now() })
-    .where(eq(schema.payments.id, paymentId));
+    .where(
+      and(
+        eq(schema.payments.id, paymentId),
+        inArray(schema.payments.status, ["pending", "expired"]),
+      ),
+    )
+    .returning({ id: schema.payments.id });
+  return updated.length > 0;
 }
