@@ -1,5 +1,5 @@
 // src/lib/db/queries/legal.ts
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import { newId } from "@/lib/ids";
 
@@ -114,5 +114,15 @@ export async function getParticipantConsents(participantId: string) {
     .select()
     .from(schema.participantConsents)
     .where(eq(schema.participantConsents.participantId, participantId))
+    .all();
+}
+
+export async function listConsentsForParticipants(participantIds: string[]) {
+  if (participantIds.length === 0) return [];
+  const db = getDb();
+  return db
+    .select()
+    .from(schema.participantConsents)
+    .where(inArray(schema.participantConsents.participantId, participantIds))
     .all();
 }

@@ -226,9 +226,11 @@ async function ParticipantsSection({
 }) {
   const { listParticipantsForEvent } = await import("@/lib/db/queries/participants");
   const { listPaymentsForParticipants } = await import("@/lib/db/queries/payments");
+  const { listConsentsForParticipants } = await import("@/lib/db/queries/legal");
   const { derivedStatus } = await import("@/lib/participant-status");
   const all = await listParticipantsForEvent(eventId);
   const allPayments = await listPaymentsForParticipants(all.map((p) => p.id));
+  const allConsents = await listConsentsForParticipants(all.map((p) => p.id));
   const now = Date.now();
 
   const paymentsByParticipant = new Map<string, typeof allPayments>();
@@ -266,6 +268,7 @@ async function ParticipantsSection({
       <ParticipantsTable
         participants={filtered}
         payments={allPayments}
+        consents={allConsents}
         questions={questions}
         emptyMessage={statusFilter === "all" ? undefined : "Brak zgłoszeń w tej kategorii."}
       />
@@ -274,7 +277,7 @@ async function ParticipantsSection({
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Lista rezerwowa ({waitlist.length})
           </h3>
-          <ParticipantsTable participants={waitlist} payments={allPayments} questions={questions} />
+          <ParticipantsTable participants={waitlist} payments={allPayments} consents={allConsents} questions={questions} />
         </>
       )}
     </div>
