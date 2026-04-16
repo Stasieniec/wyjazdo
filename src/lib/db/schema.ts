@@ -59,6 +59,22 @@ export const events = sqliteTable(
   }),
 );
 
+export const eventPhotos = sqliteTable(
+  "event_photos",
+  {
+    id: text("id").primaryKey(),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    position: integer("position").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => ({
+    eventIdx: index("event_photos_event_idx").on(t.eventId),
+  }),
+);
+
 export const participants = sqliteTable(
   "participants",
   {
@@ -177,6 +193,8 @@ export type Organizer = typeof organizers.$inferSelect;
 export type NewOrganizer = typeof organizers.$inferInsert;
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+export type EventPhoto = typeof eventPhotos.$inferSelect;
+export type NewEventPhoto = typeof eventPhotos.$inferInsert;
 export type Participant = typeof participants.$inferSelect;
 export type NewParticipant = typeof participants.$inferInsert;
 export type Payment = typeof payments.$inferSelect;
