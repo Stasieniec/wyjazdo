@@ -196,8 +196,12 @@ export async function promoteFromWaitlistAction(form: FormData): Promise<void> {
   if (!participantId || !expiresAtStr) throw new Error("missing fields");
 
   const expiresAtMs = new Date(expiresAtStr).getTime();
+  const MAX_STRIPE_EXPIRY_MS = 24 * 60 * 60 * 1000;
   if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
     throw new Error("invalid expiry date");
+  }
+  if (expiresAtMs > Date.now() + MAX_STRIPE_EXPIRY_MS) {
+    throw new Error("expiry too far in the future (max 24h)");
   }
 
   const participant = await getParticipantById(participantId);
@@ -315,6 +319,7 @@ export async function resendPaymentLinkAction(form: FormData): Promise<void> {
 
   const participant = await getParticipantById(participantId);
   if (!participant) throw new Error("no participant");
+  if (participant.lifecycleStatus !== "active") throw new Error("participant not active");
   const event = await getEventById(participant.eventId);
   if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
 
@@ -333,7 +338,8 @@ export async function resendPaymentLinkAction(form: FormData): Promise<void> {
 
   // Reset expired payment back to pending
   if (target.status === "expired") {
-    await resetPaymentToPending(target.id, expiresAt);
+    const reset = await resetPaymentToPending(target.id, expiresAt);
+    if (!reset) throw new Error("payment status changed concurrently");
   }
 
   const stripe = getStripe();
