@@ -55,15 +55,15 @@ export default async function PayoutsOnboardingPage() {
 
   return (
     <div className="max-w-xl mx-auto p-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Skonfiguruj wypłaty</h1>
-      <p>
+      <h1 className="text-xl font-bold sm:text-2xl">Skonfiguruj wypłaty</h1>
+      <p className="text-muted-foreground">
         Aby publikować wydarzenia i przyjmować płatności, połącz konto Stripe.
         Wypłaty na Twoje konto bankowe uruchamiasz ręcznie, kiedy tego chcesz.
       </p>
       <form action={start}>
         <button
           type="submit"
-          className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-white font-medium hover:bg-neutral-800"
+          className="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-[--shadow-warm] transition-all duration-150 hover:bg-accent/90"
         >
           Połącz Stripe
         </button>

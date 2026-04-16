@@ -39,17 +39,17 @@ export default async function PayoutsReturnPage() {
 
   return (
     <div className="max-w-xl mx-auto p-8 space-y-4">
-      <h1 className="text-2xl font-semibold">Jeszcze chwila</h1>
-      <p>Stripe potrzebuje dodatkowych informacji, aby aktywować wypłaty.</p>
+      <h1 className="text-xl font-bold sm:text-2xl">Jeszcze chwila</h1>
+      <p className="text-muted-foreground">Stripe potrzebuje dodatkowych informacji, aby aktywować wypłaty.</p>
       <form action={resume}>
         <button
           type="submit"
-          className="inline-flex items-center justify-center rounded-md bg-black px-4 py-2 text-white font-medium hover:bg-neutral-800"
+          className="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-[--shadow-warm] transition-all duration-150 hover:bg-accent/90"
         >
           Kontynuuj w Stripe
         </button>
       </form>
-      <p><Link href="/dashboard" className="underline">Wróć do panelu</Link></p>
+      <p><Link href="/dashboard" className="text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">Wróć do panelu</Link></p>
     </div>
   );
 }
