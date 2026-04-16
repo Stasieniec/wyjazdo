@@ -32,12 +32,22 @@ export async function cancelParticipant(participantId: string): Promise<void> {
   await db
     .update(schema.participants)
     .set({ lifecycleStatus: "cancelled", updatedAt: Date.now() })
+    .where(eq(schema.participants.id, participantId));
+}
+
+export async function activateWaitlistedParticipant(participantId: string): Promise<boolean> {
+  const db = getDb();
+  const updated = await db
+    .update(schema.participants)
+    .set({ lifecycleStatus: "active", updatedAt: Date.now() })
     .where(
       and(
         eq(schema.participants.id, participantId),
-        eq(schema.participants.lifecycleStatus, "active"),
+        eq(schema.participants.lifecycleStatus, "waitlisted"),
       ),
-    );
+    )
+    .returning({ id: schema.participants.id });
+  return updated.length > 0;
 }
 
 export async function getParticipantWithContext(participantId: string) {

@@ -123,3 +123,11 @@ export async function setBalanceDueAtForPayment(paymentId: string, at: number): 
     .set({ dueAt: at, updatedAt: Date.now() })
     .where(eq(schema.payments.id, paymentId));
 }
+
+export async function resetPaymentToPending(paymentId: string, expiresAt: number): Promise<void> {
+  const db = getDb();
+  await db
+    .update(schema.payments)
+    .set({ status: "pending", expiresAt, updatedAt: Date.now() })
+    .where(eq(schema.payments.id, paymentId));
+}
