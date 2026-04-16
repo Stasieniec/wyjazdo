@@ -8,7 +8,10 @@ import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { insertEvent, isSlugTakenForOrganizer } from "@/lib/db/queries/events-dashboard";
 import { zodIssuesToRecord } from "@/lib/zod-errors";
 
-export type CreateEventFormState = { errors?: Record<string, string> } | null;
+export type CreateEventFormState = {
+  errors?: Record<string, string>;
+  values?: Record<string, string>;
+} | null;
 
 export async function createEventAction(
   _prev: CreateEventFormState,
@@ -18,6 +21,13 @@ export async function createEventAction(
   if (!userId) throw new Error("Unauthorized");
   const organizer = await getOrganizerByClerkUserId(userId);
   if (!organizer) throw new Error("No organizer");
+
+  // Preserve submitted values so the form can repopulate on error
+  const submitted: Record<string, string> = {};
+  for (const key of ["title", "slug", "description", "location", "price", "capacity", "deposit", "balanceDueAt", "startsAt", "endsAt", "coverUrl"]) {
+    const v = formData.get(key);
+    if (typeof v === "string" && v.trim()) submitted[key] = v;
+  }
 
   const depositRaw = formData.get("deposit") as string;
   const balanceDueAtRaw = formData.get("balanceDueAt") as string;
@@ -53,7 +63,7 @@ export async function createEventAction(
       err.price = err.priceCents;
       delete err.priceCents;
     }
-    return { errors: err };
+    return { errors: err, values: submitted };
   }
   if (parsed.data.endsAt < parsed.data.startsAt) {
     return {
@@ -61,10 +71,11 @@ export async function createEventAction(
         startsAt: "Koniec wydarzenia musi być po jego początku.",
         endsAt: "Koniec wydarzenia musi być po jego początku.",
       },
+      values: submitted,
     };
   }
   if (await isSlugTakenForOrganizer(organizer.id, parsed.data.slug)) {
-    return { errors: { slug: "Ta nazwa w URL jest już zajęta" } };
+    return { errors: { slug: "Ta nazwa w URL jest już zajęta" }, values: submitted };
   }
 
   const id = newId();

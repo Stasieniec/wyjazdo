@@ -10,7 +10,8 @@ export default function NewEventPage() {
     createEventAction,
     null,
   );
-  const [slugPreview, setSlugPreview] = useState("");
+  const [slugPreview, setSlugPreview] = useState(state?.values?.slug ?? "");
+  const v = state?.values ?? {};
 
   const rootDomain = typeof window !== "undefined"
     ? (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl")
@@ -34,6 +35,7 @@ export default function NewEventPage() {
             label="Tytuł"
             required
             maxLength={200}
+            defaultValue={v.title}
             error={state?.errors?.title}
           />
           <div>
@@ -45,6 +47,7 @@ export default function NewEventPage() {
               minLength={3}
               maxLength={64}
               placeholder="np. warsztaty-kwietniowe"
+              defaultValue={v.slug}
               error={state?.errors?.slug}
               onChange={(e) => setSlugPreview(e.target.value.toLowerCase())}
             />
@@ -52,9 +55,11 @@ export default function NewEventPage() {
               twoja-nazwa.{rootDomain}/<strong className="text-foreground">{slugPreview || "..."}</strong>
             </p>
           </div>
-          <Textarea name="description" label="Opis" rows={4} error={state?.errors?.description} />
-          <Input name="location" label="Miejsce" error={state?.errors?.location} />
+          <Textarea name="description" label="Opis" rows={4} defaultValue={v.description} error={state?.errors?.description} />
+          <Input name="location" label="Miejsce" defaultValue={v.location} error={state?.errors?.location} />
           <EventDateTimeRange
+            defaultStartsAt={v.startsAt ? new Date(v.startsAt).getTime() : undefined}
+            defaultEndsAt={v.endsAt ? new Date(v.endsAt).getTime() : undefined}
             error={state?.errors?.startsAt ?? state?.errors?.endsAt}
           />
           <div className="rounded-lg border border-border bg-muted/30 p-4">
@@ -73,6 +78,7 @@ export default function NewEventPage() {
               step="0.01"
               min="0"
               required
+              defaultValue={v.price}
               error={state?.errors?.price ?? state?.errors?.priceCents}
             />
             <Input
@@ -81,6 +87,7 @@ export default function NewEventPage() {
               label="Liczba miejsc"
               min="1"
               required
+              defaultValue={v.capacity}
               error={state?.errors?.capacity}
             />
           </div>
@@ -92,6 +99,7 @@ export default function NewEventPage() {
                 label="Zaliczka przy zapisie (PLN) — opcjonalnie"
                 step="0.01"
                 min="0"
+                defaultValue={v.deposit}
                 error={state?.errors?.depositCents}
               />
               <p className="text-xs text-muted-foreground">
@@ -103,6 +111,7 @@ export default function NewEventPage() {
                 type="datetime-local"
                 name="balanceDueAt"
                 label="Termin dopłaty reszty — opcjonalnie"
+                defaultValue={v.balanceDueAt}
                 error={state?.errors?.balanceDueAt}
               />
               <p className="text-xs text-muted-foreground">
