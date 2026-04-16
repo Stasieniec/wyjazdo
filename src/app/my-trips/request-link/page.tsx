@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   signMagicLinkOneTime,
   getParticipantAuthSecret,
 } from "@/lib/participant-auth";
 import { sendMagicLinkEmail } from "@/lib/email/send";
+import { WyjazdoMark } from "@/components/brand/WyjazdoMark";
 
 function origin() {
   const proto = process.env.NODE_ENV === "production" ? "https:" : "http:";
@@ -33,38 +35,48 @@ export default async function RequestLinkPage({
   }
 
   return (
-    <div className="max-w-md mx-auto p-8 space-y-4">
-      <h1 className="text-2xl font-semibold">Twoje wyjazdy</h1>
-      {sp.invalid && (
-        <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          Link wygasł lub jest nieprawidłowy. Poproś o nowy poniżej.
-        </p>
-      )}
-      {sp.sent ? (
-        <p className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
-          Wysłaliśmy link logowania. Sprawdź skrzynkę.
-        </p>
-      ) : (
-        <form action={submit} className="space-y-3">
-          <label htmlFor="email" className="block text-sm font-medium">
-            Email, z którym się rejestrowałeś/aś
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            placeholder="twoj@email.pl"
-            className="w-full rounded border px-3 py-2"
-          />
-          <button
-            type="submit"
-            className="w-full rounded-md bg-black px-4 py-2 text-white font-medium hover:bg-neutral-800"
-          >
-            Wyślij link
-          </button>
-        </form>
-      )}
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-background px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-md items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 font-bold tracking-tight text-primary">
+            <WyjazdoMark className="h-7 w-7 shrink-0" />
+            wyjazdo
+          </Link>
+        </div>
+      </header>
+      <div className="mx-auto max-w-md px-4 py-8 sm:px-6 space-y-4">
+        <h1 className="text-xl font-bold sm:text-2xl">Twoje wyjazdy</h1>
+        {sp.invalid && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+            Link wygasł lub jest nieprawidłowy. Poproś o nowy poniżej.
+          </div>
+        )}
+        {sp.sent ? (
+          <div className="rounded-xl border border-success/40 bg-success/5 p-4 text-sm text-success">
+            Wysłaliśmy link logowania. Sprawdź skrzynkę.
+          </div>
+        ) : (
+          <form action={submit} className="space-y-3">
+            <label htmlFor="email" className="block text-sm font-medium text-foreground">
+              Email, z którym się rejestrowałeś/aś
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              placeholder="twoj@email.pl"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-[--shadow-warm] transition-all duration-150 hover:bg-accent/90"
+            >
+              Wyślij link
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }
