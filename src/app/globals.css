@@ -41,6 +41,8 @@
   --color-success-foreground: var(--success-foreground);
   --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), ui-monospace, "Cascadia Code", monospace;
+  --shadow-warm: 0 2px 8px rgba(232, 104, 58, 0.3);
+  --shadow-navy: 0 8px 40px rgba(30, 58, 95, 0.25);
 }
 
 body {

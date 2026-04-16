@@ -7,7 +7,7 @@ const variantStyles: Record<Variant, string> = {
   primary:
     "bg-primary text-primary-foreground hover:bg-primary/90",
   accent:
-    "bg-accent text-accent-foreground hover:bg-accent/90",
+    "bg-accent text-accent-foreground hover:bg-accent/90 shadow-[--shadow-warm]",
   secondary:
     "bg-muted text-foreground hover:bg-muted/80 border border-border",
   ghost:
@@ -32,7 +32,7 @@ export function Button({
   className = "",
   ...props
 }: ButtonProps & { variant?: Variant; size?: Size }) {
-  const classes = `inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
+  const classes = `inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
 
   if ("href" in props && props.href !== undefined) {
     const { href, ...anchorProps } = props;
