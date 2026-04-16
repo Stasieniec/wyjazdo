@@ -106,15 +106,18 @@ export async function createEventAction(
   let galleryPhotos: { url: string; position: number }[] = [];
   try {
     const galleryRaw = String(formData.get("galleryPhotos") ?? "[]");
-    const parsed = JSON.parse(galleryRaw);
-    if (Array.isArray(parsed)) {
-      galleryPhotos = parsed
+    const galleryArr = JSON.parse(galleryRaw);
+    if (Array.isArray(galleryArr)) {
+      galleryPhotos = galleryArr
         .filter(
           (p: unknown): p is { url: string; position: number } =>
             typeof p === "object" &&
             p !== null &&
             typeof (p as Record<string, unknown>).url === "string" &&
-            typeof (p as Record<string, unknown>).position === "number",
+            ((p as Record<string, unknown>).url as string).startsWith("/api/images/") &&
+            typeof (p as Record<string, unknown>).position === "number" &&
+            Number.isInteger((p as Record<string, unknown>).position) &&
+            ((p as Record<string, unknown>).position as number) >= 0,
         )
         .slice(0, 5);
     }

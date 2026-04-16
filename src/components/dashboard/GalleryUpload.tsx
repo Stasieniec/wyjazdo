@@ -86,10 +86,7 @@ export function GalleryUpload({
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <label className="block text-sm font-medium text-foreground">
-          Galeria zdjęć
-        </label>
+      <div className="flex items-center justify-end">
         <span className="text-xs text-muted-foreground">
           {photos.length} / {max} zdjęć
         </span>
