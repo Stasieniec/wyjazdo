@@ -13,7 +13,7 @@ export default function ErrorPage({
         Coś poszło nie tak
       </h1>
       <p className="mt-4 max-w-sm text-muted-foreground" role="alert">
-        Wystąpił nieoczekiwany błąd. Spróbuj ponownie lub wróć później.
+        Wystąpił nieoczekiwany błąd. Spróbuj ponownie, lub wróć później.
       </p>
       <button
         onClick={reset}
