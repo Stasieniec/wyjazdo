@@ -407,7 +407,7 @@ export default function CustomQuestionsEditor({
           </ul>
         </SortableContext>
       </DndContext>
-      <button type="button" onClick={add} className="mt-3 text-sm text-neutral-700 hover:underline">
+      <button type="button" onClick={add} className="mt-3 text-sm text-foreground hover:underline">
         + Dodaj pytanie
       </button>
     </div>

@@ -153,7 +153,7 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
   return (
     <fieldset className="relative space-y-3">
       <legend className="text-sm font-medium">Termin wydarzenia</legend>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-muted-foreground">
         Użyj kalendarza albo wpisz daty ręcznie (dd/mm/rrrr), potem ustaw godziny rozpoczęcia i zakończenia.
       </p>
       {error && (
@@ -164,7 +164,7 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="text-xs font-medium text-neutral-600">Data początku</span>
+          <span className="text-xs font-medium text-muted-foreground">Data początku</span>
           <input
             type="text"
             inputMode="numeric"
@@ -178,7 +178,7 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
           />
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-neutral-600">Data końca</span>
+          <span className="text-xs font-medium text-muted-foreground">Data końca</span>
           <input
             type="text"
             inputMode="numeric"
@@ -207,7 +207,7 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
         aria-hidden
       />
 
-      <div className="flex justify-center overflow-x-auto rounded-xl border border-neutral-200 bg-neutral-50/80 p-3 shadow-sm sm:p-4">
+      <div className="flex justify-center overflow-x-auto rounded-xl border border-border bg-muted/80 p-3 shadow-sm sm:p-4">
         <DayPicker
           mode="range"
           locale={pl}
@@ -221,33 +221,33 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
       </div>
 
       {range?.from && range?.to && (
-        <p className="text-center text-sm text-neutral-600">
+        <p className="text-center text-sm text-muted-foreground">
           <span className="tabular-nums">{format(range.from, "EEE d MMM", { locale: pl })}</span>
-          <span className="mx-1.5 text-neutral-400">·</span>
+          <span className="mx-1.5 text-muted-foreground">·</span>
           <span className="tabular-nums">{startTimeStr}</span>
-          <span className="mx-2 text-neutral-400" aria-hidden>
+          <span className="mx-2 text-muted-foreground" aria-hidden>
             →
           </span>
           <span className="tabular-nums">{format(range.to, "EEE d MMM", { locale: pl })}</span>
-          <span className="mx-1.5 text-neutral-400">·</span>
+          <span className="mx-1.5 text-muted-foreground">·</span>
           <span className="tabular-nums">{endTimeStr}</span>
           {durationHint && (
-            <span className="text-neutral-500"> ({durationHint})</span>
+            <span className="text-muted-foreground"> ({durationHint})</span>
           )}
         </p>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-neutral-200 bg-white/60 px-3 py-3">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+        <div className="rounded-lg border border-border bg-white/60 px-3 py-3">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Godzina rozpoczęcia
           </span>
           <div className="mt-2 flex justify-start">
             <TimePickerSelects idPrefix={`${id}-start`} timeStr={startTimeStr} setTimeStr={setStartTimeStr} />
           </div>
         </div>
-        <div className="rounded-lg border border-neutral-200 bg-white/60 px-3 py-3">
-          <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+        <div className="rounded-lg border border-border bg-white/60 px-3 py-3">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Godzina zakończenia
           </span>
           <div className="mt-2 flex justify-start">
