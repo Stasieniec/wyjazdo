@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { consentConfigSchema } from "./consent";
+import { attendeeTypesSchema } from "./attendee-types";
 
 export const customQuestionSchema = z.object({
   id: z.string().min(1),
@@ -34,6 +35,7 @@ export const eventBaseSchema = z
       .optional()
       .or(z.literal("")),
     customQuestions: z.array(customQuestionSchema).max(20).default([]),
+    attendeeTypes: attendeeTypesSchema.nullable().optional(),
     depositCents: z.coerce.number().int().nonnegative().nullable().optional(),
     balanceDueAt: z.coerce.number().int().positive().nullable().optional(),
     consentConfig: consentConfigSchema,
@@ -60,5 +62,11 @@ export const eventBaseSchema = z
       message: "Termin dopłaty musi być przed rozpoczęciem.",
       path: ["balanceDueAt"],
     },
+  )
+  .refine(
+    (d) =>
+      d.attendeeTypes == null ||
+      d.attendeeTypes.every((t) => t.minQty <= t.maxQty),
+    { message: "Niepoprawna konfiguracja typów uczestników.", path: ["attendeeTypes"] },
   );
 export type EventBase = z.infer<typeof eventBaseSchema>;
