@@ -221,6 +221,7 @@ export default async function EventEditPage({
             <ParticipantsSection
               eventId={event.id}
               eventCapacity={event.capacity}
+              eventPriceCents={event.priceCents}
               questions={questions}
               attendeeTypes={initialAttendeeTypes}
               statusFilter={statusFilter}
@@ -235,12 +236,14 @@ export default async function EventEditPage({
 async function ParticipantsSection({
   eventId,
   eventCapacity,
+  eventPriceCents,
   questions,
   attendeeTypes,
   statusFilter,
 }: {
   eventId: string;
   eventCapacity: number;
+  eventPriceCents: number;
   questions: CustomQuestion[];
   attendeeTypes: AttendeeType[] | null;
   statusFilter: ReturnType<typeof parseParticipantFilterStatus>;
@@ -310,6 +313,7 @@ async function ParticipantsSection({
         attendeesByParticipant={attendeesByParticipant}
         attendeeTypes={attendeeTypes ?? []}
         remainingCapacity={remainingCapacity}
+        legacyPriceCents={eventPriceCents}
       />
       {waitlist.length > 0 && (
         <>
@@ -324,6 +328,7 @@ async function ParticipantsSection({
             attendeesByParticipant={attendeesByParticipant}
             attendeeTypes={attendeeTypes ?? []}
             remainingCapacity={remainingCapacity}
+            legacyPriceCents={eventPriceCents}
           />
         </>
       )}

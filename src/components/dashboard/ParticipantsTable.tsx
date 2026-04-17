@@ -15,6 +15,7 @@ import {
 } from "@/app/dashboard/events/[id]/actions";
 import { formatPlnFromCents } from "@/lib/format-currency";
 import { RemoveAttendeeDialog } from "@/app/dashboard/events/[id]/participants/RemoveAttendeeDialog";
+import { CancelRegistrationDialog } from "@/app/dashboard/events/[id]/participants/CancelRegistrationDialog";
 
 type AttendeeWithTypeName = Attendee & { typeName: string };
 
@@ -23,6 +24,13 @@ type RemovalTarget = {
   registrantName: string;
   attendee: AttendeeWithTypeName;
   remaining: AttendeeWithTypeName[];
+  paidCents: number;
+};
+
+type CancelTarget = {
+  participantId: string;
+  registrantName: string;
+  activeAttendees: AttendeeWithTypeName[];
   paidCents: number;
 };
 
@@ -35,6 +43,7 @@ export default function ParticipantsTable({
   attendeesByParticipant = {},
   attendeeTypes = [],
   remainingCapacity = 0,
+  legacyPriceCents = 0,
 }: {
   participants: Participant[];
   /** All payments for ALL participants passed in, keyed implicitly by participantId. */
@@ -49,11 +58,14 @@ export default function ParticipantsTable({
   attendeeTypes?: AttendeeType[];
   /** Remaining free capacity, shown in the removal dialog. */
   remainingCapacity?: number;
+  /** Legacy (pre-attendee-types) event price, used for cancel refund calc when a registration has no attendees. */
+  legacyPriceCents?: number;
 }) {
   const router = useRouter();
   const [expandedConsents, setExpandedConsents] = useState<Set<string>>(new Set());
   const [expandedAttendees, setExpandedAttendees] = useState<Set<string>>(new Set());
   const [removing, setRemoving] = useState<RemovalTarget | null>(null);
+  const [cancelling, setCancelling] = useState<CancelTarget | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (participants.length === 0) {
@@ -90,6 +102,20 @@ export default function ParticipantsTable({
       fd.set("participantId", removing.participantId);
       await removeAttendeeAction(fd);
       setRemoving(null);
+      router.refresh();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleConfirmCancel() {
+    if (!cancelling || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.set("participantId", cancelling.participantId);
+      await cancelParticipantAction(fd);
+      setCancelling(null);
       router.refresh();
     } finally {
       setIsSubmitting(false);
@@ -204,26 +230,20 @@ export default function ParticipantsTable({
 
                       {/* Cancel — any non-terminal status */}
                       {ds !== "cancelled" && ds !== "refunded" && (
-                        <form
-                          action={cancelParticipantAction}
-                          onSubmit={(e) => {
-                            const hasPaid = ds === "paid" || ds === "deposit_paid" || ds === "overdue";
-                            const msg = hasPaid
-                              ? `Czy na pewno chcesz anulować uczestnika ${p.firstName} ${p.lastName}? Uczestnik dokonał płatności — zwrot środków należy wykonać ręcznie przez panel Stripe.`
-                              : `Czy na pewno chcesz anulować uczestnika ${p.firstName} ${p.lastName}?`;
-                            if (!window.confirm(msg)) {
-                              e.preventDefault();
-                            }
-                          }}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCancelling({
+                              participantId: p.id,
+                              registrantName: `${p.firstName} ${p.lastName}`,
+                              activeAttendees,
+                              paidCents: totalPaidCents,
+                            })
+                          }
+                          className="rounded border border-destructive/40 bg-background px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10"
                         >
-                          <input type="hidden" name="participantId" value={p.id} />
-                          <button
-                            type="submit"
-                            className="rounded border border-destructive/40 bg-background px-2 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10"
-                          >
-                            Anuluj
-                          </button>
-                        </form>
+                          Anuluj
+                        </button>
                       )}
 
                       {/* Promote from waitlist */}
@@ -362,6 +382,19 @@ export default function ParticipantsTable({
           onConfirm={handleConfirmRemoval}
           onCancel={() => {
             if (!isSubmitting) setRemoving(null);
+          }}
+        />
+      )}
+      {cancelling && (
+        <CancelRegistrationDialog
+          registrantName={cancelling.registrantName}
+          activeAttendees={cancelling.activeAttendees}
+          attendeeTypes={attendeeTypes}
+          legacyPriceCents={legacyPriceCents}
+          paidCents={cancelling.paidCents}
+          onConfirm={handleConfirmCancel}
+          onCancel={() => {
+            if (!isSubmitting) setCancelling(null);
           }}
         />
       )}
