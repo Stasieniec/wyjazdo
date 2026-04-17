@@ -12,6 +12,7 @@ import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashb
 import { getEventById } from "@/lib/db/queries/events";
 import { getPaymentById, setBalanceDueAtForPayment, insertPayment, setPaymentStripeSession, listPaymentsForParticipant, resetPaymentToPending } from "@/lib/db/queries/payments";
 import { getParticipantById, cancelParticipant, activateWaitlistedParticipant } from "@/lib/db/queries/participants";
+import { softCancelAttendee, listActiveAttendeesForParticipant } from "@/lib/db/queries/attendees";
 import { zodIssuesToRecord } from "@/lib/zod-errors";
 import { countTakenSpots } from "@/lib/capacity";
 import { getStripe } from "@/lib/stripe";
@@ -228,6 +229,30 @@ export async function cancelParticipantAction(form: FormData): Promise<void> {
 
   await cancelParticipant(participantId);
   revalidatePath(`/dashboard/events/${event.id}`);
+}
+
+export async function removeAttendeeAction(formData: FormData): Promise<{ error?: string }> {
+  const attendeeId = String(formData.get("attendeeId") ?? "");
+  const participantId = String(formData.get("participantId") ?? "");
+  if (!attendeeId || !participantId) return { error: "Brak danych." };
+
+  const { userId } = await auth();
+  if (!userId) return { error: "Brak uprawnień." };
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) return { error: "Brak uprawnień." };
+
+  const participant = await getParticipantById(participantId);
+  if (!participant) return { error: "Nie znaleziono uczestnika." };
+  const event = await getEventById(participant.eventId);
+  if (!event || event.organizerId !== organizer.id) return { error: "Brak uprawnień." };
+
+  const active = await listActiveAttendeesForParticipant(participantId);
+  if (active.length <= 1) return { error: "Nie można usunąć ostatniego uczestnika — anuluj całe zgłoszenie." };
+  if (!active.some((a) => a.id === attendeeId)) return { error: "Uczestnik nie należy do tego zgłoszenia." };
+
+  await softCancelAttendee(attendeeId, Date.now());
+  revalidatePath(`/dashboard/events/${event.id}`);
+  return {};
 }
 
 export async function promoteFromWaitlistAction(form: FormData): Promise<void> {
