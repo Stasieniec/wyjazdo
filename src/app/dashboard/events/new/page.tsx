@@ -1,10 +1,107 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import { GalleryUpload } from "@/components/dashboard/GalleryUpload";
 import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { createEventAction, type CreateEventFormState } from "./actions";
+import { AttendeeTypesField } from "../[id]/attendee-types-field";
+import { isDepositPricingMode } from "@/lib/format-currency";
+
+function NewEventPricingFields({
+  seed,
+  errors,
+}: {
+  seed: Record<string, string>;
+  errors?: Record<string, string>;
+}) {
+  const [price, setPrice] = useState(seed.price ?? "");
+  const [deposit, setDeposit] = useState(seed.deposit ?? "");
+  const [balanceDueAt, setBalanceDueAt] = useState(seed.balanceDueAt ?? "");
+
+  const priceCents = useMemo(() => {
+    const n = parseFloat(String(price).replace(",", "."));
+    return Number.isFinite(n) ? Math.round(n * 100) : 0;
+  }, [price]);
+
+  const depositCents = useMemo(() => {
+    const s = String(deposit).trim();
+    if (s === "") return null;
+    const n = parseFloat(s.replace(",", "."));
+    return Number.isFinite(n) ? Math.round(n * 100) : null;
+  }, [deposit]);
+
+  const balanceDueActive = isDepositPricingMode(priceCents, depositCents);
+
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Input
+          type="number"
+          name="price"
+          label="Cena całkowita (PLN)"
+          step="0.01"
+          min="0"
+          required
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          error={errors?.price ?? errors?.priceCents}
+        />
+        <Input
+          type="number"
+          name="capacity"
+          label="Liczba miejsc"
+          min="1"
+          required
+          defaultValue={seed.capacity}
+          error={errors?.capacity}
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Input
+            type="number"
+            name="deposit"
+            label="Zaliczka przy zapisie (PLN)"
+            step="0.01"
+            min="0"
+            value={deposit}
+            onChange={(e) => setDeposit(e.target.value)}
+            error={errors?.depositCents}
+          />
+          <p className="text-xs text-muted-foreground">
+            Część ceny całkowitej płatna od razu. Puste = cała kwota przy rejestracji.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <Input
+            type="datetime-local"
+            name="balanceDueAt"
+            label="Termin dopłaty reszty"
+            value={balanceDueActive ? balanceDueAt : ""}
+            onChange={(e) => setBalanceDueAt(e.target.value)}
+            disabled={!balanceDueActive}
+            required={balanceDueActive}
+            error={errors?.balanceDueAt}
+          />
+          <p className="text-xs text-muted-foreground">
+            {balanceDueActive
+              ? "Do kiedy uczestnik musi dopłacić pozostałą kwotę (przed startem wydarzenia)."
+              : "Dostępne, gdy zaliczka jest niższa niż cena całkowita — wtedy dopłata jest wymagana w podanym terminie."}
+          </p>
+        </div>
+      </div>
+      <div className="pt-2">
+        <AttendeeTypesField initialAttendeeTypes={null} basePriceCents={priceCents} />
+        {errors?.attendeeTypes && (
+          <p className="mt-2 text-sm text-destructive" role="alert">
+            {errors.attendeeTypes}
+          </p>
+        )}
+      </div>
+    </>
+  );
+}
 
 export default function NewEventPage() {
   const [state, formAction] = useActionState<CreateEventFormState, FormData>(
@@ -69,55 +166,11 @@ export default function NewEventPage() {
               tej kwoty (płatna przy zapisie), a nie dodatkowa opłata obok ceny.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              type="number"
-              name="price"
-              label="Cena całkowita (PLN)"
-              step="0.01"
-              min="0"
-              required
-              defaultValue={v.price}
-              error={state?.errors?.price ?? state?.errors?.priceCents}
-            />
-            <Input
-              type="number"
-              name="capacity"
-              label="Liczba miejsc"
-              min="1"
-              required
-              defaultValue={v.capacity}
-              error={state?.errors?.capacity}
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Input
-                type="number"
-                name="deposit"
-                label="Zaliczka przy zapisie (PLN) — opcjonalnie"
-                step="0.01"
-                min="0"
-                defaultValue={v.deposit}
-                error={state?.errors?.depositCents}
-              />
-              <p className="text-xs text-muted-foreground">
-                Część ceny całkowitej płatna od razu. Puste = cała kwota przy rejestracji.
-              </p>
-            </div>
-            <div className="space-y-1">
-              <Input
-                type="datetime-local"
-                name="balanceDueAt"
-                label="Termin dopłaty reszty — opcjonalnie"
-                defaultValue={v.balanceDueAt}
-                error={state?.errors?.balanceDueAt}
-              />
-              <p className="text-xs text-muted-foreground">
-                Gdy zaliczka jest niższa niż cena całkowita — kiedy ma być dopłata reszty.
-              </p>
-            </div>
-          </div>
+          <NewEventPricingFields
+            key={JSON.stringify(state?.values ?? {})}
+            seed={state?.values ?? {}}
+            errors={state?.errors ?? undefined}
+          />
           <ImageUpload
             name="coverUrl"
             label="Zdjęcie okładki (opcjonalnie)"

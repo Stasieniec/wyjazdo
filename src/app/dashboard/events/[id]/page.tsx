@@ -6,6 +6,7 @@ import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer } from "@/lib/db/queries/events-dashboard";
 import type { CustomQuestion } from "@/lib/validators/event";
 import type { ConsentConfigItem } from "@/lib/validators/consent";
+import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { parseEventDashboardTab } from "@/lib/eventDashboardTab";
 import { parseParticipantFilterStatus } from "@/lib/participantFilterStatus";
 import { ParticipantFilters } from "@/components/dashboard/ParticipantFilters";
@@ -45,6 +46,10 @@ export default async function EventEditPage({
 
   const eventPhotos = await listPhotosForEvent(id);
   const initialPhotos = eventPhotos.map((p) => ({ url: p.url, position: p.position }));
+
+  const initialAttendeeTypes: AttendeeType[] | null = event.attendeeTypes
+    ? (JSON.parse(event.attendeeTypes) as AttendeeType[])
+    : null;
 
   const publishBound = changeStatusAction.bind(null, id, "published");
   const unpublishBound = changeStatusAction.bind(null, id, "draft");
@@ -187,6 +192,7 @@ export default async function EventEditPage({
             initialQuestions={questions}
             initialConsents={initialConsents}
             initialPhotos={initialPhotos}
+            initialAttendeeTypes={initialAttendeeTypes}
           />
         </div>
       ) : (

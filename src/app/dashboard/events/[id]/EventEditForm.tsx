@@ -1,14 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import type { ConsentConfigItem } from "@/lib/validators/consent";
+import type { AttendeeType } from "@/lib/validators/attendee-types";
 import CustomQuestionsEditor from "@/components/dashboard/CustomQuestionsEditor";
 import EventConsentsEditor from "@/components/dashboard/EventConsentsEditor";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { GalleryUpload } from "@/components/dashboard/GalleryUpload";
 import { saveEventAction, type SaveEventFormState } from "./actions";
+import { AttendeeTypesField } from "./attendee-types-field";
+import { isDepositPricingMode } from "@/lib/format-currency";
 
 type Props = {
   eventId: string;
@@ -29,6 +32,7 @@ type Props = {
   initialQuestions: CustomQuestion[];
   initialConsents: ConsentConfigItem[];
   initialPhotos: { url: string; position: number }[];
+  initialAttendeeTypes: AttendeeType[] | null;
 };
 
 export function EventEditForm({
@@ -37,12 +41,42 @@ export function EventEditForm({
   initialQuestions,
   initialConsents,
   initialPhotos,
+  initialAttendeeTypes,
   showCreationStep2 = false,
 }: Props) {
   const [state, formAction] = useActionState<SaveEventFormState, FormData>(
     saveEventAction.bind(null, eventId),
     null,
   );
+
+  const balanceDueAtInitial =
+    event.balanceDueAt != null
+      ? new Date(
+          event.balanceDueAt - new Date(event.balanceDueAt).getTimezoneOffset() * 60_000,
+        )
+          .toISOString()
+          .slice(0, 16)
+      : "";
+
+  const [price, setPrice] = useState(String(event.priceCents / 100));
+  const [deposit, setDeposit] = useState(
+    event.depositCents != null ? String(event.depositCents / 100) : "",
+  );
+  const [balanceDueAt, setBalanceDueAt] = useState(balanceDueAtInitial);
+
+  const priceCents = useMemo(() => {
+    const n = parseFloat(String(price).replace(",", "."));
+    return Number.isFinite(n) ? Math.round(n * 100) : 0;
+  }, [price]);
+
+  const depositCents = useMemo(() => {
+    const s = String(deposit).trim();
+    if (s === "") return null;
+    const n = parseFloat(s.replace(",", "."));
+    return Number.isFinite(n) ? Math.round(n * 100) : null;
+  }, [deposit]);
+
+  const balanceDueActive = isDepositPricingMode(priceCents, depositCents);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -102,7 +136,8 @@ export function EventEditForm({
             label="Cena całkowita (PLN)"
             step="0.01"
             min="0"
-            defaultValue={event.priceCents / 100}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
             required
             error={state?.errors?.price ?? state?.errors?.priceCents}
           />
@@ -121,12 +156,11 @@ export function EventEditForm({
             <Input
               type="number"
               name="deposit"
-              label="Zaliczka przy zapisie (PLN) — opcjonalnie"
+              label="Zaliczka przy zapisie (PLN)"
               step="0.01"
               min="0"
-              defaultValue={
-                event.depositCents != null ? event.depositCents / 100 : undefined
-              }
+              value={deposit}
+              onChange={(e) => setDeposit(e.target.value)}
               error={state?.errors?.depositCents}
             />
             <p className="text-xs text-muted-foreground">
@@ -137,21 +171,32 @@ export function EventEditForm({
             <Input
               type="datetime-local"
               name="balanceDueAt"
-              label="Termin dopłaty reszty — opcjonalnie"
-              defaultValue={
-                event.balanceDueAt != null
-                  ? new Date(event.balanceDueAt - new Date(event.balanceDueAt).getTimezoneOffset() * 60_000)
-                      .toISOString()
-                      .slice(0, 16)
-                  : undefined
-              }
+              label="Termin dopłaty reszty"
+              value={balanceDueActive ? balanceDueAt : ""}
+              onChange={(e) => setBalanceDueAt(e.target.value)}
+              disabled={!balanceDueActive}
+              required={balanceDueActive}
               error={state?.errors?.balanceDueAt}
             />
             <p className="text-xs text-muted-foreground">
-              Gdy zaliczka jest niższa niż cena całkowita — kiedy ma być dopłata reszty.
+              {balanceDueActive
+                ? "Do kiedy uczestnik musi dopłacić pozostałą kwotę (przed startem wydarzenia)."
+                : "Dostępne, gdy zaliczka jest niższa niż cena całkowita — wtedy dopłata jest wymagana w podanym terminie."}
             </p>
           </div>
         </div>
+      </Section>
+
+      <Section title="Uczestnicy">
+        {state?.errors?.attendeeTypes && (
+          <p className="text-sm text-destructive" role="alert">
+            {state.errors.attendeeTypes}
+          </p>
+        )}
+        <AttendeeTypesField
+          initialAttendeeTypes={initialAttendeeTypes}
+          basePriceCents={priceCents}
+        />
       </Section>
 
       <Section title="Okładka">

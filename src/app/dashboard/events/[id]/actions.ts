@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { eventBaseSchema, customQuestionSchema } from "@/lib/validators/event";
 import { consentConfigSchema } from "@/lib/validators/consent";
+import { attendeeTypesSchema } from "@/lib/validators/attendee-types";
 import { syncEventPhotos } from "@/lib/db/queries/event-photos";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
@@ -64,6 +65,22 @@ export async function saveEventAction(
     };
   }
 
+  const rawAttendeeTypes = String(formData.get("attendeeTypes") ?? "").trim();
+  let attendeeTypesForSchema: unknown = null;
+  if (rawAttendeeTypes) {
+    let parsedArr: unknown;
+    try {
+      parsedArr = JSON.parse(rawAttendeeTypes);
+    } catch {
+      return { errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." } };
+    }
+    const parsed = attendeeTypesSchema.safeParse(parsedArr);
+    if (!parsed.success) {
+      return { errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." } };
+    }
+    attendeeTypesForSchema = parsed.data;
+  }
+
   const depositRaw = formData.get("deposit") as string;
   const balanceDueAtRaw = formData.get("balanceDueAt") as string;
   const depositCents =
@@ -88,6 +105,7 @@ export async function saveEventAction(
     coverUrl: (formData.get("coverUrl") as string) || undefined,
     customQuestions: questionsParsed.data,
     consentConfig: consentsParsed.data,
+    attendeeTypes: attendeeTypesForSchema,
     depositCents,
     balanceDueAt,
   };
@@ -120,6 +138,9 @@ export async function saveEventAction(
     coverUrl: parsed.data.coverUrl || null,
     customQuestions: JSON.stringify(parsed.data.customQuestions),
     consentConfig: JSON.stringify(parsed.data.consentConfig),
+    attendeeTypes: parsed.data.attendeeTypes
+      ? JSON.stringify(parsed.data.attendeeTypes)
+      : null,
     depositCents: parsed.data.depositCents ?? null,
     balanceDueAt: parsed.data.balanceDueAt ?? null,
   });

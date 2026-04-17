@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { eventBaseSchema } from "@/lib/validators/event";
+import { attendeeTypesSchema } from "@/lib/validators/attendee-types";
 import { newId } from "@/lib/ids";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { insertEvent, isSlugTakenForOrganizer } from "@/lib/db/queries/events-dashboard";
@@ -30,6 +31,28 @@ export async function createEventAction(
     if (typeof v === "string" && v.trim()) submitted[key] = v;
   }
 
+  const rawAttendeeTypes = String(formData.get("attendeeTypes") ?? "").trim();
+  let attendeeTypesForSchema: unknown = null;
+  if (rawAttendeeTypes) {
+    let parsedArr: unknown;
+    try {
+      parsedArr = JSON.parse(rawAttendeeTypes);
+    } catch {
+      return {
+        errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." },
+        values: submitted,
+      };
+    }
+    const parsed = attendeeTypesSchema.safeParse(parsedArr);
+    if (!parsed.success) {
+      return {
+        errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." },
+        values: submitted,
+      };
+    }
+    attendeeTypesForSchema = parsed.data;
+  }
+
   const depositRaw = formData.get("deposit") as string;
   const balanceDueAtRaw = formData.get("balanceDueAt") as string;
   const depositCents =
@@ -53,6 +76,7 @@ export async function createEventAction(
     capacity: Number(formData.get("capacity") ?? 0),
     coverUrl: (formData.get("coverUrl") as string) || undefined,
     customQuestions: [],
+    attendeeTypes: attendeeTypesForSchema,
     depositCents,
     balanceDueAt,
   };
@@ -96,6 +120,9 @@ export async function createEventAction(
     coverUrl: parsed.data.coverUrl || null,
     status: "draft",
     customQuestions: JSON.stringify([]),
+    attendeeTypes: parsed.data.attendeeTypes
+      ? JSON.stringify(parsed.data.attendeeTypes)
+      : null,
     depositCents: parsed.data.depositCents ?? null,
     balanceDueAt: parsed.data.balanceDueAt ?? null,
     createdAt: now,
