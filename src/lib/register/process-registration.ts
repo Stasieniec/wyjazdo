@@ -6,7 +6,7 @@ import type { AttendeeType } from "@/lib/validators/attendee-types";
 import type { AttendeeFormRow } from "@/lib/validators/attendees-form";
 import { attendeesFormSchema } from "@/lib/validators/attendees-form";
 import { calculateTotal } from "@/lib/pricing";
-import { insertAttendees } from "@/lib/db/queries/attendees";
+import type { NewAttendee } from "@/lib/db/schema";
 import { zodIssuesToRecord } from "@/lib/zod-errors";
 import {
   getLatestDocument,
@@ -15,7 +15,7 @@ import {
 import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
-import { insertParticipant } from "@/lib/db/queries/participants";
+import { insertParticipantWithAttendees } from "@/lib/db/queries/participants";
 import { insertPayment, setPaymentStripeSession } from "@/lib/db/queries/payments";
 import { newId } from "@/lib/ids";
 import { getStripe } from "@/lib/stripe";
@@ -27,6 +27,25 @@ import { dashboardEventUrl, participantTripUrl } from "@/lib/urls";
 import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
 
 const PENDING_TTL_MS = 30 * 60 * 1000;
+
+export const LEGACY_ATTENDEE_TYPE_ID = "__legacy__";
+
+function buildAttendeeInserts(
+  attendeeRows: AttendeeFormRow[],
+  participantId: string,
+  now: number,
+): NewAttendee[] {
+  return attendeeRows.map((r) => ({
+    id: newId(),
+    participantId,
+    attendeeTypeId: r.attendeeTypeId,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    customAnswers: JSON.stringify(r.customAnswers ?? {}),
+    cancelledAt: null,
+    createdAt: now,
+  }));
+}
 
 export type RegistrationProcessResult =
   | { redirectUrl: string }
@@ -138,24 +157,19 @@ function parseAttendeesFromForm(
   return { rows, errors };
 }
 
-function getAttendeeTypes(event: { attendeeTypes: string | null; priceCents: number }): AttendeeType[] {
-  if (event.attendeeTypes) {
-    try {
-      return JSON.parse(event.attendeeTypes) as AttendeeType[];
-    } catch {
-      // fall through to legacy path
-    }
+type GetAttendeeTypesResult =
+  | { kind: "ok"; types: AttendeeType[] }
+  | { kind: "legacy" }
+  | { kind: "error" };
+
+function getAttendeeTypes(event: { attendeeTypes: string | null }): GetAttendeeTypesResult {
+  if (!event.attendeeTypes) return { kind: "legacy" };
+  try {
+    return { kind: "ok", types: JSON.parse(event.attendeeTypes) as AttendeeType[] };
+  } catch (err) {
+    console.error("[process-registration] Failed to parse event.attendeeTypes JSON", err);
+    return { kind: "error" };
   }
-  // Legacy implicit single type — one attendee, qty 1/1, event price.
-  return [
-    {
-      id: "__legacy__",
-      name: "Uczestnik",
-      minQty: 1,
-      maxQty: 1,
-      priceCents: event.priceCents,
-    },
-  ];
 }
 
 function validateAttendeeCountsAgainstTypes(
@@ -204,8 +218,22 @@ export async function processRegistration(
     return { errors: { _form: "Nie znaleziono wydarzenia." } };
   }
 
-  const attendeeTypes = getAttendeeTypes(event);
-  const isLegacyMode = !event.attendeeTypes;
+  const attendeeTypesResult = getAttendeeTypes(event);
+  if (attendeeTypesResult.kind === "error") {
+    return { errors: { _form: "Nieprawidłowa konfiguracja wydarzenia." } };
+  }
+  const isLegacyMode = attendeeTypesResult.kind === "legacy";
+  const attendeeTypes: AttendeeType[] = isLegacyMode
+    ? [
+        {
+          id: LEGACY_ATTENDEE_TYPE_ID,
+          name: "Uczestnik",
+          minQty: 1,
+          maxQty: 1,
+          priceCents: event.priceCents,
+        },
+      ]
+    : attendeeTypesResult.types;
 
   let attendeeRows: AttendeeFormRow[];
   if (isLegacyMode) {
@@ -222,13 +250,25 @@ export async function processRegistration(
     if (Object.keys(parsedAttendees.errors).length > 0) {
       return { errors: parsedAttendees.errors };
     }
-    const zodParsed = attendeesFormSchema.safeParse(parsedAttendees.rows);
-    if (!zodParsed.success) {
-      return { errors: zodIssuesToRecord(zodParsed.error.issues) };
+    const shapeCheck = attendeesFormSchema.safeParse(parsedAttendees.rows);
+    if (!shapeCheck.success) {
+      const attendeeErrors: Record<string, string> = {};
+      for (const issue of shapeCheck.error.issues) {
+        const [idx, field, ...rest] = issue.path;
+        if (typeof idx === "number" && typeof field === "string") {
+          const key = field === "customAnswers" && rest.length > 0
+            ? `attendees[${idx}][field_${String(rest[0])}]`
+            : `attendees[${idx}][${field}]`;
+          attendeeErrors[key] = issue.message;
+        } else {
+          attendeeErrors._form = issue.message;
+        }
+      }
+      return { errors: attendeeErrors };
     }
-    const countErrors = validateAttendeeCountsAgainstTypes(zodParsed.data, attendeeTypes);
+    const countErrors = validateAttendeeCountsAgainstTypes(shapeCheck.data, attendeeTypes);
     if (Object.keys(countErrors).length > 0) return { errors: countErrors };
-    attendeeRows = zodParsed.data;
+    attendeeRows = shapeCheck.data;
   }
 
   const questions: CustomQuestion[] = event.customQuestions
@@ -285,33 +325,21 @@ export async function processRegistration(
   const origin = await eventSiteOrigin(subdomain, requestProtocol);
 
   if (isFull) {
-    await insertParticipant({
-      id: participantId,
-      eventId: event.id,
-      firstName: parsedRegistrant.data.firstName,
-      lastName: parsedRegistrant.data.lastName,
-      email: parsedRegistrant.data.email,
-      phone: parsedRegistrant.data.phone ?? null,
-      customAnswers: JSON.stringify(answers),
-      lifecycleStatus: "waitlisted",
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    if (!isLegacyMode) {
-      await insertAttendees(
-        attendeeRows.map((r) => ({
-          id: newId(),
-          participantId,
-          attendeeTypeId: r.attendeeTypeId,
-          firstName: r.firstName,
-          lastName: r.lastName,
-          customAnswers: JSON.stringify(r.customAnswers ?? {}),
-          cancelledAt: null,
-          createdAt: now,
-        })),
-      );
-    }
+    await insertParticipantWithAttendees(
+      {
+        id: participantId,
+        eventId: event.id,
+        firstName: parsedRegistrant.data.firstName,
+        lastName: parsedRegistrant.data.lastName,
+        email: parsedRegistrant.data.email,
+        phone: parsedRegistrant.data.phone ?? null,
+        customAnswers: JSON.stringify(answers),
+        lifecycleStatus: "waitlisted",
+        createdAt: now,
+        updatedAt: now,
+      },
+      isLegacyMode ? [] : buildAttendeeInserts(attendeeRows, participantId, now),
+    );
 
     const h = await headers();
     const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
@@ -352,33 +380,21 @@ export async function processRegistration(
     return { redirectUrl: `${origin}/${slug}/thanks?waitlisted=1` };
   }
 
-  await insertParticipant({
-    id: participantId,
-    eventId: event.id,
-    firstName: parsedRegistrant.data.firstName,
-    lastName: parsedRegistrant.data.lastName,
-    email: parsedRegistrant.data.email,
-    phone: parsedRegistrant.data.phone ?? null,
-    customAnswers: JSON.stringify(answers),
-    lifecycleStatus: "active",
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  if (!isLegacyMode) {
-    await insertAttendees(
-      attendeeRows.map((r) => ({
-        id: newId(),
-        participantId,
-        attendeeTypeId: r.attendeeTypeId,
-        firstName: r.firstName,
-        lastName: r.lastName,
-        customAnswers: JSON.stringify(r.customAnswers ?? {}),
-        cancelledAt: null,
-        createdAt: now,
-      })),
-    );
-  }
+  await insertParticipantWithAttendees(
+    {
+      id: participantId,
+      eventId: event.id,
+      firstName: parsedRegistrant.data.firstName,
+      lastName: parsedRegistrant.data.lastName,
+      email: parsedRegistrant.data.email,
+      phone: parsedRegistrant.data.phone ?? null,
+      customAnswers: JSON.stringify(answers),
+      lifecycleStatus: "active",
+      createdAt: now,
+      updatedAt: now,
+    },
+    isLegacyMode ? [] : buildAttendeeInserts(attendeeRows, participantId, now),
+  );
 
   const h = await headers();
   const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;

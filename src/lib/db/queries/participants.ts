@@ -1,10 +1,23 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
-import type { NewParticipant, Participant } from "@/lib/db/schema";
+import type { NewAttendee, NewParticipant, Participant } from "@/lib/db/schema";
 
 export async function insertParticipant(row: NewParticipant): Promise<void> {
   const db = getDb();
   await db.insert(schema.participants).values(row);
+}
+
+export async function insertParticipantWithAttendees(
+  participant: NewParticipant,
+  attendees: NewAttendee[],
+): Promise<void> {
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.participants).values(participant);
+    if (attendees.length > 0) {
+      await tx.insert(schema.attendees).values(attendees);
+    }
+  });
 }
 
 export async function getParticipantById(id: string): Promise<Participant | null> {
