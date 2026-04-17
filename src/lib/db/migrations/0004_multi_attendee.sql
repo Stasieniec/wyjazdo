@@ -16,6 +16,4 @@ CREATE TABLE `attendees` (
   FOREIGN KEY (`participant_id`) REFERENCES `participants`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `attendees_participant_idx` ON `attendees` (`participant_id`);
---> statement-breakpoint
 CREATE INDEX `attendees_participant_active_idx` ON `attendees` (`participant_id`, `cancelled_at`);

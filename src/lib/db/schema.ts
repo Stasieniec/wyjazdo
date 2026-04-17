@@ -112,13 +112,9 @@ export const attendees = sqliteTable(
     createdAt: integer("created_at").notNull(),
   },
   (t) => ({
-    participantIdx: index("attendees_participant_idx").on(t.participantId),
     participantActiveIdx: index("attendees_participant_active_idx").on(t.participantId, t.cancelledAt),
   }),
 );
-
-export type Attendee = typeof attendees.$inferSelect;
-export type NewAttendee = typeof attendees.$inferInsert;
 
 export const payments = sqliteTable(
   "payments",
@@ -229,3 +225,5 @@ export type OrganizerConsent = typeof organizerConsents.$inferSelect;
 export type NewOrganizerConsent = typeof organizerConsents.$inferInsert;
 export type ParticipantConsent = typeof participantConsents.$inferSelect;
 export type NewParticipantConsent = typeof participantConsents.$inferInsert;
+export type Attendee = typeof attendees.$inferSelect;
+export type NewAttendee = typeof attendees.$inferInsert;
