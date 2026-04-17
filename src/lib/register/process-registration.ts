@@ -22,8 +22,9 @@ import { getStripe } from "@/lib/stripe";
 import {
   sendWaitlistConfirmation,
   sendOrganizerNewRegistration,
+  sendPaymentConfirmation,
 } from "@/lib/email/send";
-import { dashboardEventUrl, participantTripUrl } from "@/lib/urls";
+import { dashboardEventUrl, participantTripUrl, publicEventUrl } from "@/lib/urls";
 import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
 
 const PENDING_TTL_MS = 30 * 60 * 1000;
@@ -401,6 +402,71 @@ export async function processRegistration(
   recordParticipantConsents(participantId, form, consents, ip).catch((err) => {
     console.error("[consent-recording] Failed to record consents for participant", participantId, err);
   });
+
+  if (totalCents === 0) {
+    // Free registration — skip Stripe entirely, mark as paid.
+    const paymentId = newId();
+    await insertPayment({
+      id: paymentId,
+      participantId,
+      kind: "full",
+      amountCents: 0,
+      currency: "PLN",
+      status: "succeeded",
+      dueAt: null,
+      stripeSessionId: null,
+      stripePaymentIntentId: null,
+      stripeApplicationFee: null,
+      lastReminderAt: null,
+      paidAt: now,
+      expiresAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Mirror the notifications the Stripe webhook would normally send
+    // on successful payment (participant confirmation + organizer alert).
+    const dateStr = new Date(event.startsAt).toLocaleDateString("pl-PL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const secret = getParticipantAuthSecret();
+    const token = await signParticipantToken(participantId, secret);
+    const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
+
+    const emailPromises: Promise<void>[] = [
+      sendPaymentConfirmation({
+        to: parsedRegistrant.data.email,
+        participantName: parsedRegistrant.data.firstName,
+        eventTitle: event.title,
+        eventDate: dateStr,
+        eventLocation: event.location,
+        eventUrl: publicEventUrl(subdomain, slug),
+        organizerName: organizer.displayName,
+        paymentKind: "full",
+        amountCents: 0,
+        myTripsUrl,
+      }),
+    ];
+    if (organizer.contactEmail) {
+      const takenAfter = await countTakenSpots(event.id, Date.now());
+      emailPromises.push(
+        sendOrganizerNewRegistration({
+          to: organizer.contactEmail,
+          participantName: `${parsedRegistrant.data.firstName} ${parsedRegistrant.data.lastName}`,
+          participantEmail: parsedRegistrant.data.email,
+          eventTitle: event.title,
+          spotsInfo: `${takenAfter} / ${event.capacity}`,
+          isWaitlisted: false,
+          dashboardUrl: dashboardEventUrl(event.id),
+        }),
+      );
+    }
+    Promise.allSettled(emailPromises).catch(() => {});
+
+    return { redirectUrl: `${origin}/${slug}/thanks?pid=${participantId}` };
+  }
 
   const depositCents = event.depositCents ?? 0;
   const effectiveDeposit = Math.min(depositCents, totalCents);
