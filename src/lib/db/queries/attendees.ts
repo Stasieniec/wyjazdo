@@ -26,21 +26,13 @@ export async function listActiveAttendeesForParticipant(
 
 export async function listAttendeesForEvent(eventId: string): Promise<Attendee[]> {
   const db = getDb();
-  return db
-    .select({
-      id: schema.attendees.id,
-      participantId: schema.attendees.participantId,
-      attendeeTypeId: schema.attendees.attendeeTypeId,
-      firstName: schema.attendees.firstName,
-      lastName: schema.attendees.lastName,
-      customAnswers: schema.attendees.customAnswers,
-      cancelledAt: schema.attendees.cancelledAt,
-      createdAt: schema.attendees.createdAt,
-    })
+  const rows = await db
+    .select()
     .from(schema.attendees)
     .innerJoin(schema.participants, eq(schema.attendees.participantId, schema.participants.id))
     .where(eq(schema.participants.eventId, eventId))
     .all();
+  return rows.map((row) => row.attendees);
 }
 
 export async function softCancelAttendee(attendeeId: string, now: number): Promise<void> {
