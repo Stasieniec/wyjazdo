@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, isNull, and } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import {
   derivedStatus,
@@ -9,11 +9,21 @@ import {
 
 const TAKEN: DerivedStatus[] = ["pending", "deposit_paid", "paid", "overdue"];
 
-export function computeSpotsTaken(
-  rows: { participant: ParticipantLike; payments: PaymentLike[] }[],
-  nowMs: number,
-): number {
-  return rows.filter((r) => TAKEN.includes(derivedStatus(r.participant, r.payments, nowMs))).length;
+export type SpotsInput = {
+  participant: ParticipantLike;
+  payments: PaymentLike[];
+  /** Number of non-cancelled attendees in this registration. 0 means "legacy" — counts as 1. */
+  activeAttendees: number;
+};
+
+export function computeSpotsTaken(rows: SpotsInput[], nowMs: number): number {
+  let taken = 0;
+  for (const r of rows) {
+    if (!TAKEN.includes(derivedStatus(r.participant, r.payments, nowMs))) continue;
+    // Legacy registrations (no attendees row) still count as 1 spot (the registrant).
+    taken += r.activeAttendees > 0 ? r.activeAttendees : 1;
+  }
+  return taken;
 }
 
 export async function countTakenSpots(eventId: string, nowMs: number): Promise<number> {
@@ -36,20 +46,32 @@ export async function countTakenSpots(eventId: string, nowMs: number): Promise<n
     .innerJoin(schema.participants, eq(schema.payments.participantId, schema.participants.id))
     .where(eq(schema.participants.eventId, eventId));
 
-  const byParticipant = new Map<string, PaymentLike[]>();
+  const attendeeRows = await db
+    .select({ participantId: schema.attendees.participantId })
+    .from(schema.attendees)
+    .innerJoin(schema.participants, eq(schema.attendees.participantId, schema.participants.id))
+    .where(and(eq(schema.participants.eventId, eventId), isNull(schema.attendees.cancelledAt)));
+
+  const paymentsByParticipant = new Map<string, PaymentLike[]>();
   for (const pr of paymentRows) {
-    const list = byParticipant.get(pr.participantId) ?? [];
+    const list = paymentsByParticipant.get(pr.participantId) ?? [];
     list.push({
       kind: pr.kind as PaymentLike["kind"],
       status: pr.status as PaymentLike["status"],
       dueAt: pr.dueAt,
     });
-    byParticipant.set(pr.participantId, list);
+    paymentsByParticipant.set(pr.participantId, list);
   }
 
-  const rows = participantRows.map((p) => ({
+  const attendeeCountByParticipant = new Map<string, number>();
+  for (const a of attendeeRows) {
+    attendeeCountByParticipant.set(a.participantId, (attendeeCountByParticipant.get(a.participantId) ?? 0) + 1);
+  }
+
+  const rows: SpotsInput[] = participantRows.map((p) => ({
     participant: { lifecycleStatus: p.lifecycleStatus as ParticipantLike["lifecycleStatus"] },
-    payments: byParticipant.get(p.id) ?? [],
+    payments: paymentsByParticipant.get(p.id) ?? [],
+    activeAttendees: attendeeCountByParticipant.get(p.id) ?? 0,
   }));
   return computeSpotsTaken(rows, nowMs);
 }
