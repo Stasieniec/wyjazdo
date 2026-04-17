@@ -47,6 +47,7 @@ export const events = sqliteTable(
       .notNull()
       .default("draft"),
     customQuestions: text("custom_questions"),
+    attendeeTypes: text("attendee_types"),
     depositCents: integer("deposit_cents"),
     balanceDueAt: integer("balance_due_at"),
     consentConfig: text("consent_config"),
@@ -95,6 +96,29 @@ export const participants = sqliteTable(
     eventLifecycleIdx: index("participants_event_lifecycle_idx").on(t.eventId, t.lifecycleStatus),
   }),
 );
+
+export const attendees = sqliteTable(
+  "attendees",
+  {
+    id: text("id").primaryKey(),
+    participantId: text("participant_id")
+      .notNull()
+      .references(() => participants.id, { onDelete: "cascade" }),
+    attendeeTypeId: text("attendee_type_id").notNull(),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    customAnswers: text("custom_answers"),
+    cancelledAt: integer("cancelled_at"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => ({
+    participantIdx: index("attendees_participant_idx").on(t.participantId),
+    participantActiveIdx: index("attendees_participant_active_idx").on(t.participantId, t.cancelledAt),
+  }),
+);
+
+export type Attendee = typeof attendees.$inferSelect;
+export type NewAttendee = typeof attendees.$inferInsert;
 
 export const payments = sqliteTable(
   "payments",
