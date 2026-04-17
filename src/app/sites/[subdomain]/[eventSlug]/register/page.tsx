@@ -19,14 +19,27 @@ export default async function RegisterPage({
   const event = await getPublishedEventBySlug(organizer.id, eventSlug);
   if (!event) notFound();
 
-  const taken = await countTakenSpots(event.id, Date.now());
+  const now = Date.now();
+  const taken = await countTakenSpots(event.id, now);
   const isFull = taken >= event.capacity;
+  const remainingSpots = Math.max(0, event.capacity - taken);
   const questions: CustomQuestion[] = event.customQuestions
     ? JSON.parse(event.customQuestions)
     : [];
   const consents: ConsentConfigItem[] = event.consentConfig
     ? JSON.parse(event.consentConfig)
     : [];
+  const attendeeTypes = event.attendeeTypes
+    ? JSON.parse(event.attendeeTypes)
+    : [
+        {
+          id: "__legacy__",
+          name: "Uczestnik",
+          minQty: 1,
+          maxQty: 1,
+          priceCents: event.priceCents,
+        },
+      ];
 
   const brandColor = organizer.brandColor ?? "#1E3A5F";
 
@@ -91,6 +104,9 @@ export default async function RegisterPage({
         isFull={isFull}
         questions={questions}
         consents={consents}
+        attendeeTypes={attendeeTypes}
+        remainingSpots={remainingSpots}
+        depositCents={event.depositCents ?? null}
       />
     </main>
   );

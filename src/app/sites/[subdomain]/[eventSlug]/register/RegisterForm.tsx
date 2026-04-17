@@ -1,11 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import type { ConsentConfigItem } from "@/lib/validators/consent";
+import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { Card, Input, Select, SubmitButton, Textarea } from "@/components/ui";
 import { ConsentCheckboxes } from "@/components/sites/ConsentCheckboxes";
 import { registerAction, type RegisterFormState } from "./actions";
+import { AttendeeCard } from "./AttendeeCard";
+import { PriceSummary } from "./price-summary";
 
 type Props = {
   eventId: string;
@@ -14,13 +17,106 @@ type Props = {
   isFull: boolean;
   questions: CustomQuestion[];
   consents: ConsentConfigItem[];
+  attendeeTypes: AttendeeType[];
+  remainingSpots: number;
+  depositCents: number | null;
 };
 
-export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions, consents }: Props) {
+type AttendeeState = {
+  attendeeTypeId: string;
+  firstName: string;
+  lastName: string;
+  customAnswers: Record<string, string>;
+};
+
+function initialAttendees(types: AttendeeType[]): AttendeeState[] {
+  const rows: AttendeeState[] = [];
+  for (const t of types) {
+    for (let i = 0; i < Math.max(1, t.minQty); i++) {
+      rows.push({
+        attendeeTypeId: t.id,
+        firstName: "",
+        lastName: "",
+        customAnswers: {},
+      });
+    }
+  }
+  return rows;
+}
+
+export function RegisterForm({
+  eventId,
+  subdomain,
+  eventSlug,
+  isFull,
+  questions,
+  consents,
+  attendeeTypes,
+  remainingSpots,
+  depositCents,
+}: Props) {
   const [state, formAction, pending] = useActionState<RegisterFormState, FormData>(
     registerAction,
     null,
   );
+
+  const [attendees, setAttendees] = useState<AttendeeState[]>(() =>
+    initialAttendees(attendeeTypes),
+  );
+  const [registrantFirst, setRegistrantFirst] = useState("");
+  const [registrantLast, setRegistrantLast] = useState("");
+
+  useEffect(() => {
+    setAttendees((prev) => {
+      if (prev.length === 0) return prev;
+      if (
+        prev[0].firstName === registrantFirst &&
+        prev[0].lastName === registrantLast
+      )
+        return prev;
+      const next = [...prev];
+      next[0] = {
+        ...next[0],
+        firstName: registrantFirst,
+        lastName: registrantLast,
+      };
+      return next;
+    });
+  }, [registrantFirst, registrantLast]);
+
+  const quantities = useMemo(() => {
+    const q: Record<string, number> = {};
+    for (const a of attendees)
+      q[a.attendeeTypeId] = (q[a.attendeeTypeId] ?? 0) + 1;
+    return q;
+  }, [attendees]);
+
+  const totalAttendees = attendees.length;
+  const atCapacity = totalAttendees >= remainingSpots;
+
+  function addAttendee(typeId: string) {
+    setAttendees((prev) => [
+      ...prev,
+      { attendeeTypeId: typeId, firstName: "", lastName: "", customAnswers: {} },
+    ]);
+  }
+  function removeAttendee(idx: number) {
+    setAttendees((prev) => prev.filter((_, i) => i !== idx));
+  }
+  function updateAttendee(
+    idx: number,
+    next: Omit<AttendeeState, "attendeeTypeId">,
+  ) {
+    setAttendees((prev) =>
+      prev.map((a, i) => (i === idx ? { ...a, ...next } : a)),
+    );
+  }
+
+  const errors = state?.errors ?? {};
+  const isSingleLegacy =
+    attendeeTypes.length === 1 &&
+    attendeeTypes[0].minQty === 1 &&
+    attendeeTypes[0].maxQty === 1;
 
   return (
     <Card className="mt-4">
@@ -35,6 +131,8 @@ export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions,
             name="firstName"
             required
             maxLength={100}
+            value={registrantFirst}
+            onChange={(e) => setRegistrantFirst(e.target.value)}
             error={state?.errors?.firstName}
           />
           <Input
@@ -42,6 +140,8 @@ export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions,
             name="lastName"
             required
             maxLength={100}
+            value={registrantLast}
+            onChange={(e) => setRegistrantLast(e.target.value)}
             error={state?.errors?.lastName}
           />
         </div>
@@ -53,6 +153,76 @@ export function RegisterForm({ eventId, subdomain, eventSlug, isFull, questions,
           error={state?.errors?.email}
         />
         <Input label="Telefon" name="phone" error={state?.errors?.phone} />
+
+        {isSingleLegacy
+          ? (attendeeTypes[0].customFields ?? []).length > 0 && (
+              <AttendeeCard
+                index={0}
+                type={attendeeTypes[0]}
+                label={attendeeTypes[0].name}
+                canRemove={false}
+                value={attendees[0]}
+                onChange={(next) => updateAttendee(0, next)}
+                errors={errors}
+              />
+            )
+          : (
+              <>
+                {attendees.map((a, i) => {
+                  const type = attendeeTypes.find(
+                    (t) => t.id === a.attendeeTypeId,
+                  )!;
+                  const sameTypeBefore = attendees
+                    .slice(0, i)
+                    .filter((x) => x.attendeeTypeId === a.attendeeTypeId).length;
+                  const label =
+                    i === 0 ? type.name : `${type.name} ${sameTypeBefore + 1}`;
+                  const qtyOfType = quantities[a.attendeeTypeId] ?? 0;
+                  return (
+                    <AttendeeCard
+                      key={i}
+                      index={i}
+                      type={type}
+                      label={label}
+                      canRemove={i > 0 && qtyOfType > type.minQty}
+                      onRemove={() => removeAttendee(i)}
+                      value={a}
+                      onChange={(next) => updateAttendee(i, next)}
+                      errors={errors}
+                    />
+                  );
+                })}
+
+                <div className="flex flex-wrap gap-2">
+                  {attendeeTypes.map((t) => {
+                    const qty = quantities[t.id] ?? 0;
+                    if (qty >= t.maxQty) return null;
+                    if (atCapacity) return null;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => addAttendee(t.id)}
+                        className="text-sm border rounded px-3 py-1 hover:bg-gray-50"
+                      >
+                        + Dodaj {t.name.toLowerCase()}
+                      </button>
+                    );
+                  })}
+                  {atCapacity && (
+                    <span className="text-sm text-gray-600">
+                      Pozostało {remainingSpots} wolnych miejsc.
+                    </span>
+                  )}
+                </div>
+
+                <PriceSummary
+                  types={attendeeTypes}
+                  quantities={quantities}
+                  depositCents={depositCents}
+                />
+              </>
+            )}
 
         {questions.map((q) => {
           const label = `${q.label}${q.required ? " *" : ""}`;
