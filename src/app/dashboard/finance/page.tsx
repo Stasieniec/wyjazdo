@@ -9,7 +9,7 @@ import {
 } from "@/lib/db/queries/finance";
 import { fetchConnectBalance, fetchRecentPayouts } from "@/lib/stripe-finance";
 import { payoutAvailableAction, openExpressDashboardAction } from "./actions";
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { formatPlnFromCents } from "@/lib/format-currency";
 
 function formatDate(ms: number): string {
@@ -64,6 +64,11 @@ export default async function FinancePage() {
       {/* Stripe Connect — Wypłaty */}
       <section className="mt-8">
         <h2 className="text-lg font-semibold">Wypłaty Stripe</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Płatności od uczestników są obsługiwane przez{" "}
+          <span className="font-medium text-foreground">Stripe Connect (Express)</span> — Twoje
+          konto organizatora u Stripe.
+        </p>
 
         {!organizer.stripeAccountId || organizer.stripeOnboardingComplete !== 1 ? (
           <Card className="mt-4 border-amber-300 bg-amber-50" padding="lg">
@@ -82,6 +87,32 @@ export default async function FinancePage() {
           </Card>
         ) : connectData ? (
           <div className="mt-4 space-y-4">
+            <Card
+              className="border-primary/20 bg-primary/[0.04]"
+              padding="lg"
+            >
+              <h3 className="text-sm font-semibold text-foreground">
+                Jak to działa na tej stronie?
+              </h3>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>
+                  <span className="text-foreground">Dostępne saldo</span> — środki gotowe do
+                  wypłaty na konto bankowe podane w Stripe.{" "}
+                  <span className="text-foreground">Saldo oczekujące</span> — jeszcze w trakcie
+                  rozliczenia (np. płatności kartą).
+                </li>
+                <li>
+                  Przycisk <span className="font-medium text-foreground">Wypłać</span> (gdy jest
+                  dostępny) inicjuje przelew z tej kwoty na Twoje konto w Stripe.
+                </li>
+                <li>
+                  Pełna historia wypłat, dane rozliczeniowe, konto bankowe i dokumenty — w{" "}
+                  <span className="font-medium text-foreground">panelu Stripe Express</span>{" "}
+                  (otwierasz go przyciskiem poniżej; to oficjalny widok Stripe, nie nasza aplikacja).
+                </li>
+              </ul>
+            </Card>
+
             {/* Balance cards */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Card>
@@ -185,14 +216,14 @@ export default async function FinancePage() {
               </div>
             )}
 
-            {/* Express dashboard link */}
-            <form action={openExpressDashboardAction}>
-              <button
-                type="submit"
-                className="text-sm text-primary underline underline-offset-2 hover:text-primary/80"
-              >
+            {/* Express dashboard — primary CTA */}
+            <form action={openExpressDashboardAction} className="pt-1">
+              <Button type="submit" variant="primary" size="lg" className="w-full sm:w-auto">
                 Otwórz panel Stripe Express
-              </button>
+              </Button>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Zaloguje Cię do Stripe w osobnej karcie — tam zarządzasz wypłatami i danymi konta.
+              </p>
             </form>
           </div>
         ) : null}
