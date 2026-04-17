@@ -2,6 +2,7 @@
 import type { Attendee } from "@/lib/db/schema";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { calculateTotal } from "@/lib/pricing";
+import { pluralOsoby } from "@/lib/plural";
 
 type AttendeeWithTypeName = Attendee & { typeName: string };
 
@@ -43,7 +44,7 @@ export function CancelRegistrationDialog({
         </h2>
         {isGroup ? (
           <>
-            <p className="text-sm">To usunie wszystkie {activeAttendees.length} osób z wydarzenia:</p>
+            <p className="text-sm">To usunie wszystkie {activeAttendees.length} {pluralOsoby(activeAttendees.length)} z wydarzenia:</p>
             <ul className="text-sm list-disc pl-5 space-y-1">
               {activeAttendees.map((a) => (
                 <li key={a.id}>
@@ -51,7 +52,7 @@ export function CancelRegistrationDialog({
                 </li>
               ))}
             </ul>
-            <p className="text-sm">Zwolni się {spotsFreed} miejsc. Sugerowany zwrot: <strong>{formatPLN(suggestedRefund)}</strong>.</p>
+            <p className="text-sm">Zwolni się {spotsFreed} {spotsFreed === 1 ? "miejsce" : "miejsc"}. Sugerowany zwrot: <strong>{formatPLN(suggestedRefund)}</strong>.</p>
           </>
         ) : (
           <p className="text-sm">Sugerowany zwrot: <strong>{formatPLN(suggestedRefund)}</strong>.</p>

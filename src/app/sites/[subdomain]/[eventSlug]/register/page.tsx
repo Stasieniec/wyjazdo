@@ -6,6 +6,7 @@ import type { CustomQuestion } from "@/lib/validators/event";
 import type { ConsentConfigItem } from "@/lib/validators/consent";
 import { formatPlnFromCents, isDepositPricingMode } from "@/lib/format-currency";
 import { DepositPriceBreakdown } from "@/components/sites/DepositPriceBreakdown";
+import { LEGACY_ATTENDEE_TYPE_ID } from "@/lib/register/process-registration";
 import { RegisterForm } from "./RegisterForm";
 
 export default async function RegisterPage({
@@ -33,7 +34,7 @@ export default async function RegisterPage({
     ? JSON.parse(event.attendeeTypes)
     : [
         {
-          id: "__legacy__",
+          id: LEGACY_ATTENDEE_TYPE_ID,
           name: "Uczestnik",
           minQty: 1,
           maxQty: 1,

@@ -17,8 +17,18 @@ import { zodIssuesToRecord } from "@/lib/zod-errors";
 import { countTakenSpots } from "@/lib/capacity";
 import { getStripe } from "@/lib/stripe";
 import { newId } from "@/lib/ids";
-import { sendWaitlistPromoted, sendResendPaymentLink } from "@/lib/email/send";
-import { publicEventUrl } from "@/lib/urls";
+import {
+  sendWaitlistPromoted,
+  sendResendPaymentLink,
+  sendPaymentConfirmation,
+  sendOrganizerNewRegistration,
+} from "@/lib/email/send";
+import { publicEventUrl, participantTripUrl, dashboardEventUrl } from "@/lib/urls";
+import { computeRegistrationTotalCents } from "@/lib/register/compute-registration-total";
+import {
+  signParticipantToken,
+  getParticipantAuthSecret,
+} from "@/lib/participant-auth";
 
 export type SaveEventFormState = { errors?: Record<string, string> } | null;
 
@@ -288,16 +298,80 @@ export async function promoteFromWaitlistAction(form: FormData): Promise<void> {
   const activated = await activateWaitlistedParticipant(participantId);
   if (!activated) throw new Error("activation failed");
 
-  // Create payment
-  const now = Date.now();
-  const depositMode =
-    event.depositCents != null &&
-    event.depositCents > 0 &&
-    event.depositCents < event.priceCents;
-  const paymentId = newId();
+  // Compute authoritative total from the participant's active attendees.
+  const totalCents = await computeRegistrationTotalCents(participantId, event);
+  const depositCents = event.depositCents ?? 0;
+  const effectiveDeposit = Math.min(depositCents, totalCents);
+  const depositMode = effectiveDeposit > 0 && effectiveDeposit < totalCents;
   const paymentKind: "deposit" | "full" = depositMode ? "deposit" : "full";
-  const paymentAmount = depositMode ? event.depositCents! : event.priceCents;
+  const paymentAmount = depositMode ? effectiveDeposit : totalCents;
 
+  const now = Date.now();
+  const eventDate = new Date(event.startsAt).toLocaleDateString("pl-PL", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  // Free registration: skip Stripe, mark paid, fire emails, done.
+  if (totalCents === 0) {
+    const paymentId = newId();
+    await insertPayment({
+      id: paymentId,
+      participantId,
+      kind: "full",
+      amountCents: 0,
+      currency: "PLN",
+      status: "succeeded",
+      dueAt: null,
+      stripeSessionId: null,
+      stripePaymentIntentId: null,
+      stripeApplicationFee: null,
+      lastReminderAt: null,
+      paidAt: now,
+      expiresAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const secret = getParticipantAuthSecret();
+    const token = await signParticipantToken(participantId, secret);
+    const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
+    const emailPromises: Promise<void>[] = [
+      sendPaymentConfirmation({
+        to: participant.email,
+        participantName: participant.firstName,
+        eventTitle: event.title,
+        eventDate,
+        eventLocation: event.location,
+        eventUrl: publicEventUrl(organizer.subdomain, event.slug),
+        organizerName: organizer.displayName,
+        paymentKind: "full",
+        amountCents: 0,
+        myTripsUrl,
+      }),
+    ];
+    if (organizer.contactEmail) {
+      const takenAfter = await countTakenSpots(event.id, Date.now());
+      emailPromises.push(
+        sendOrganizerNewRegistration({
+          to: organizer.contactEmail,
+          participantName: `${participant.firstName} ${participant.lastName}`,
+          participantEmail: participant.email,
+          eventTitle: event.title,
+          spotsInfo: `${takenAfter} / ${event.capacity}`,
+          isWaitlisted: false,
+          dashboardUrl: dashboardEventUrl(event.id),
+        }),
+      );
+    }
+    Promise.allSettled(emailPromises).catch(() => {});
+
+    revalidatePath(`/dashboard/events/${event.id}`);
+    return;
+  }
+
+  const paymentId = newId();
   await insertPayment({
     id: paymentId,
     participantId,
@@ -350,11 +424,6 @@ export async function promoteFromWaitlistAction(form: FormData): Promise<void> {
   await setPaymentStripeSession(paymentId, session.id);
 
   // Send email (fire-and-forget)
-  const eventDate = new Date(event.startsAt).toLocaleDateString("pl-PL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
   const expiryDate = new Date(expiresAtMs).toLocaleString("pl-PL", {
     day: "numeric",
     month: "long",

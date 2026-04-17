@@ -37,6 +37,15 @@ export function AttendeeTypesField({ initialAttendeeTypes, basePriceCents, name 
     setTypes(buildPresetTypes(p, { basePriceCents }));
   }
 
+  // In "jedna_osoba" mode, the organizer edits the event price via the
+  // top-level "Cena" field. Derive the submitted types from `basePriceCents`
+  // so the single attendee type's price always reflects the current input —
+  // no effect/state-sync needed.
+  const submittedTypes: AttendeeType[] =
+    preset === "jedna_osoba" && types.length === 1
+      ? [{ ...types[0], priceCents: basePriceCents }]
+      : types;
+
   return (
     <div className="space-y-4">
       <div className="text-sm font-semibold">Kto bierze udział?</div>
@@ -71,31 +80,13 @@ export function AttendeeTypesField({ initialAttendeeTypes, basePriceCents, name 
       {preset === "grupa" && (
         <GrupaPresetFields types={types} onChange={setTypes} />
       )}
-      {preset === "jedna_osoba" && (
-        <JednaOsobaPresetFields types={types} onChange={setTypes} />
-      )}
+      {/* "jedna_osoba" renders no extra fields — price comes from the top-level "Cena" input. */}
       {preset === "custom" && (
         <AttendeeTypesEditor value={types} onChange={setTypes} />
       )}
 
-      <input type="hidden" name={name} value={JSON.stringify(types)} />
+      <input type="hidden" name={name} value={JSON.stringify(submittedTypes)} />
     </div>
-  );
-}
-
-function JednaOsobaPresetFields({ types, onChange }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void }) {
-  const t = types[0];
-  return (
-    <label className="text-sm flex flex-col max-w-xs">
-      Cena (gr)
-      <input
-        type="number"
-        min={0}
-        value={t.priceCents}
-        onChange={(e) => onChange([{ ...t, priceCents: Number(e.target.value) }])}
-        className="border rounded px-2 py-1"
-      />
-    </label>
   );
 }
 

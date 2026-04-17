@@ -8,6 +8,7 @@ import { listPaymentsForParticipant } from "@/lib/db/queries/payments";
 import { derivedStatus } from "@/lib/participant-status";
 import { Card, SubmitButton } from "@/components/ui";
 import { formatPlnFromCents } from "@/lib/format-currency";
+import { computeRegistrationTotalCents } from "@/lib/register/compute-registration-total";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,15 @@ export default async function ThanksPage({
     ? derivedStatus(participant, participantPayments, Date.now())
     : "cancelled";
 
+  const balanceDueCents =
+    participant && status === "deposit_paid" && event.depositCents != null
+      ? Math.max(
+          0,
+          (await computeRegistrationTotalCents(participant.id, event)) -
+            event.depositCents,
+        )
+      : 0;
+
   return (
     <main className="mx-auto max-w-xl px-6 py-16 text-center" style={cssVars}>
       <div
@@ -132,9 +142,7 @@ export default async function ThanksPage({
               {event.balanceDueAt && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   Dopłata{" "}
-                  {event.depositCents != null
-                    ? formatPlnFromCents(event.priceCents - event.depositCents)
-                    : ""}{" "}
+                  {balanceDueCents > 0 ? formatPlnFromCents(balanceDueCents) : ""}{" "}
                   do {new Date(event.balanceDueAt).toLocaleDateString("pl-PL")}.
                   Wyślemy przypomnienie mailem.
                 </p>

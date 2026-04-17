@@ -2,6 +2,7 @@
 import type { Attendee } from "@/lib/db/schema";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { calculateTotal } from "@/lib/pricing";
+import { pluralOsoby } from "@/lib/plural";
 
 type Props = {
   registrantName: string;
@@ -43,10 +44,10 @@ export function RemoveAttendeeDialog({
         </h2>
         <p className="text-sm">
           {attendeeToRemove.firstName} jest częścią zgłoszenia <strong>{registrantName}</strong>
-          {" "}({remainingAttendees.length + 1} osoby łącznie). Po usunięciu:
+          {" "}({remainingAttendees.length + 1} {pluralOsoby(remainingAttendees.length + 1)} łącznie). Po usunięciu:
         </p>
         <ul className="text-sm list-disc pl-5 space-y-1">
-          <li>Zgłoszenie będzie zawierać {remainingAttendees.length} osób.</li>
+          <li>Zgłoszenie będzie zawierać {remainingAttendees.length} {pluralOsoby(remainingAttendees.length)}.</li>
           <li>Nowa cena: <strong>{formatPLN(newTotal)}</strong> (było {formatPLN(originalTotal)})</li>
           <li>Sugerowany zwrot: <strong>{formatPLN(suggestedRefund)}</strong></li>
           <li>Zwolni się 1 miejsce (pozostałych wolnych: {remainingCapacity + 1})</li>
