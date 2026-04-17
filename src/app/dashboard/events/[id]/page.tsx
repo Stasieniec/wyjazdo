@@ -218,7 +218,13 @@ export default async function EventEditPage({
             </a>
           </div>
           <div className="mt-4">
-            <ParticipantsSection eventId={event.id} questions={questions} statusFilter={statusFilter} />
+            <ParticipantsSection
+              eventId={event.id}
+              eventCapacity={event.capacity}
+              questions={questions}
+              attendeeTypes={initialAttendeeTypes}
+              statusFilter={statusFilter}
+            />
           </div>
         </section>
       )}
@@ -228,21 +234,40 @@ export default async function EventEditPage({
 
 async function ParticipantsSection({
   eventId,
+  eventCapacity,
   questions,
+  attendeeTypes,
   statusFilter,
 }: {
   eventId: string;
+  eventCapacity: number;
   questions: CustomQuestion[];
+  attendeeTypes: AttendeeType[] | null;
   statusFilter: ReturnType<typeof parseParticipantFilterStatus>;
 }) {
   const { listParticipantsForEvent } = await import("@/lib/db/queries/participants");
   const { listPaymentsForParticipants } = await import("@/lib/db/queries/payments");
   const { listConsentsForParticipants } = await import("@/lib/db/queries/legal");
+  const { listAttendeesForEvent } = await import("@/lib/db/queries/attendees");
+  const { countTakenSpots } = await import("@/lib/capacity");
   const { derivedStatus } = await import("@/lib/participant-status");
   const all = await listParticipantsForEvent(eventId);
   const allPayments = await listPaymentsForParticipants(all.map((p) => p.id));
   const allConsents = await listConsentsForParticipants(all.map((p) => p.id));
+  const allAttendees = await listAttendeesForEvent(eventId);
   const now = Date.now();
+  const takenSpots = await countTakenSpots(eventId, now);
+  const remainingCapacity = Math.max(0, eventCapacity - takenSpots);
+
+  const typeNameById = new Map<string, string>();
+  for (const t of attendeeTypes ?? []) typeNameById.set(t.id, t.name);
+
+  const attendeesByParticipant: Record<string, Array<(typeof allAttendees)[number] & { typeName: string }>> = {};
+  for (const a of allAttendees) {
+    const list = attendeesByParticipant[a.participantId] ?? [];
+    list.push({ ...a, typeName: typeNameById.get(a.attendeeTypeId) ?? "" });
+    attendeesByParticipant[a.participantId] = list;
+  }
 
   const paymentsByParticipant = new Map<string, typeof allPayments>();
   for (const pay of allPayments) {
@@ -282,13 +307,24 @@ async function ParticipantsSection({
         consents={allConsents}
         questions={questions}
         emptyMessage={statusFilter === "all" ? undefined : "Brak zgłoszeń w tej kategorii."}
+        attendeesByParticipant={attendeesByParticipant}
+        attendeeTypes={attendeeTypes ?? []}
+        remainingCapacity={remainingCapacity}
       />
       {waitlist.length > 0 && (
         <>
           <h3 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Lista rezerwowa ({waitlist.length})
           </h3>
-          <ParticipantsTable participants={waitlist} payments={allPayments} consents={allConsents} questions={questions} />
+          <ParticipantsTable
+            participants={waitlist}
+            payments={allPayments}
+            consents={allConsents}
+            questions={questions}
+            attendeesByParticipant={attendeesByParticipant}
+            attendeeTypes={attendeeTypes ?? []}
+            remainingCapacity={remainingCapacity}
+          />
         </>
       )}
     </div>
