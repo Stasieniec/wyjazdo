@@ -164,6 +164,7 @@ export function RegisterForm({
                 value={attendees[0]}
                 onChange={(next) => updateAttendee(0, next)}
                 errors={errors}
+                hideNameFields={true}
               />
             )
           : (
@@ -189,6 +190,7 @@ export function RegisterForm({
                       value={a}
                       onChange={(next) => updateAttendee(i, next)}
                       errors={errors}
+                      hideNameFields={i === 0}
                     />
                   );
                 })}

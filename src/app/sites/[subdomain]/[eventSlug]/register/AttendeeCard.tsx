@@ -10,9 +10,10 @@ type Props = {
   value: { firstName: string; lastName: string; customAnswers: Record<string, string> };
   onChange: (next: { firstName: string; lastName: string; customAnswers: Record<string, string> }) => void;
   errors: Record<string, string>;
+  hideNameFields?: boolean;
 };
 
-export function AttendeeCard({ index, type, label, canRemove, onRemove, value, onChange, errors }: Props) {
+export function AttendeeCard({ index, type, label, canRemove, onRemove, value, onChange, errors, hideNameFields = false }: Props) {
   function setField<K extends "firstName" | "lastName">(k: K, v: string) {
     onChange({ ...value, [k]: v });
   }
@@ -34,34 +35,41 @@ export function AttendeeCard({ index, type, label, canRemove, onRemove, value, o
       {/* Hidden type id for form POST */}
       <input type="hidden" name={`attendees[${index}][attendeeTypeId]`} value={type.id} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="text-sm flex flex-col">
-          Imię
-          <input
-            name={`attendees[${index}][firstName]`}
-            value={value.firstName}
-            onChange={(e) => setField("firstName", e.target.value)}
-            className="border rounded px-2 py-1"
-            required
-          />
-          {errors[`attendees[${index}][firstName]`] && (
-            <span className="text-red-600 text-xs">{errors[`attendees[${index}][firstName]`]}</span>
-          )}
-        </label>
-        <label className="text-sm flex flex-col">
-          Nazwisko
-          <input
-            name={`attendees[${index}][lastName]`}
-            value={value.lastName}
-            onChange={(e) => setField("lastName", e.target.value)}
-            className="border rounded px-2 py-1"
-            required
-          />
-          {errors[`attendees[${index}][lastName]`] && (
-            <span className="text-red-600 text-xs">{errors[`attendees[${index}][lastName]`]}</span>
-          )}
-        </label>
-      </div>
+      {hideNameFields ? (
+        <>
+          <input type="hidden" name={`attendees[${index}][firstName]`} value={value.firstName} />
+          <input type="hidden" name={`attendees[${index}][lastName]`} value={value.lastName} />
+        </>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-sm flex flex-col">
+            Imię
+            <input
+              name={`attendees[${index}][firstName]`}
+              value={value.firstName}
+              onChange={(e) => setField("firstName", e.target.value)}
+              className="border rounded px-2 py-1"
+              required
+            />
+            {errors[`attendees[${index}][firstName]`] && (
+              <span className="text-red-600 text-xs">{errors[`attendees[${index}][firstName]`]}</span>
+            )}
+          </label>
+          <label className="text-sm flex flex-col">
+            Nazwisko
+            <input
+              name={`attendees[${index}][lastName]`}
+              value={value.lastName}
+              onChange={(e) => setField("lastName", e.target.value)}
+              className="border rounded px-2 py-1"
+              required
+            />
+            {errors[`attendees[${index}][lastName]`] && (
+              <span className="text-red-600 text-xs">{errors[`attendees[${index}][lastName]`]}</span>
+            )}
+          </label>
+        </div>
+      )}
 
       {(type.customFields ?? []).map((f) => (
         <label key={f.id} className="text-sm flex flex-col">
