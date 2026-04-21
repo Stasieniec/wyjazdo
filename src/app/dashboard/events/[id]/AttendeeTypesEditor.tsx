@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
+import { ZlotyInput } from "@/components/ui";
 
 type Props = {
   value: AttendeeType[];
@@ -51,8 +52,8 @@ export function AttendeeTypesEditor({ value, onChange }: Props) {
                 <label className="text-sm flex flex-col">Max
                   <input type="number" min={1} value={t.maxQty} onChange={(e) => update(idx, { maxQty: Number(e.target.value) })} className="border rounded px-2 py-1" />
                 </label>
-                <label className="text-sm flex flex-col">Cena (gr)
-                  <input type="number" min={0} value={t.priceCents} onChange={(e) => update(idx, { priceCents: Number(e.target.value) })} className="border rounded px-2 py-1" />
+                <label className="text-sm flex flex-col">Cena (PLN)
+                  <ZlotyInput valueCents={t.priceCents} onChangeCents={(c) => update(idx, { priceCents: c })} className="border rounded px-2 py-1" />
                 </label>
               </div>
 
@@ -84,9 +85,9 @@ function GraduatedPricingEditor({ type, onChange }: { type: AttendeeType; onChan
           <input type="number" min={2} value={tier.fromQty}
             onChange={(e) => onChange(tiers.map((t, j) => j === i ? { ...t, fromQty: Number(e.target.value) } : t))}
             className="border rounded px-2 py-1 w-20" />
-          <span className="text-sm">cena (gr)</span>
-          <input type="number" min={0} value={tier.priceCents}
-            onChange={(e) => onChange(tiers.map((t, j) => j === i ? { ...t, priceCents: Number(e.target.value) } : t))}
+          <span className="text-sm">cena (PLN)</span>
+          <ZlotyInput valueCents={tier.priceCents}
+            onChangeCents={(c) => onChange(tiers.map((t, j) => j === i ? { ...t, priceCents: c } : t))}
             className="border rounded px-2 py-1 w-28" />
           <button type="button" className="text-red-600 text-xs" onClick={() => onChange(tiers.filter((_, j) => j !== i))}>usuń</button>
         </div>

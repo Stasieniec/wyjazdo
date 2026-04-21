@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { PRESET_IDS, PRESET_LABELS, buildPresetTypes, type PresetId } from "@/lib/attendee-presets";
+import { ZlotyInput } from "@/components/ui";
 import { AttendeeTypesEditor } from "./AttendeeTypesEditor";
 
 type Props = {
@@ -102,9 +103,9 @@ function GrupaPresetFields({ types, onChange }: { types: AttendeeType[]; onChang
   return (
     <div className="space-y-2">
       <label className="text-sm flex flex-col max-w-xs">
-        Cena za uczestnika (gr)
-        <input type="number" min={0} value={t.priceCents}
-          onChange={(e) => onChange([{ ...t, priceCents: Number(e.target.value) }])}
+        Cena za uczestnika (PLN)
+        <ZlotyInput valueCents={t.priceCents}
+          onChangeCents={(c) => onChange([{ ...t, priceCents: c }])}
           className="border rounded px-2 py-1" />
       </label>
       <label className="text-sm flex flex-col max-w-xs">
@@ -155,15 +156,15 @@ function RodzicPresetFields({ types, onChange }: { types: AttendeeType[]; onChan
   return (
     <div className="space-y-3">
       <label className="text-sm flex flex-col max-w-xs">
-        Cena Rodzica (gr)
-        <input type="number" min={0} value={parent.priceCents}
-          onChange={(e) => setParentPrice(Number(e.target.value))}
+        Cena Rodzica (PLN)
+        <ZlotyInput valueCents={parent.priceCents}
+          onChangeCents={setParentPrice}
           className="border rounded px-2 py-1" />
       </label>
       <label className="text-sm flex flex-col max-w-xs">
-        Cena za Dziecko (gr)
-        <input type="number" min={0} value={child.priceCents}
-          onChange={(e) => setChildPrice(Number(e.target.value))}
+        Cena za Dziecko (PLN)
+        <ZlotyInput valueCents={child.priceCents}
+          onChangeCents={setChildPrice}
           className="border rounded px-2 py-1" />
       </label>
       <label className="text-sm flex flex-col max-w-xs">
@@ -177,14 +178,14 @@ function RodzicPresetFields({ types, onChange }: { types: AttendeeType[]; onChan
         Zniżka dla kolejnych dzieci
       </label>
       {discount && (
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <span className="text-sm">od</span>
           <input type="number" min={2} value={discount.fromQty}
             onChange={(e) => setDiscountFrom(Number(e.target.value))}
             className="border rounded px-2 py-1 w-20" />
-          <span className="text-sm">-go dziecka, cena (gr)</span>
-          <input type="number" min={0} value={discount.priceCents}
-            onChange={(e) => setDiscountPrice(Number(e.target.value))}
+          <span className="text-sm">-go dziecka, cena (PLN)</span>
+          <ZlotyInput valueCents={discount.priceCents}
+            onChangeCents={setDiscountPrice}
             className="border rounded px-2 py-1 w-28" />
         </div>
       )}
