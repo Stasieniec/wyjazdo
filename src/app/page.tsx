@@ -320,6 +320,12 @@ export default function MarketingPage() {
               >
                 Polityka prywatności
               </Link>
+              <a
+                href="mailto:kontakt@wyjazdo.pl"
+                className="transition-colors hover:text-foreground"
+              >
+                Kontakt
+              </a>
             </nav>
             <p className="text-xs text-muted-foreground">
               &copy; {new Date().getFullYear()} wyjazdo.pl

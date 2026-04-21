@@ -50,7 +50,7 @@ const INITIAL_DOCUMENTS = [
 
 ## 7. Reklamacje
 
-7.1. Reklamacje dotyczące działania Serwisu należy składać na adres: [EMAIL].
+7.1. Reklamacje dotyczące działania Serwisu należy składać na adres: kontakt@wyjazdo.pl.
 
 7.2. Usługodawca rozpatruje reklamacje w terminie 14 dni od ich otrzymania.
 
@@ -73,7 +73,8 @@ Data wejścia w życie: [DATA]`,
 
 Administratorem Twoich danych osobowych jest [NAZWA FIRMY], z siedzibą w [ADRES], NIP: [NIP] (dalej: "Administrator").
 
-Kontakt: [EMAIL]
+Kontakt w sprawach ochrony danych osobowych: rodo@wyjazdo.pl
+Kontakt ogólny: kontakt@wyjazdo.pl
 
 ## 2. Cele i podstawy przetwarzania
 
