@@ -227,3 +227,12 @@ export type ParticipantConsent = typeof participantConsents.$inferSelect;
 export type NewParticipantConsent = typeof participantConsents.$inferInsert;
 export type Attendee = typeof attendees.$inferSelect;
 export type NewAttendee = typeof attendees.$inferInsert;
+
+export const processedWebhookEvents = sqliteTable("processed_webhook_events", {
+  eventId: text("event_id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  processedAt: integer("processed_at").notNull(),
+});
+
+export type ProcessedWebhookEvent = typeof processedWebhookEvents.$inferSelect;
+export type NewProcessedWebhookEvent = typeof processedWebhookEvents.$inferInsert;

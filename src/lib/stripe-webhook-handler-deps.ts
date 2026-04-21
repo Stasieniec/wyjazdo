@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/queries/payments";
 import { getParticipantWithContext } from "@/lib/db/queries/participants";
 import { syncOrganizerStripeState } from "@/lib/db/queries/organizers";
+import { recordProcessedWebhookEvent } from "@/lib/db/queries/webhook-events";
 import { sendPaymentConfirmation, sendOrganizerNewRegistration } from "@/lib/email/send";
 import { dashboardEventUrl, publicEventUrl, participantTripUrl } from "@/lib/urls";
 import { countTakenSpots } from "@/lib/capacity";
@@ -70,6 +71,12 @@ export function buildWebhookDeps(): WebhookDeps {
     markPaymentFailed: markPaymentFailedIfPending,
     markPaymentRefunded: markPaymentRefunded,
     syncOrganizerFromAccount: syncOrganizerStripeState,
+    recordProcessedEvent: async (params) =>
+      recordProcessedWebhookEvent({
+        eventId: params.eventId,
+        eventType: params.eventType,
+        nowMs: Date.now(),
+      }),
     now: () => Date.now(),
   };
 }

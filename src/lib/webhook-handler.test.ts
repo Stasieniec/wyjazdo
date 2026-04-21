@@ -2,13 +2,19 @@ import { describe, it, expect, vi } from "vitest";
 import { handleStripeEvent, type WebhookDeps } from "./webhook-handler";
 import type Stripe from "stripe";
 
-const deps = () => {
+const deps = (options?: { alreadyProcessed?: Set<string> }) => {
+  const seen = options?.alreadyProcessed ?? new Set<string>();
   const calls = {
     succeed: vi.fn(async () => true),
     expire: vi.fn(async () => {}),
     fail: vi.fn(async () => {}),
     refund: vi.fn(async () => {}),
     onboardingUpdate: vi.fn(async () => {}),
+    recordProcessed: vi.fn(async ({ eventId }: { eventId: string; eventType: string }) => {
+      if (seen.has(eventId)) return false;
+      seen.add(eventId);
+      return true;
+    }),
     now: vi.fn(() => 42),
   };
   const d: WebhookDeps = {
@@ -17,13 +23,16 @@ const deps = () => {
     markPaymentFailed: calls.fail,
     markPaymentRefunded: calls.refund,
     syncOrganizerFromAccount: calls.onboardingUpdate,
+    recordProcessedEvent: calls.recordProcessed,
     now: calls.now,
   };
   return { d, calls };
 };
 
+let nextEvtId = 1;
 const evt = <T extends Stripe.Event["type"]>(type: T, data: object, account?: string): Stripe.Event =>
   ({
+    id: `evt_${nextEvtId++}`,
     type,
     account,
     data: { object: data as never },
@@ -101,5 +110,14 @@ describe("handleStripeEvent", () => {
       d,
     );
     expect(calls.succeed).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits on replayed event.id", async () => {
+    const { d, calls } = deps();
+    const event = evt("charge.refunded", { payment_intent: "pi_9" });
+    await handleStripeEvent(event, d);
+    await handleStripeEvent(event, d);
+    expect(calls.refund).toHaveBeenCalledTimes(1);
+    expect(calls.recordProcessed).toHaveBeenCalledTimes(2);
   });
 });

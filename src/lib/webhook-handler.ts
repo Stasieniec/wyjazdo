@@ -16,6 +16,11 @@ export type WebhookDeps = {
     onboardingComplete: boolean;
     payoutsEnabled: boolean;
   }): Promise<void>;
+  /**
+   * Returns true if this event.id has not been processed before (caller should
+   * process), false if it was already processed (caller must short-circuit).
+   */
+  recordProcessedEvent(params: { eventId: string; eventType: string }): Promise<boolean>;
   now(): number;
 };
 
@@ -26,6 +31,8 @@ function paymentIdFromMetadata(meta: Stripe.Metadata | null | undefined): string
 }
 
 export async function handleStripeEvent(event: Stripe.Event, deps: WebhookDeps): Promise<void> {
+  const fresh = await deps.recordProcessedEvent({ eventId: event.id, eventType: event.type });
+  if (!fresh) return;
   switch (event.type) {
     case "checkout.session.completed": {
       const s = event.data.object as Stripe.Checkout.Session;
