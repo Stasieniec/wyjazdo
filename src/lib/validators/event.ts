@@ -42,17 +42,11 @@ export const eventBaseSchema = z
   })
   .refine(
     (d) =>
-      d.depositCents == null || d.depositCents === 0 || d.depositCents <= d.priceCents,
-    { message: "Zaliczka nie może przekraczać ceny.", path: ["depositCents"] },
-  )
-  .refine(
-    (d) =>
       d.depositCents == null ||
       d.depositCents === 0 ||
-      d.depositCents === d.priceCents ||
       d.balanceDueAt != null,
     {
-      message: "Podaj termin dopłaty, gdy zaliczka jest niższa niż cena.",
+      message: "Podaj termin dopłaty, gdy ustawisz zaliczkę.",
       path: ["balanceDueAt"],
     },
   )

@@ -22,22 +22,19 @@ export async function ensureBalancePayment(params: {
 }): Promise<string> {
   const { participant, event, organizer, origin } = params;
   if (!organizer.stripeAccountId) throw new Error("organizer not connected");
-  if (
-    event.depositCents == null ||
-    event.depositCents === 0 ||
-    event.depositCents >= event.priceCents
-  ) {
+  if (event.depositCents == null || event.depositCents === 0) {
     throw new Error("event is not deposit-mode");
   }
 
-  const existing = await listPaymentsForParticipant(participant.id);
-  const existingBalance = existing.find((p) => p.kind === "balance");
-  const now = Date.now();
   const { totalCents, effectiveDepositCents } = await computeRegistrationAmountsCents(participant.id, event);
   const balanceAmount = Math.max(0, totalCents - effectiveDepositCents);
   if (balanceAmount === 0) {
     throw new Error("nothing due — balance already covered");
   }
+
+  const existing = await listPaymentsForParticipant(participant.id);
+  const existingBalance = existing.find((p) => p.kind === "balance");
+  const now = Date.now();
 
   const stripe = getStripe();
 
