@@ -1,6 +1,6 @@
 "use server";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { organizerProfileSchema } from "@/lib/validators/organizer";
@@ -22,6 +22,7 @@ export async function createOrganizerAction(formData: FormData) {
   const parsed = organizerProfileSchema.safeParse({
     subdomain: String(formData.get("subdomain") ?? "").toLowerCase(),
     displayName: String(formData.get("displayName") ?? ""),
+    contactEmail: String(formData.get("contactEmail") ?? "").trim(),
     description: (formData.get("description") as string) || undefined,
     acceptTerms: formData.get("acceptTerms") === "true" ? true : false,
     acceptPrivacy: formData.get("acceptPrivacy") === "true" ? true : false,
@@ -41,12 +42,6 @@ export async function createOrganizerAction(formData: FormData) {
     return { error: "Ta nazwa jest już zajęta" };
   }
 
-  const user = await currentUser();
-  const primaryEmail =
-    user?.primaryEmailAddress?.emailAddress ??
-    user?.emailAddresses?.[0]?.emailAddress ??
-    null;
-
   const h = await headers();
   const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const now = Date.now();
@@ -58,7 +53,7 @@ export async function createOrganizerAction(formData: FormData) {
     subdomain: parsed.data.subdomain,
     displayName: parsed.data.displayName,
     description: parsed.data.description ?? null,
-    contactEmail: primaryEmail,
+    contactEmail: parsed.data.contactEmail,
     termsAcceptedAt: now,
     dpaAcceptedAt: now,
   });

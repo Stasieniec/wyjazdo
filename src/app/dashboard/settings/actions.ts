@@ -22,7 +22,7 @@ const settingsSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional()
     .or(z.literal("")),
-  contactEmail: z.string().email().optional().or(z.literal("")),
+  contactEmail: z.string().email("Nieprawidłowy adres email").max(200),
   contactPhone: z.string().max(32).optional(),
   website: z.string().url().optional().or(z.literal("")),
   instagram: z.string().max(64).optional(),
@@ -60,7 +60,7 @@ export async function updateSettingsAction(
     logoUrl: emptyToNull(d.logoUrl),
     coverUrl: emptyToNull(d.coverUrl),
     brandColor: emptyToNull(d.brandColor),
-    contactEmail: emptyToNull(d.contactEmail),
+    contactEmail: d.contactEmail,
     contactPhone: emptyToNull(d.contactPhone),
     socialLinks,
   });

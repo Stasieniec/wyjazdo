@@ -14,6 +14,7 @@ export const RESERVED_SUBDOMAINS = new Set([
 export const organizerProfileSchema = z.object({
   subdomain: subdomainSchema.refine((s) => !RESERVED_SUBDOMAINS.has(s), "Ta nazwa jest zarezerwowana"),
   displayName: z.string().min(1).max(100),
+  contactEmail: z.string().email("Nieprawidłowy adres email").max(200),
   description: z.string().max(2000).optional(),
   acceptTerms: z.literal(true, {
     message: "Akceptacja regulaminu jest wymagana.",

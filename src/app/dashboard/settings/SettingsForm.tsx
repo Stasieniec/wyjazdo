@@ -97,6 +97,7 @@ export function SettingsForm({ defaults }: Props) {
             type="email"
             name="contactEmail"
             label="Email kontaktowy"
+            required
             defaultValue={defaults.contactEmail ?? ""}
             error={state?.errors?.contactEmail}
           />
