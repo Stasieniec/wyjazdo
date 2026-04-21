@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 
 /**
@@ -21,4 +22,16 @@ export async function recordProcessedWebhookEvent(params: {
     .onConflictDoNothing()
     .returning({ eventId: schema.processedWebhookEvents.eventId });
   return inserted.length > 0;
+}
+
+/**
+ * Removes an event-id marker so Stripe's retry can reprocess it. Used when
+ * the handler fails mid-processing — without this, the retry would be
+ * short-circuited by the idempotency guard and the work would never run.
+ */
+export async function unrecordProcessedWebhookEvent(eventId: string): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(schema.processedWebhookEvents)
+    .where(eq(schema.processedWebhookEvents.eventId, eventId));
 }

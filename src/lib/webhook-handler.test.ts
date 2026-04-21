@@ -15,6 +15,9 @@ const deps = (options?: { alreadyProcessed?: Set<string> }) => {
       seen.add(eventId);
       return true;
     }),
+    unrecordProcessed: vi.fn(async (eventId: string) => {
+      seen.delete(eventId);
+    }),
     now: vi.fn(() => 42),
   };
   const d: WebhookDeps = {
@@ -24,6 +27,7 @@ const deps = (options?: { alreadyProcessed?: Set<string> }) => {
     markPaymentRefunded: calls.refund,
     syncOrganizerFromAccount: calls.onboardingUpdate,
     recordProcessedEvent: calls.recordProcessed,
+    unrecordProcessedEvent: calls.unrecordProcessed,
     now: calls.now,
   };
   return { d, calls };
@@ -119,5 +123,18 @@ describe("handleStripeEvent", () => {
     await handleStripeEvent(event, d);
     expect(calls.refund).toHaveBeenCalledTimes(1);
     expect(calls.recordProcessed).toHaveBeenCalledTimes(2);
+  });
+
+  it("undoes the idempotency record and rethrows when processing fails", async () => {
+    const { d, calls } = deps();
+    calls.refund.mockRejectedValueOnce(new Error("db blip"));
+    const event = evt("charge.refunded", { payment_intent: "pi_42" });
+    await expect(handleStripeEvent(event, d)).rejects.toThrow("db blip");
+    expect(calls.unrecordProcessed).toHaveBeenCalledWith(event.id);
+
+    // Stripe's retry should then proceed — the second attempt is treated as fresh.
+    calls.refund.mockResolvedValueOnce(undefined);
+    await handleStripeEvent(event, d);
+    expect(calls.refund).toHaveBeenCalledTimes(2);
   });
 });

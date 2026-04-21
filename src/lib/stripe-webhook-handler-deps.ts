@@ -7,7 +7,10 @@ import {
 } from "@/lib/db/queries/payments";
 import { getParticipantWithContext } from "@/lib/db/queries/participants";
 import { syncOrganizerStripeState } from "@/lib/db/queries/organizers";
-import { recordProcessedWebhookEvent } from "@/lib/db/queries/webhook-events";
+import {
+  recordProcessedWebhookEvent,
+  unrecordProcessedWebhookEvent,
+} from "@/lib/db/queries/webhook-events";
 import { sendPaymentConfirmation, sendOrganizerNewRegistration } from "@/lib/email/send";
 import { dashboardEventUrl, publicEventUrl, participantTripUrl } from "@/lib/urls";
 import { countTakenSpots } from "@/lib/capacity";
@@ -77,6 +80,7 @@ export function buildWebhookDeps(): WebhookDeps {
         eventType: params.eventType,
         nowMs: Date.now(),
       }),
+    unrecordProcessedEvent: unrecordProcessedWebhookEvent,
     now: () => Date.now(),
   };
 }
