@@ -68,10 +68,17 @@ export function AttendeeTypesField({ initialAttendeeTypes, basePriceCents, name 
       </div>
       <button
         type="button"
-        className="text-xs underline text-gray-600"
         onClick={() => setPreset("custom")}
+        className={`w-full border border-dashed rounded-md p-3 text-left ${preset === "custom" ? "border-black bg-gray-50" : "border-gray-400 hover:bg-gray-50"}`}
       >
-        {preset === "custom" ? "Używasz własnej konfiguracji" : "Potrzebujesz innej konfiguracji? Utwórz własną →"}
+        <div className="font-semibold text-sm">
+          {preset === "custom" ? "Własna konfiguracja" : "Potrzebujesz innej konfiguracji?"}
+        </div>
+        <div className="text-sm text-gray-600">
+          {preset === "custom"
+            ? "Edytujesz typy uczestników ręcznie."
+            : "Utwórz własne typy uczestników (np. dorosły + senior, kilku typów uczestników z różnymi cenami)."}
+        </div>
       </button>
 
       {preset === "rodzic_z_dziecmi" && (
