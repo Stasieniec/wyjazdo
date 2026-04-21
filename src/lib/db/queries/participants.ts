@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, ne, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import type { NewAttendee, NewParticipant, Participant } from "@/lib/db/schema";
 
@@ -18,6 +18,84 @@ export async function insertParticipantWithAttendees(
       await tx.insert(schema.attendees).values(attendees);
     }
   });
+}
+
+/**
+ * Conditional insert of a participant as 'active' only if there is capacity.
+ * Capacity is defined as: sum of non-cancelled attendee rows for 'active'
+ * participants of the same event, plus 1 for any 'active' participant that
+ * has no non-cancelled attendee rows (legacy single-seat registrations).
+ *
+ * Returns true if the row was inserted (caller should then insert attendees
+ * and proceed). Returns false if the event was full (caller should insert
+ * this participant as 'waitlisted' instead).
+ *
+ * Runs in a single SQL statement so two concurrent callers cannot both pass
+ * the check for the last seat — SQLite serializes writes.
+ */
+export async function tryInsertActiveParticipant(params: {
+  participant: NewParticipant;
+  requestedSeats: number;
+  capacity: number;
+}): Promise<boolean> {
+  const db = getDb();
+  const p = params.participant;
+  const res = await db.run(sql`
+    INSERT INTO participants
+      (id, event_id, first_name, last_name, email, phone, custom_answers, lifecycle_status, created_at, updated_at)
+    SELECT
+      ${p.id}, ${p.eventId}, ${p.firstName}, ${p.lastName}, ${p.email},
+      ${p.phone ?? null}, ${p.customAnswers ?? null}, 'active',
+      ${p.createdAt}, ${p.updatedAt}
+    WHERE (
+      (SELECT COUNT(*) FROM attendees a
+        JOIN participants pa ON a.participant_id = pa.id
+        WHERE pa.event_id = ${p.eventId}
+          AND pa.lifecycle_status = 'active'
+          AND a.cancelled_at IS NULL)
+      +
+      (SELECT COUNT(*) FROM participants pa
+        WHERE pa.event_id = ${p.eventId}
+          AND pa.lifecycle_status = 'active'
+          AND NOT EXISTS (
+            SELECT 1 FROM attendees a
+            WHERE a.participant_id = pa.id AND a.cancelled_at IS NULL
+          ))
+      + ${params.requestedSeats}
+    ) <= ${params.capacity}
+  `);
+  return ((res as { meta?: { changes?: number } }).meta?.changes ?? 0) > 0;
+}
+
+export async function insertAttendees(rows: NewAttendee[]): Promise<void> {
+  if (rows.length === 0) return;
+  const db = getDb();
+  await db.insert(schema.attendees).values(rows);
+}
+
+/**
+ * Looks for a participant with the same (eventId, email) created within the
+ * given window, that is not cancelled. Used for duplicate-submit dedupe.
+ */
+export async function findRecentParticipantForDedupe(params: {
+  eventId: string;
+  email: string;
+  sinceMs: number;
+}): Promise<Participant | null> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.participants)
+    .where(
+      and(
+        eq(schema.participants.eventId, params.eventId),
+        eq(schema.participants.email, params.email),
+        ne(schema.participants.lifecycleStatus, "cancelled"),
+        gt(schema.participants.createdAt, params.sinceMs),
+      ),
+    )
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function getParticipantById(id: string): Promise<Participant | null> {

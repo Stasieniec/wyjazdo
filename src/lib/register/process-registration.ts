@@ -15,7 +15,12 @@ import {
 import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
-import { insertParticipantWithAttendees } from "@/lib/db/queries/participants";
+import {
+  findRecentParticipantForDedupe,
+  insertAttendees,
+  insertParticipantWithAttendees,
+  tryInsertActiveParticipant,
+} from "@/lib/db/queries/participants";
 import { insertPayment, setPaymentStripeSession } from "@/lib/db/queries/payments";
 import { newId } from "@/lib/ids";
 import { getStripe } from "@/lib/stripe";
@@ -28,6 +33,7 @@ import { dashboardEventUrl, participantTripUrl, publicEventUrl } from "@/lib/url
 import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
 
 const PENDING_TTL_MS = 30 * 60 * 1000;
+const DEDUPE_WINDOW_MS = 60 * 1000;
 
 export const LEGACY_ATTENDEE_TYPE_ID = "__legacy__";
 
@@ -319,13 +325,49 @@ export async function processRegistration(
   const requestedSpots = attendeeRows.length;
 
   const now = Date.now();
-  const taken = await countTakenSpots(event.id, now);
-  const isFull = (taken + requestedSpots) > event.capacity;
-
-  const participantId = newId();
   const origin = await eventSiteOrigin(subdomain, requestProtocol);
 
-  if (isFull) {
+  // Duplicate-submit dedupe: if the same email+eventId registered in the
+  // dedupe window and isn't cancelled, bounce them to their trip page rather
+  // than creating a second participant + Stripe session.
+  const existingDup = await findRecentParticipantForDedupe({
+    eventId: event.id,
+    email: parsedRegistrant.data.email,
+    sinceMs: now - DEDUPE_WINDOW_MS,
+  });
+  if (existingDup) {
+    const secret = getParticipantAuthSecret();
+    const token = await signParticipantToken(existingDup.id, secret);
+    return {
+      redirectUrl: `${participantTripUrl(existingDup.id)}?t=${encodeURIComponent(token)}`,
+    };
+  }
+
+  const participantId = newId();
+  const attendeeInserts = isLegacyMode
+    ? []
+    : buildAttendeeInserts(attendeeRows, participantId, now);
+
+  // Capacity check + active insert in a single atomic SQL statement.
+  // If it returns false the event is full — fall through to waitlist.
+  const admittedActive = await tryInsertActiveParticipant({
+    participant: {
+      id: participantId,
+      eventId: event.id,
+      firstName: parsedRegistrant.data.firstName,
+      lastName: parsedRegistrant.data.lastName,
+      email: parsedRegistrant.data.email,
+      phone: parsedRegistrant.data.phone ?? null,
+      customAnswers: JSON.stringify(answers),
+      lifecycleStatus: "active",
+      createdAt: now,
+      updatedAt: now,
+    },
+    requestedSeats: requestedSpots,
+    capacity: event.capacity,
+  });
+
+  if (!admittedActive) {
     await insertParticipantWithAttendees(
       {
         id: participantId,
@@ -339,7 +381,7 @@ export async function processRegistration(
         createdAt: now,
         updatedAt: now,
       },
-      isLegacyMode ? [] : buildAttendeeInserts(attendeeRows, participantId, now),
+      attendeeInserts,
     );
 
     const h = await headers();
@@ -364,13 +406,14 @@ export async function processRegistration(
       })(),
     ];
     if (organizer.contactEmail) {
+      const takenAfter = await countTakenSpots(event.id, Date.now());
       emailPromises.push(
         sendOrganizerNewRegistration({
           to: organizer.contactEmail,
           participantName: `${parsedRegistrant.data.firstName} ${parsedRegistrant.data.lastName}`,
           participantEmail: parsedRegistrant.data.email,
           eventTitle: event.title,
-          spotsInfo: `${taken} / ${event.capacity} (pełne)`,
+          spotsInfo: `${takenAfter} / ${event.capacity} (pełne)`,
           isWaitlisted: true,
           dashboardUrl: dashboardEventUrl(event.id),
         }),
@@ -381,21 +424,7 @@ export async function processRegistration(
     return { redirectUrl: `${origin}/${slug}/thanks?waitlisted=1` };
   }
 
-  await insertParticipantWithAttendees(
-    {
-      id: participantId,
-      eventId: event.id,
-      firstName: parsedRegistrant.data.firstName,
-      lastName: parsedRegistrant.data.lastName,
-      email: parsedRegistrant.data.email,
-      phone: parsedRegistrant.data.phone ?? null,
-      customAnswers: JSON.stringify(answers),
-      lifecycleStatus: "active",
-      createdAt: now,
-      updatedAt: now,
-    },
-    isLegacyMode ? [] : buildAttendeeInserts(attendeeRows, participantId, now),
-  );
+  await insertAttendees(attendeeInserts);
 
   const h = await headers();
   const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
