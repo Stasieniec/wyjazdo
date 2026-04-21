@@ -22,7 +22,6 @@ type Props = {
     location: string | null;
     startsAt: number;
     endsAt: number;
-    priceCents: number;
     capacity: number;
     coverUrl: string | null;
     depositCents: number | null;

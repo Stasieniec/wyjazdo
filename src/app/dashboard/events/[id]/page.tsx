@@ -183,7 +183,6 @@ export default async function EventEditPage({
               location: event.location,
               startsAt: event.startsAt,
               endsAt: event.endsAt,
-              priceCents: event.priceCents,
               capacity: event.capacity,
               coverUrl: event.coverUrl,
               depositCents: event.depositCents ?? null,
