@@ -193,13 +193,13 @@ function RodzicPresetFields({ types, onChange }: { types: AttendeeType[]; onChan
   return (
     <div className="space-y-4">
       <label className="text-sm flex flex-col max-w-xs">
-        Cena Rodzica (PLN)
+        Cena rodzica (PLN)
         <ZlotyInput valueCents={parent.priceCents}
           onChangeCents={(c) => updateType(parent.id, { priceCents: c })}
           className="border rounded px-2 py-1" />
       </label>
       <label className="text-sm flex flex-col max-w-xs">
-        Cena za Dziecko (PLN)
+        Cena za dziecko (PLN)
         <ZlotyInput valueCents={child.priceCents}
           onChangeCents={(c) => updateType(child.id, { priceCents: c })}
           className="border rounded px-2 py-1" />

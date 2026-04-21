@@ -312,7 +312,7 @@ function SortableQuestionCard({
             >
               <option value="short_text">Krótki tekst</option>
               <option value="long_text">Długi tekst</option>
-              <option value="select">Wybór</option>
+              <option value="select">Lista wyboru</option>
             </select>
             <label className="flex items-center gap-1 text-sm">
               <input

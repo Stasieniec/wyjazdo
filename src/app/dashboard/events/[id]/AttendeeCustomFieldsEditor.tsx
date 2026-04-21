@@ -34,11 +34,11 @@ export function AttendeeCustomFieldsEditor({ value, onChange, heading = "Dodatko
           <select value={f.type}
             onChange={(e) => onChange(fields.map((x, j) => j === i ? { ...x, type: e.target.value as typeof f.type } : x))}
             className="border rounded px-2 py-1 text-sm">
-            <option value="text">tekst</option>
-            <option value="long_text">długi tekst</option>
-            <option value="number">liczba</option>
-            <option value="date">data</option>
-            <option value="select">lista wyboru</option>
+            <option value="text">Krótki tekst</option>
+            <option value="long_text">Długi tekst</option>
+            <option value="number">Liczba</option>
+            <option value="date">Data</option>
+            <option value="select">Lista wyboru</option>
           </select>
           <label className="text-sm flex items-center gap-1.5">
             <input type="checkbox" checked={f.required}
