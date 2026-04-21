@@ -11,7 +11,6 @@ import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/u
 import { GalleryUpload } from "@/components/dashboard/GalleryUpload";
 import { saveEventAction, type SaveEventFormState } from "./actions";
 import { AttendeeTypesField } from "./attendee-types-field";
-import { isDepositPricingMode } from "@/lib/format-currency";
 
 type Props = {
   eventId: string;
@@ -58,16 +57,10 @@ export function EventEditForm({
           .slice(0, 16)
       : "";
 
-  const [price, setPrice] = useState(String(event.priceCents / 100));
   const [deposit, setDeposit] = useState(
     event.depositCents != null ? String(event.depositCents / 100) : "",
   );
   const [balanceDueAt, setBalanceDueAt] = useState(balanceDueAtInitial);
-
-  const priceCents = useMemo(() => {
-    const n = parseFloat(String(price).replace(",", "."));
-    return Number.isFinite(n) ? Math.round(n * 100) : 0;
-  }, [price]);
 
   const depositCents = useMemo(() => {
     const s = String(deposit).trim();
@@ -76,7 +69,11 @@ export function EventEditForm({
     return Number.isFinite(n) ? Math.round(n * 100) : null;
   }, [deposit]);
 
-  const balanceDueActive = isDepositPricingMode(priceCents, depositCents);
+  // Balance-due timing is driven purely by the presence of a positive deposit.
+  // The event-level "priceCents" is now derived from attendee types, so we no
+  // longer compare deposit against it here — the server still enforces the
+  // full pricing invariants on submit.
+  const balanceDueActive = depositCents != null && depositCents > 0;
 
   return (
     <form action={formAction} className="space-y-6">
@@ -115,48 +112,33 @@ export function EventEditForm({
         />
       </Section>
 
-      <Section title="Termin i miejsca">
+      <Section title="Termin">
         <EventDateTimeRange
           defaultStartsAt={event.startsAt}
           defaultEndsAt={event.endsAt}
           error={state?.errors?.startsAt ?? state?.errors?.endsAt}
         />
-        <div className="rounded-lg border border-border bg-muted/30 p-4">
-          <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Cena całkowita</span> to kwota,
-            którą uczestnik zapłaci łącznie za udział.{" "}
-            <span className="font-medium text-foreground">Zaliczka</span> to pierwsza część
-            tej kwoty (płatna przy zapisie), a nie dodatkowa opłata obok ceny.
+      </Section>
+
+      <Section title="Cena, zapisy i uczestnicy">
+        {state?.errors?.attendeeTypes && (
+          <p className="text-sm text-destructive" role="alert">
+            {state.errors.attendeeTypes}
           </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            type="number"
-            name="price"
-            label="Cena całkowita (PLN)"
-            step="0.01"
-            min="0"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            required
-            error={state?.errors?.price ?? state?.errors?.priceCents}
-          />
-          <Input
-            type="number"
-            name="capacity"
-            label="Liczba miejsc"
-            min="1"
-            defaultValue={event.capacity}
-            required
-            error={state?.errors?.capacity}
-          />
-        </div>
+        )}
+        <AttendeeTypesField initialAttendeeTypes={initialAttendeeTypes} />
+        {state?.errors?.price || state?.errors?.priceCents ? (
+          <p className="text-sm text-destructive">
+            {state.errors.price ?? state.errors.priceCents}
+          </p>
+        ) : null}
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1">
             <Input
               type="number"
               name="deposit"
-              label="Zaliczka przy zapisie (PLN)"
+              label="Zaliczka za osobę (PLN)"
               step="0.01"
               min="0"
               value={deposit}
@@ -164,7 +146,8 @@ export function EventEditForm({
               error={state?.errors?.depositCents}
             />
             <p className="text-sm text-muted-foreground">
-              Część ceny całkowitej płatna od razu. Puste = cała kwota przy rejestracji.
+              Kwota płacona przy zapisie za każdego uczestnika zgłoszenia. Puste = pełna
+              płatność od razu.
             </p>
           </div>
           <div className="space-y-1">
@@ -181,21 +164,19 @@ export function EventEditForm({
             <p className="text-sm text-muted-foreground">
               {balanceDueActive
                 ? "Do kiedy uczestnik musi dopłacić pozostałą kwotę (przed startem wydarzenia)."
-                : "Dostępne, gdy zaliczka jest niższa niż cena całkowita — wtedy dopłata jest wymagana w podanym terminie."}
+                : "Dostępne, gdy ustawisz zaliczkę — wtedy dopłata jest wymagana w podanym terminie."}
             </p>
           </div>
         </div>
-      </Section>
 
-      <Section title="Uczestnicy">
-        {state?.errors?.attendeeTypes && (
-          <p className="text-sm text-destructive" role="alert">
-            {state.errors.attendeeTypes}
-          </p>
-        )}
-        <AttendeeTypesField
-          initialAttendeeTypes={initialAttendeeTypes}
-          basePriceCents={priceCents}
+        <Input
+          type="number"
+          name="capacity"
+          label="Liczba miejsc"
+          min="1"
+          defaultValue={event.capacity}
+          required
+          error={state?.errors?.capacity}
         />
       </Section>
 
@@ -219,8 +200,8 @@ export function EventEditForm({
       </Section>
 
       <Section
-        title="Pytania do uczestnika"
-        description="Dodatkowe informacje zbierane w formularzu zapisu — np. preferencje żywieniowe, rozmiar koszulki, kontakt awaryjny."
+        title="Pytania raz na zgłoszenie"
+        description={"Pytania zadawane raz na zgłoszenie, niezależnie od liczby uczestników — np. skąd się dowiedziałaś o wydarzeniu, dane do faktury, uwagi ogólne. Pytania o poszczególnych uczestników (np. wiek, alergie) konfigurujesz wyżej w sekcji „Kto bierze udział?\"."}
       >
         {state?.errors?.customQuestions && (
           <p className="text-sm text-destructive" role="alert">

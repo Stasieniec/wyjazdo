@@ -1,14 +1,23 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { PRESET_IDS, PRESET_LABELS, buildPresetTypes, type PresetId } from "@/lib/attendee-presets";
+import { calculateTotal } from "@/lib/pricing";
 import { ZlotyInput } from "@/components/ui";
 import { AttendeeTypesEditor } from "./AttendeeTypesEditor";
+import { AttendeeCustomFieldsEditor } from "./AttendeeCustomFieldsEditor";
 
 type Props = {
   initialAttendeeTypes: AttendeeType[] | null;
-  basePriceCents: number;
-  name?: string; // hidden input name, defaults to "attendeeTypes"
+  /** Hidden input name for the serialized attendee types JSON. Defaults to "attendeeTypes". */
+  name?: string;
+  /**
+   * Hidden input name for the derived event.priceCents value (in PLN, same convention as the
+   * existing "price" field). Defaults to "price".
+   * The derived value is the minimum total for this event (sum of minQty × price across all types),
+   * serving as a "starting from" figure for listings.
+   */
+  priceHiddenName?: string;
 };
 
 function detectPreset(types: AttendeeType[] | null): PresetId | "custom" {
@@ -25,27 +34,31 @@ function detectPreset(types: AttendeeType[] | null): PresetId | "custom" {
   return "custom";
 }
 
-export function AttendeeTypesField({ initialAttendeeTypes, basePriceCents, name = "attendeeTypes" }: Props) {
+function derivedPriceCents(types: AttendeeType[]): number {
+  const quantities: Record<string, number> = {};
+  for (const t of types) quantities[t.id] = Math.max(1, t.minQty);
+  return calculateTotal(types, quantities).total;
+}
+
+function centsToPLNString(cents: number): string {
+  if (cents === 0) return "0";
+  return (cents / 100).toString().replace(".", ",");
+}
+
+export function AttendeeTypesField({ initialAttendeeTypes, name = "attendeeTypes", priceHiddenName = "price" }: Props) {
   const [preset, setPreset] = useState<PresetId | "custom">(() => detectPreset(initialAttendeeTypes));
   const [types, setTypes] = useState<AttendeeType[]>(() => {
     if (initialAttendeeTypes && initialAttendeeTypes.length > 0) return initialAttendeeTypes;
-    return buildPresetTypes("jedna_osoba", { basePriceCents });
+    return buildPresetTypes("jedna_osoba", { basePriceCents: 0 });
   });
 
   function applyPreset(p: PresetId | "custom") {
     setPreset(p);
-    if (p === "custom") return; // keep current
-    setTypes(buildPresetTypes(p, { basePriceCents }));
+    if (p === "custom") return;
+    setTypes(buildPresetTypes(p, { basePriceCents: 0 }));
   }
 
-  // In "jedna_osoba" mode, the organizer edits the event price via the
-  // top-level "Cena" field. Derive the submitted types from `basePriceCents`
-  // so the single attendee type's price always reflects the current input —
-  // no effect/state-sync needed.
-  const submittedTypes: AttendeeType[] =
-    preset === "jedna_osoba" && types.length === 1
-      ? [{ ...types[0], priceCents: basePriceCents }]
-      : types;
+  const derivedPrice = useMemo(() => derivedPriceCents(types), [types]);
 
   return (
     <div className="space-y-4">
@@ -82,18 +95,33 @@ export function AttendeeTypesField({ initialAttendeeTypes, basePriceCents, name 
         </div>
       </button>
 
-      {preset === "rodzic_z_dziecmi" && (
-        <RodzicPresetFields types={types} onChange={setTypes} />
-      )}
-      {preset === "grupa" && (
-        <GrupaPresetFields types={types} onChange={setTypes} />
-      )}
-      {/* "jedna_osoba" renders no extra fields — price comes from the top-level "Cena" input. */}
-      {preset === "custom" && (
-        <AttendeeTypesEditor value={types} onChange={setTypes} />
-      )}
+      {preset === "jedna_osoba" && <JednaOsobaPresetFields types={types} onChange={setTypes} />}
+      {preset === "rodzic_z_dziecmi" && <RodzicPresetFields types={types} onChange={setTypes} />}
+      {preset === "grupa" && <GrupaPresetFields types={types} onChange={setTypes} />}
+      {preset === "custom" && <AttendeeTypesEditor value={types} onChange={setTypes} />}
 
-      <input type="hidden" name={name} value={JSON.stringify(submittedTypes)} />
+      <input type="hidden" name={name} value={JSON.stringify(types)} />
+      <input type="hidden" name={priceHiddenName} value={centsToPLNString(derivedPrice)} />
+    </div>
+  );
+}
+
+function JednaOsobaPresetFields({ types, onChange }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void }) {
+  const t = types[0];
+  return (
+    <div className="space-y-4">
+      <label className="text-sm flex flex-col max-w-xs">
+        Cena (PLN)
+        <ZlotyInput valueCents={t.priceCents}
+          onChangeCents={(c) => onChange([{ ...t, priceCents: c }])}
+          className="border rounded px-2 py-1" />
+      </label>
+      <AttendeeCustomFieldsEditor
+        heading="Pytania o uczestnika"
+        description="Dodatkowe pytania w formularzu zapisu — np. rozmiar koszulki, alergie, dieta."
+        value={t.customFields ?? []}
+        onChange={(cf) => onChange([{ ...t, customFields: cf }])}
+      />
     </div>
   );
 }
@@ -101,7 +129,7 @@ export function AttendeeTypesField({ initialAttendeeTypes, basePriceCents, name 
 function GrupaPresetFields({ types, onChange }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void }) {
   const t = types[0];
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <label className="text-sm flex flex-col max-w-xs">
         Cena za uczestnika (PLN)
         <ZlotyInput valueCents={t.priceCents}
@@ -114,6 +142,12 @@ function GrupaPresetFields({ types, onChange }: { types: AttendeeType[]; onChang
           onChange={(e) => onChange([{ ...t, maxQty: Number(e.target.value) }])}
           className="border rounded px-2 py-1" />
       </label>
+      <AttendeeCustomFieldsEditor
+        heading="Pytania o każdego uczestnika"
+        description="Pojawią się w formularzu zapisu dla każdej osoby w grupie — np. stanowisko, dieta, alergie."
+        value={t.customFields ?? []}
+        onChange={(cf) => onChange([{ ...t, customFields: cf }])}
+      />
     </div>
   );
 }
@@ -123,54 +157,41 @@ function RodzicPresetFields({ types, onChange }: { types: AttendeeType[]; onChan
   const child = types.find((t) => t.name.toLowerCase() === "dziecko") ?? types[1];
   const discount = child.graduatedPricing?.[0];
 
-  function setParentPrice(v: number) {
-    onChange(types.map((t) => (t.id === parent.id ? { ...t, priceCents: v } : t)));
-  }
-  function setChildPrice(v: number) {
-    onChange(types.map((t) => (t.id === child.id ? { ...t, priceCents: v } : t)));
-  }
-  function setChildMax(v: number) {
-    onChange(types.map((t) => (t.id === child.id ? { ...t, maxQty: v } : t)));
+  const [parentQuestionsOpen, setParentQuestionsOpen] = useState(false);
+
+  function updateType(id: string, patch: Partial<AttendeeType>) {
+    onChange(types.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   }
   function toggleDiscount(on: boolean) {
-    onChange(types.map((t) => {
-      if (t.id !== child.id) return t;
-      return { ...t, graduatedPricing: on ? [{ fromQty: 2, priceCents: 0 }] : undefined };
-    }));
+    updateType(child.id, { graduatedPricing: on ? [{ fromQty: 2, priceCents: 0 }] : undefined });
   }
   function setDiscountFrom(v: number) {
-    onChange(types.map((t) => {
-      if (t.id !== child.id) return t;
-      const tier = (t.graduatedPricing ?? [{ fromQty: 2, priceCents: 0 }])[0];
-      return { ...t, graduatedPricing: [{ ...tier, fromQty: v }] };
-    }));
+    const tier = (child.graduatedPricing ?? [{ fromQty: 2, priceCents: 0 }])[0];
+    updateType(child.id, { graduatedPricing: [{ ...tier, fromQty: v }] });
   }
   function setDiscountPrice(v: number) {
-    onChange(types.map((t) => {
-      if (t.id !== child.id) return t;
-      const tier = (t.graduatedPricing ?? [{ fromQty: 2, priceCents: 0 }])[0];
-      return { ...t, graduatedPricing: [{ ...tier, priceCents: v }] };
-    }));
+    const tier = (child.graduatedPricing ?? [{ fromQty: 2, priceCents: 0 }])[0];
+    updateType(child.id, { graduatedPricing: [{ ...tier, priceCents: v }] });
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <label className="text-sm flex flex-col max-w-xs">
         Cena Rodzica (PLN)
         <ZlotyInput valueCents={parent.priceCents}
-          onChangeCents={setParentPrice}
+          onChangeCents={(c) => updateType(parent.id, { priceCents: c })}
           className="border rounded px-2 py-1" />
       </label>
       <label className="text-sm flex flex-col max-w-xs">
         Cena za Dziecko (PLN)
         <ZlotyInput valueCents={child.priceCents}
-          onChangeCents={setChildPrice}
+          onChangeCents={(c) => updateType(child.id, { priceCents: c })}
           className="border rounded px-2 py-1" />
       </label>
       <label className="text-sm flex flex-col max-w-xs">
         Maksymalna liczba dzieci
         <input type="number" min={1} max={10} value={child.maxQty}
-          onChange={(e) => setChildMax(Number(e.target.value))}
+          onChange={(e) => updateType(child.id, { maxQty: Number(e.target.value) })}
           className="border rounded px-2 py-1" />
       </label>
       <label className="text-sm flex items-center gap-2">
@@ -189,6 +210,33 @@ function RodzicPresetFields({ types, onChange }: { types: AttendeeType[]; onChan
             className="border rounded px-2 py-1 w-28" />
         </div>
       )}
+
+      <AttendeeCustomFieldsEditor
+        heading="Pytania o każde dziecko"
+        description="Pojawią się w formularzu zapisu dla każdego dziecka — np. wiek, alergie, dieta, rozmiar ubrania."
+        value={child.customFields ?? []}
+        onChange={(cf) => updateType(child.id, { customFields: cf })}
+      />
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setParentQuestionsOpen(!parentQuestionsOpen)}
+          className="text-sm underline text-gray-700"
+        >
+          {parentQuestionsOpen ? "▾" : "▸"} Pytania o rodzica (opcjonalne)
+        </button>
+        {parentQuestionsOpen && (
+          <div className="mt-3">
+            <AttendeeCustomFieldsEditor
+              heading="Pytania o rodzica"
+              description="Dodatkowe pytania do rodzica — np. nr telefonu kontaktowego w razie sytuacji nagłej. Dane podstawowe (imię, nazwisko, email, telefon) są i tak zbierane przy zapisie."
+              value={parent.customFields ?? []}
+              onChange={(cf) => updateType(parent.id, { customFields: cf })}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

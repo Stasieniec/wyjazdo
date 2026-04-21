@@ -6,7 +6,6 @@ import { GalleryUpload } from "@/components/dashboard/GalleryUpload";
 import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
 import { createEventAction, type CreateEventFormState } from "./actions";
 import { AttendeeTypesField } from "../[id]/attendee-types-field";
-import { isDepositPricingMode } from "@/lib/format-currency";
 
 function NewEventPricingFields({
   seed,
@@ -15,14 +14,8 @@ function NewEventPricingFields({
   seed: Record<string, string>;
   errors?: Record<string, string>;
 }) {
-  const [price, setPrice] = useState(seed.price ?? "");
   const [deposit, setDeposit] = useState(seed.deposit ?? "");
   const [balanceDueAt, setBalanceDueAt] = useState(seed.balanceDueAt ?? "");
-
-  const priceCents = useMemo(() => {
-    const n = parseFloat(String(price).replace(",", "."));
-    return Number.isFinite(n) ? Math.round(n * 100) : 0;
-  }, [price]);
 
   const depositCents = useMemo(() => {
     const s = String(deposit).trim();
@@ -31,38 +24,31 @@ function NewEventPricingFields({
     return Number.isFinite(n) ? Math.round(n * 100) : null;
   }, [deposit]);
 
-  const balanceDueActive = isDepositPricingMode(priceCents, depositCents);
+  // Balance-due timing is driven purely by the presence of a positive deposit;
+  // event-level priceCents is derived from attendee types.
+  const balanceDueActive = depositCents != null && depositCents > 0;
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
-          type="number"
-          name="price"
-          label="Cena całkowita (PLN)"
-          step="0.01"
-          min="0"
-          required
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          error={errors?.price ?? errors?.priceCents}
-        />
-        <Input
-          type="number"
-          name="capacity"
-          label="Liczba miejsc"
-          min="1"
-          required
-          defaultValue={seed.capacity}
-          error={errors?.capacity}
-        />
+      <div>
+        <AttendeeTypesField initialAttendeeTypes={null} />
+        {errors?.price || errors?.priceCents ? (
+          <p className="mt-2 text-sm text-destructive">
+            {errors.price ?? errors.priceCents}
+          </p>
+        ) : null}
+        {errors?.attendeeTypes && (
+          <p className="mt-2 text-sm text-destructive" role="alert">
+            {errors.attendeeTypes}
+          </p>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <Input
             type="number"
             name="deposit"
-            label="Zaliczka przy zapisie (PLN)"
+            label="Zaliczka za osobę (PLN)"
             step="0.01"
             min="0"
             value={deposit}
@@ -70,7 +56,8 @@ function NewEventPricingFields({
             error={errors?.depositCents}
           />
           <p className="text-sm text-muted-foreground">
-            Część ceny całkowitej płatna od razu. Puste = cała kwota przy rejestracji.
+            Kwota płacona przy zapisie za każdego uczestnika zgłoszenia. Puste = pełna
+            płatność od razu.
           </p>
         </div>
         <div className="space-y-1">
@@ -87,18 +74,19 @@ function NewEventPricingFields({
           <p className="text-sm text-muted-foreground">
             {balanceDueActive
               ? "Do kiedy uczestnik musi dopłacić pozostałą kwotę (przed startem wydarzenia)."
-              : "Dostępne, gdy zaliczka jest niższa niż cena całkowita — wtedy dopłata jest wymagana w podanym terminie."}
+              : "Dostępne, gdy ustawisz zaliczkę — wtedy dopłata jest wymagana w podanym terminie."}
           </p>
         </div>
       </div>
-      <div className="pt-2">
-        <AttendeeTypesField initialAttendeeTypes={null} basePriceCents={priceCents} />
-        {errors?.attendeeTypes && (
-          <p className="mt-2 text-sm text-destructive" role="alert">
-            {errors.attendeeTypes}
-          </p>
-        )}
-      </div>
+      <Input
+        type="number"
+        name="capacity"
+        label="Liczba miejsc"
+        min="1"
+        required
+        defaultValue={seed.capacity}
+        error={errors?.capacity}
+      />
     </>
   );
 }
@@ -158,14 +146,6 @@ export default function NewEventPage() {
             defaultEndsAt={v.endsAt ? new Date(v.endsAt).getTime() : undefined}
             error={state?.errors?.startsAt ?? state?.errors?.endsAt}
           />
-          <div className="rounded-lg border border-border bg-muted/30 p-4">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Cena całkowita</span> to kwota,
-              którą uczestnik zapłaci łącznie za udział.{" "}
-              <span className="font-medium text-foreground">Zaliczka</span> to pierwsza część
-              tej kwoty (płatna przy zapisie), a nie dodatkowa opłata obok ceny.
-            </p>
-          </div>
           <NewEventPricingFields
             key={JSON.stringify(state?.values ?? {})}
             seed={state?.values ?? {}}
