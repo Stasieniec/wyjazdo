@@ -1,9 +1,17 @@
 import { and, eq, lt } from "drizzle-orm";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb, schema } from "@/lib/db/client";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function POST(req: Request) {
+  const { env } = getCloudflareContext();
+  const secret = env.CRON_SECRET;
+  if (!secret) return new Response("misconfigured", { status: 500 });
+  if (req.headers.get("authorization") !== `Bearer ${secret}`) {
+    return new Response("unauthorized", { status: 401 });
+  }
+
   const now = Date.now();
   const db = getDb();
   await db
