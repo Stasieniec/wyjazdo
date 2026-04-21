@@ -11,6 +11,7 @@ import {
   cancelParticipantAction,
   promoteFromWaitlistAction,
   resendPaymentLinkAction,
+  resendPaymentConfirmationAction,
   removeAttendeeAction,
 } from "@/app/dashboard/events/[id]/actions";
 import { formatPlnFromCents } from "@/lib/format-currency";
@@ -303,6 +304,26 @@ export default function ParticipantsTable({
                             className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-muted"
                           >
                             Wyślij link do płatności
+                          </button>
+                        </form>
+                      )}
+
+                      {/* Resend confirmation email — recovery for failed Resend sends */}
+                      {participantPayments.some((pay) => pay.status === "succeeded") && (
+                        <form
+                          action={resendPaymentConfirmationAction}
+                          onSubmit={(e) => {
+                            if (!window.confirm(`Wysłać ponownie potwierdzenie płatności do ${p.firstName} ${p.lastName}?`)) {
+                              e.preventDefault();
+                            }
+                          }}
+                        >
+                          <input type="hidden" name="participantId" value={p.id} />
+                          <button
+                            type="submit"
+                            className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-muted"
+                          >
+                            Wyślij ponownie potwierdzenie
                           </button>
                         </form>
                       )}

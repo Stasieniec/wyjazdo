@@ -43,8 +43,10 @@ export async function runBalanceReminders(): Promise<{ sent: number; considered:
   }
 
   const secret = getParticipantAuthSecret();
-  const proto = process.env.NODE_ENV === "production" ? "https:" : "http:";
   const host = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
+  // https everywhere except local dev. Keying off the host avoids depending on
+  // NODE_ENV, which isn't reliably set inside a Worker scheduled handler.
+  const proto = host.startsWith("localhost") ? "http:" : "https:";
 
   let sent = 0;
   for (const r of rows) {

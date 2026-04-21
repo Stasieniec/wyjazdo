@@ -526,3 +526,54 @@ export async function resendPaymentLinkAction(form: FormData): Promise<void> {
 
   revalidatePath(`/dashboard/events/${event.id}`);
 }
+
+/**
+ * Re-sends the payment confirmation email for a participant whose latest
+ * succeeded payment never got its original confirmation (e.g. Resend was
+ * down at the moment of the Stripe webhook). Organizer-triggered recovery
+ * path — the webhook is still the primary send.
+ */
+export async function resendPaymentConfirmationAction(form: FormData): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("no organizer");
+
+  const participantId = String(form.get("participantId") ?? "");
+  if (!participantId) throw new Error("missing participantId");
+
+  const participant = await getParticipantById(participantId);
+  if (!participant) throw new Error("no participant");
+  const event = await getEventById(participant.eventId);
+  if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
+
+  const payments = await listPaymentsForParticipant(participantId);
+  const succeeded = payments.filter((p) => p.status === "succeeded");
+  if (succeeded.length === 0) throw new Error("no succeeded payment");
+  // Prefer the most-recently-paid one.
+  const target = succeeded.reduce((a, b) => ((a.paidAt ?? 0) > (b.paidAt ?? 0) ? a : b));
+
+  const dateStr = new Date(event.startsAt).toLocaleDateString("pl-PL", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const secret = getParticipantAuthSecret();
+  const token = await signParticipantToken(participantId, secret);
+  const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
+
+  await sendPaymentConfirmation({
+    to: participant.email,
+    participantName: participant.firstName,
+    eventTitle: event.title,
+    eventDate: dateStr,
+    eventLocation: event.location,
+    eventUrl: publicEventUrl(organizer.subdomain, event.slug),
+    organizerName: organizer.displayName,
+    paymentKind: target.kind,
+    amountCents: target.amountCents,
+    myTripsUrl,
+  });
+
+  revalidatePath(`/dashboard/events/${event.id}`);
+}
