@@ -1,10 +1,9 @@
-/** Polish locale, explicit PLN code (e.g. 123,45 PLN). */
+/** Polish locale with "zł" suffix (e.g. 123,45 zł). */
 export function formatPlnFromCents(cents: number): string {
-  return new Intl.NumberFormat("pl-PL", {
-    style: "currency",
-    currency: "PLN",
-    currencyDisplay: "code",
-  }).format(cents / 100);
+  return (
+    (cents / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+    " zł"
+  );
 }
 
 export function isDepositPricingMode(

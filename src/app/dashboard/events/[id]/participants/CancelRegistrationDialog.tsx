@@ -3,6 +3,7 @@ import type { Attendee } from "@/lib/db/schema";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { calculateTotal } from "@/lib/pricing";
 import { pluralOsoby } from "@/lib/plural";
+import { formatPlnFromCents } from "@/lib/format-currency";
 
 type AttendeeWithTypeName = Attendee & { typeName: string };
 
@@ -15,10 +16,6 @@ type Props = {
   onConfirm: () => void;
   onCancel: () => void;
 };
-
-function formatPLN(cents: number) {
-  return (cents / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2 }) + " zł";
-}
 
 function quantitiesFrom(list: Array<Attendee>): Record<string, number> {
   const q: Record<string, number> = {};
@@ -52,10 +49,10 @@ export function CancelRegistrationDialog({
                 </li>
               ))}
             </ul>
-            <p className="text-sm">Zwolni się {spotsFreed} {spotsFreed === 1 ? "miejsce" : "miejsc"}. Sugerowany zwrot: <strong>{formatPLN(suggestedRefund)}</strong>.</p>
+            <p className="text-sm">Zwolni się {spotsFreed} {spotsFreed === 1 ? "miejsce" : "miejsc"}. Sugerowany zwrot: <strong>{formatPlnFromCents(suggestedRefund)}</strong>.</p>
           </>
         ) : (
-          <p className="text-sm">Sugerowany zwrot: <strong>{formatPLN(suggestedRefund)}</strong>.</p>
+          <p className="text-sm">Sugerowany zwrot: <strong>{formatPlnFromCents(suggestedRefund)}</strong>.</p>
         )}
         <p className="text-xs text-gray-600">
           Zwrot nie zostanie wykonany automatycznie.

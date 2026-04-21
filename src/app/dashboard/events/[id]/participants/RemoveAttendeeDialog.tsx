@@ -3,6 +3,7 @@ import type { Attendee } from "@/lib/db/schema";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { calculateTotal } from "@/lib/pricing";
 import { pluralOsoby } from "@/lib/plural";
+import { formatPlnFromCents } from "@/lib/format-currency";
 
 type Props = {
   registrantName: string;
@@ -14,10 +15,6 @@ type Props = {
   onConfirm: () => void;
   onCancel: () => void;
 };
-
-function formatPLN(cents: number) {
-  return (cents / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2 }) + " zł";
-}
 
 function quantitiesFrom(list: Array<Attendee>): Record<string, number> {
   const q: Record<string, number> = {};
@@ -48,8 +45,8 @@ export function RemoveAttendeeDialog({
         </p>
         <ul className="text-sm list-disc pl-5 space-y-1">
           <li>Zgłoszenie będzie zawierać {remainingAttendees.length} {pluralOsoby(remainingAttendees.length)}.</li>
-          <li>Nowa cena: <strong>{formatPLN(newTotal)}</strong> (było {formatPLN(originalTotal)})</li>
-          <li>Sugerowany zwrot: <strong>{formatPLN(suggestedRefund)}</strong></li>
+          <li>Nowa cena: <strong>{formatPlnFromCents(newTotal)}</strong> (było {formatPlnFromCents(originalTotal)})</li>
+          <li>Sugerowany zwrot: <strong>{formatPlnFromCents(suggestedRefund)}</strong></li>
           <li>Zwolni się 1 miejsce (pozostałych wolnych: {remainingCapacity + 1})</li>
         </ul>
         <p className="text-xs text-gray-600">

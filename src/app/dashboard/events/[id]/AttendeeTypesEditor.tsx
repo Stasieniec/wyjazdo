@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { ZlotyInput } from "@/components/ui";
+import { formatPlnFromCents } from "@/lib/format-currency";
 import { AttendeeCustomFieldsEditor } from "./AttendeeCustomFieldsEditor";
 
 type Props = {
@@ -38,7 +39,7 @@ export function AttendeeTypesEditor({ value, onChange }: Props) {
             className="w-full flex justify-between px-3 py-2"
             onClick={() => setOpen(open === idx ? null : idx)}
           >
-            <span>{t.name} ({t.minQty}–{t.maxQty}, {(t.priceCents / 100).toFixed(2)} zł)</span>
+            <span>{t.name} ({t.minQty}–{t.maxQty}, {formatPlnFromCents(t.priceCents)})</span>
             <span>{open === idx ? "▾" : "▸"}</span>
           </button>
           {open === idx && (

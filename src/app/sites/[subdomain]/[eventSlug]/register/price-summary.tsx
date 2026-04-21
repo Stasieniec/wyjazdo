@@ -1,6 +1,7 @@
 "use client";
 import { calculateTotal } from "@/lib/pricing";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
+import { formatPlnFromCents } from "@/lib/format-currency";
 
 type Props = {
   types: AttendeeType[];
@@ -8,10 +9,6 @@ type Props = {
   depositPerPersonCents: number | null;
   currency?: string;
 };
-
-function formatPLN(cents: number): string {
-  return (cents / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2 }) + " zł";
-}
 
 export function PriceSummary({ types, quantities, depositPerPersonCents }: Props) {
   const calc = calculateTotal(types, quantities);
@@ -38,16 +35,23 @@ export function PriceSummary({ types, quantities, depositPerPersonCents }: Props
         {rows.map((r) => (
           <li key={r.name} className="flex justify-between">
             <span>{r.name} × {r.qty}</span>
-            <span>{formatPLN(r.subtotal)}</span>
+            <span>{formatPlnFromCents(r.subtotal)}</span>
           </li>
         ))}
         <li className="flex justify-between font-semibold pt-2 border-t">
           <span>Razem</span>
-          <span>{formatPLN(calc.total)}</span>
+          <span>{formatPlnFromCents(calc.total)}</span>
         </li>
         {deposit !== null && (
-          <li className="text-xs text-gray-600 pt-1">
-            Zaliczka: {formatPLN(deposit)} · Dopłata: {formatPLN(calc.total - deposit)}
+          <li className="pt-2 mt-2 border-t text-sm text-muted-foreground">
+            <div className="flex justify-between">
+              <span>Zaliczka przy zapisie</span>
+              <span>{formatPlnFromCents(deposit)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Dopłata później</span>
+              <span>{formatPlnFromCents(calc.total - deposit)}</span>
+            </div>
           </li>
         )}
       </ul>
