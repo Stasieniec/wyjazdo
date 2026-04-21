@@ -114,7 +114,14 @@ export function AttendeeTypesField({ initialAttendeeTypes, name = "attendeeTypes
       {preset === "jedna_osoba" && <JednaOsobaPresetFields types={types} onChange={setTypes} />}
       {preset === "rodzic_z_dziecmi" && <RodzicPresetFields types={types} onChange={setTypes} />}
       {preset === "grupa" && <GrupaPresetFields types={types} onChange={setTypes} />}
-      {preset === "custom" && <AttendeeTypesEditor value={types} onChange={setTypes} />}
+      {preset === "custom" && (
+        <>
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <strong>Zaawansowana konfiguracja.</strong> Jeśli nie jesteś pewna, wybierz jeden z szablonów powyżej — pokryją większość sytuacji.
+          </div>
+          <AttendeeTypesEditor value={types} onChange={setTypes} />
+        </>
+      )}
 
       <input type="hidden" name={name} value={JSON.stringify(types)} />
       <input type="hidden" name={priceHiddenName} value={centsToPLNString(derivedPrice)} />
