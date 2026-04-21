@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { EventDateTimeRange } from "@/components/dashboard/EventDateTimeRange";
 import { GalleryUpload } from "@/components/dashboard/GalleryUpload";
 import { Card, ImageUpload, Input, SubmitButton, Textarea } from "@/components/ui";
+import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { createEventAction, type CreateEventFormState } from "./actions";
 import { AttendeeTypesField } from "../[id]/attendee-types-field";
 
@@ -16,6 +17,16 @@ function NewEventPricingFields({
 }) {
   const [deposit, setDeposit] = useState(seed.deposit ?? "");
   const [balanceDueAt, setBalanceDueAt] = useState(seed.balanceDueAt ?? "");
+
+  let seededTypes: AttendeeType[] | null = null;
+  if (seed.attendeeTypes) {
+    try {
+      const parsed = JSON.parse(seed.attendeeTypes);
+      if (Array.isArray(parsed) && parsed.length > 0) seededTypes = parsed as AttendeeType[];
+    } catch {
+      // ignore — fall back to default preset
+    }
+  }
 
   const depositCents = useMemo(() => {
     const s = String(deposit).trim();
@@ -31,7 +42,7 @@ function NewEventPricingFields({
   return (
     <>
       <div>
-        <AttendeeTypesField initialAttendeeTypes={null} />
+        <AttendeeTypesField initialAttendeeTypes={seededTypes} />
         {errors?.price || errors?.priceCents ? (
           <p className="mt-2 text-sm text-destructive">
             {errors.price ?? errors.priceCents}

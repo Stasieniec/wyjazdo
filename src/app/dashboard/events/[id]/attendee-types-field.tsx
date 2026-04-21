@@ -40,6 +40,15 @@ function derivedPriceCents(types: AttendeeType[]): number {
   return calculateTotal(types, quantities).total;
 }
 
+function hasUserData(types: AttendeeType[]): boolean {
+  return types.some(
+    (t) =>
+      t.priceCents > 0 ||
+      (t.customFields?.length ?? 0) > 0 ||
+      (t.graduatedPricing?.length ?? 0) > 0,
+  );
+}
+
 function centsToPLNString(cents: number): string {
   if (cents === 0) return "0";
   return (cents / 100).toString().replace(".", ",");
@@ -53,6 +62,13 @@ export function AttendeeTypesField({ initialAttendeeTypes, name = "attendeeTypes
   });
 
   function applyPreset(p: PresetId | "custom") {
+    if (p === preset) return;
+    if (p !== "custom" && hasUserData(types)) {
+      const ok = window.confirm(
+        "Zmienić szablon? Stracisz ustawione ceny i pytania.",
+      );
+      if (!ok) return;
+    }
     setPreset(p);
     if (p === "custom") return;
     setTypes(buildPresetTypes(p, { basePriceCents: 0 }));

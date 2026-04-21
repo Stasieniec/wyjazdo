@@ -30,6 +30,8 @@ export async function createEventAction(
     const v = formData.get(key);
     if (typeof v === "string" && v.trim()) submitted[key] = v;
   }
+  const rawAttendeeTypesEcho = String(formData.get("attendeeTypes") ?? "");
+  if (rawAttendeeTypesEcho.trim()) submitted.attendeeTypes = rawAttendeeTypesEcho;
 
   const rawAttendeeTypes = String(formData.get("attendeeTypes") ?? "").trim();
   let attendeeTypesForSchema: unknown = null;
