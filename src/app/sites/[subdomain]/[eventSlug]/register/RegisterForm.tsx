@@ -6,6 +6,7 @@ import type { ConsentConfigItem } from "@/lib/validators/consent";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { Card, Input, Select, SubmitButton, Textarea } from "@/components/ui";
 import { ConsentCheckboxes } from "@/components/sites/ConsentCheckboxes";
+import { pluralOsoby, pluralWolneMiejsca } from "@/lib/plural";
 import { registerAction, type RegisterFormState } from "./actions";
 import { AttendeeCard } from "./AttendeeCard";
 import { PriceSummary } from "./price-summary";
@@ -92,7 +93,7 @@ export function RegisterForm({
   }, [attendees]);
 
   const totalAttendees = attendees.length;
-  const atCapacity = totalAttendees >= remainingSpots;
+  const willBeWaitlisted = remainingSpots === 0 || totalAttendees > remainingSpots;
 
   function addAttendee(typeId: string) {
     setAttendees((prev) => [
@@ -199,7 +200,6 @@ export function RegisterForm({
                   {attendeeTypes.map((t) => {
                     const qty = quantities[t.id] ?? 0;
                     if (qty >= t.maxQty) return null;
-                    if (atCapacity) return null;
                     return (
                       <button
                         key={t.id}
@@ -211,12 +211,17 @@ export function RegisterForm({
                       </button>
                     );
                   })}
-                  {atCapacity && (
-                    <span className="text-sm text-gray-600">
-                      Pozostało {remainingSpots} wolnych miejsc.
-                    </span>
-                  )}
                 </div>
+
+                {willBeWaitlisted && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    <strong>Lista rezerwowa.</strong>{" "}
+                    {remainingSpots === 0
+                      ? `To wydarzenie jest w pełni zajęte, a zapisujesz ${totalAttendees} ${pluralOsoby(totalAttendees)}.`
+                      : `To wydarzenie ma tylko ${remainingSpots} ${pluralWolneMiejsca(remainingSpots)}, a zapisujesz ${totalAttendees} ${pluralOsoby(totalAttendees)}.`}{" "}
+                    Wszystkie osoby trafią na listę rezerwową — organizator przeniesie Was na listę główną, jeśli zwolnią się miejsca.
+                  </div>
+                )}
 
                 <PriceSummary
                   types={attendeeTypes}
@@ -280,7 +285,7 @@ export function RegisterForm({
           className="text-white hover:opacity-90"
           style={{ backgroundColor: "var(--brand)" }}
         >
-          {isFull ? "Dołącz do listy rezerwowej" : "Przejdź do płatności"}
+          {willBeWaitlisted ? "Dołącz do listy rezerwowej" : "Przejdź do płatności"}
         </SubmitButton>
       </form>
     </Card>

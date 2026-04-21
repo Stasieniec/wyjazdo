@@ -35,6 +35,12 @@ export function AttendeeCard({ index, type, label, canRemove, onRemove, value, o
       {/* Hidden type id for form POST */}
       <input type="hidden" name={`attendees[${index}][attendeeTypeId]`} value={type.id} />
 
+      {hideNameFields && (type.customFields?.length ?? 0) > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Ta sekcja dotyczy Ciebie — dane osobowe pobieramy z pól powyżej.
+        </p>
+      )}
+
       {hideNameFields ? (
         <>
           <input type="hidden" name={`attendees[${index}][firstName]`} value={value.firstName} />

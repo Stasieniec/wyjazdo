@@ -4,8 +4,8 @@ import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
 import type { CustomQuestion } from "@/lib/validators/event";
 import type { ConsentConfigItem } from "@/lib/validators/consent";
-import { formatPlnFromCents, isDepositPricingMode } from "@/lib/format-currency";
-import { DepositPriceBreakdown } from "@/components/sites/DepositPriceBreakdown";
+import { EventPriceSummary } from "@/components/sites/EventPriceSummary";
+import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { LEGACY_ATTENDEE_TYPE_ID } from "@/lib/register/process-registration";
 import { RegisterForm } from "./RegisterForm";
 
@@ -30,21 +30,20 @@ export default async function RegisterPage({
   const consents: ConsentConfigItem[] = event.consentConfig
     ? JSON.parse(event.consentConfig)
     : [];
-  const attendeeTypes = event.attendeeTypes
-    ? JSON.parse(event.attendeeTypes)
-    : [
-        {
-          id: LEGACY_ATTENDEE_TYPE_ID,
-          name: "Uczestnik",
-          minQty: 1,
-          maxQty: 1,
-          priceCents: event.priceCents,
-        },
-      ];
+  const rawAttendeeTypes: AttendeeType[] | null = event.attendeeTypes
+    ? (JSON.parse(event.attendeeTypes) as AttendeeType[])
+    : null;
+  const attendeeTypes: AttendeeType[] = rawAttendeeTypes ?? [
+    {
+      id: LEGACY_ATTENDEE_TYPE_ID,
+      name: "Uczestnik",
+      minQty: 1,
+      maxQty: 1,
+      priceCents: event.priceCents,
+    },
+  ];
 
   const brandColor = organizer.brandColor ?? "#1E3A5F";
-
-  const depositMode = isDepositPricingMode(event.priceCents, event.depositCents);
 
   const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", {
     day: "numeric",
@@ -78,19 +77,12 @@ export default async function RegisterPage({
             <span className="shrink-0 font-medium text-foreground/80">Termin</span>
             <span>{dateSummary}</span>
           </div>
-          {depositMode ? (
-            <DepositPriceBreakdown
-              priceCents={event.priceCents}
-              depositPerPersonCents={event.depositCents!}
-              balanceDueAt={event.balanceDueAt}
-              className="text-left"
-            />
-          ) : (
-            <div className="flex gap-2">
-              <span className="shrink-0 font-medium text-foreground/80">Cena</span>
-              <span className="text-foreground">{formatPlnFromCents(event.priceCents)}</span>
-            </div>
-          )}
+          <EventPriceSummary
+            attendeeTypes={rawAttendeeTypes}
+            legacyPriceCents={event.priceCents}
+            depositPerPersonCents={event.depositCents ?? null}
+            className="text-left"
+          />
         </div>
       </div>
 

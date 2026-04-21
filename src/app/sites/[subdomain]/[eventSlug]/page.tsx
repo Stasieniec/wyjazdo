@@ -4,8 +4,9 @@ import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
 import { myTripsRequestLinkUrl } from "@/lib/urls";
-import { formatPlnFromCents, isDepositPricingMode } from "@/lib/format-currency";
-import { DepositPriceBreakdown } from "@/components/sites/DepositPriceBreakdown";
+import { formatPlnFromCents } from "@/lib/format-currency";
+import { EventPriceSummary } from "@/components/sites/EventPriceSummary";
+import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { listPhotosForEvent } from "@/lib/db/queries/event-photos";
 import { PhotoGallery } from "@/components/sites/PhotoGallery";
 import type { Metadata } from "next";
@@ -50,7 +51,9 @@ export default async function EventPage({
   const taken = await countTakenSpots(event.id, Date.now());
   const spotsLeft = Math.max(0, event.capacity - taken);
   const isFull = spotsLeft === 0;
-  const depositMode = isDepositPricingMode(event.priceCents, event.depositCents);
+  const attendeeTypes: AttendeeType[] | null = event.attendeeTypes
+    ? (JSON.parse(event.attendeeTypes) as AttendeeType[])
+    : null;
 
   const eventPhotos = await listPhotosForEvent(event.id);
   const galleryPhotos = eventPhotos.map((p) => ({ url: p.url, position: p.position }));
@@ -116,15 +119,11 @@ export default async function EventPage({
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <InfoCard label="Termin" value={dateStart === dateEnd ? dateStart : `${dateStart} — ${dateEnd}`} />
           <InfoCard label="Miejsce" value={event.location ?? "Do ustalenia"} />
-          {depositMode ? (
-            <DepositPriceBreakdown
-              priceCents={event.priceCents}
-              depositPerPersonCents={event.depositCents!}
-              balanceDueAt={event.balanceDueAt}
-            />
-          ) : (
-            <InfoCard label="Cena" value={formatPlnFromCents(event.priceCents)} />
-          )}
+          <EventPriceSummary
+            attendeeTypes={attendeeTypes}
+            legacyPriceCents={event.priceCents}
+            depositPerPersonCents={event.depositCents ?? null}
+          />
           <InfoCard
             label="Dostępność"
             value={isFull ? "Brak miejsc" : `${spotsLeft} wolnych miejsc`}
