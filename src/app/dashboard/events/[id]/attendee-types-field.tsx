@@ -62,7 +62,7 @@ export function AttendeeTypesField({ initialAttendeeTypes, basePriceCents, name 
               className={`border rounded-md p-3 text-left ${active ? "border-black bg-gray-50" : "border-gray-300"}`}
             >
               <div className="font-semibold text-sm">{meta.title}</div>
-              <div className="text-xs text-gray-600">{meta.description}</div>
+              <div className="text-sm text-gray-600">{meta.description}</div>
             </button>
           );
         })}

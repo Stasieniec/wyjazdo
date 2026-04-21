@@ -45,17 +45,23 @@ export function AttendeeTypesEditor({ value, onChange }: Props) {
               <label className="text-sm flex flex-col">Nazwa
                 <input value={t.name} onChange={(e) => update(idx, { name: e.target.value })} className="border rounded px-2 py-1" />
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                <label className="text-sm flex flex-col">Min
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="text-sm flex flex-col">
+                  <span>Min. osób</span>
                   <input type="number" min={0} value={t.minQty} onChange={(e) => update(idx, { minQty: Number(e.target.value) })} className="border rounded px-2 py-1" />
                 </label>
-                <label className="text-sm flex flex-col">Max
+                <label className="text-sm flex flex-col">
+                  <span>Maks. osób</span>
                   <input type="number" min={1} value={t.maxQty} onChange={(e) => update(idx, { maxQty: Number(e.target.value) })} className="border rounded px-2 py-1" />
                 </label>
-                <label className="text-sm flex flex-col">Cena (PLN)
+                <label className="text-sm flex flex-col">
+                  <span>Cena (PLN)</span>
                   <ZlotyInput valueCents={t.priceCents} onChangeCents={(c) => update(idx, { priceCents: c })} className="border rounded px-2 py-1" />
                 </label>
               </div>
+              <p className="text-sm text-gray-600">
+                Ile osób tego typu uczestnik może zapisać w jednym zgłoszeniu (np. 1–5 dzieci).
+              </p>
 
               <GraduatedPricingEditor type={t} onChange={(gp) => update(idx, { graduatedPricing: gp })} />
               <CustomFieldsEditor type={t} onChange={(cf) => update(idx, { customFields: cf })} />
@@ -79,21 +85,24 @@ function GraduatedPricingEditor({ type, onChange }: { type: AttendeeType; onChan
   return (
     <div className="space-y-2">
       <div className="text-sm font-semibold">Zniżki dla kolejnych uczestników</div>
+      <p className="text-sm text-gray-600">
+        Niższa cena od drugiej (lub kolejnej) osoby tego typu — na przykład taniej za drugie i każde następne dziecko w jednym zgłoszeniu.
+      </p>
       {tiers.map((tier, i) => (
-        <div key={i} className="flex gap-2 items-center">
+        <div key={i} className="flex flex-wrap gap-2 items-center">
           <span className="text-sm">od</span>
           <input type="number" min={2} value={tier.fromQty}
             onChange={(e) => onChange(tiers.map((t, j) => j === i ? { ...t, fromQty: Number(e.target.value) } : t))}
             className="border rounded px-2 py-1 w-20" />
-          <span className="text-sm">cena (PLN)</span>
+          <span className="text-sm">-ej osoby, cena (PLN)</span>
           <ZlotyInput valueCents={tier.priceCents}
             onChangeCents={(c) => onChange(tiers.map((t, j) => j === i ? { ...t, priceCents: c } : t))}
             className="border rounded px-2 py-1 w-28" />
-          <button type="button" className="text-red-600 text-xs" onClick={() => onChange(tiers.filter((_, j) => j !== i))}>usuń</button>
+          <button type="button" className="text-sm text-red-600 underline" onClick={() => onChange(tiers.filter((_, j) => j !== i))}>Usuń próg</button>
         </div>
       ))}
-      <button type="button" className="text-xs underline" onClick={() => onChange([...tiers, { fromQty: 2, priceCents: 0 }])}>
-        + dodaj próg
+      <button type="button" className="text-sm border rounded px-3 py-1" onClick={() => onChange([...tiers, { fromQty: 2, priceCents: 0 }])}>
+        + Dodaj próg zniżki
       </button>
     </div>
   );
@@ -104,31 +113,34 @@ function CustomFieldsEditor({ type, onChange }: { type: AttendeeType; onChange: 
   return (
     <div className="space-y-2">
       <div className="text-sm font-semibold">Dodatkowe pola</div>
+      <p className="text-sm text-gray-600">
+        Pola do wypełnienia przez uczestnika w formularzu zapisu — po jednym zestawie dla każdej osoby tego typu. Dobre do pytań typu wiek, rozmiar koszulki, alergie czy dieta.
+      </p>
       {fields.map((f, i) => (
         <div key={f.id} className="flex gap-2 items-center flex-wrap">
-          <input placeholder="Nazwa" value={f.label}
+          <input placeholder="Nazwa pola (np. Wiek)" value={f.label}
             onChange={(e) => onChange(fields.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
             className="border rounded px-2 py-1" />
           <select value={f.type}
             onChange={(e) => onChange(fields.map((x, j) => j === i ? { ...x, type: e.target.value as typeof f.type } : x))}
-            className="border rounded px-2 py-1">
+            className="border rounded px-2 py-1 text-sm">
             <option value="text">tekst</option>
             <option value="long_text">długi tekst</option>
             <option value="number">liczba</option>
             <option value="date">data</option>
-            <option value="select">lista</option>
+            <option value="select">lista wyboru</option>
           </select>
-          <label className="text-xs">
+          <label className="text-sm flex items-center gap-1.5">
             <input type="checkbox" checked={f.required}
               onChange={(e) => onChange(fields.map((x, j) => j === i ? { ...x, required: e.target.checked } : x))} />
             wymagane
           </label>
-          <button type="button" className="text-red-600 text-xs" onClick={() => onChange(fields.filter((_, j) => j !== i))}>usuń</button>
+          <button type="button" className="text-sm text-red-600 underline" onClick={() => onChange(fields.filter((_, j) => j !== i))}>Usuń pole</button>
         </div>
       ))}
-      <button type="button" className="text-xs underline"
+      <button type="button" className="text-sm border rounded px-3 py-1"
         onClick={() => onChange([...fields, { id: uid(), label: "Nowe pole", type: "text", required: false }])}>
-        + dodaj pole
+        + Dodaj pole
       </button>
     </div>
   );

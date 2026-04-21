@@ -205,7 +205,7 @@ function SelectOptionsEditor({
 
   return (
     <div className="mt-3 rounded-md border border-border/80 bg-muted/30 p-3">
-      <p className="mb-2 text-xs font-medium text-muted-foreground">Opcje odpowiedzi</p>
+      <p className="mb-2 text-sm font-medium text-muted-foreground">Opcje odpowiedzi</p>
       <p className="sr-only" id="select-options-dnd-hint">
         Użyj uchwytu po lewej stronie, aby przeciągnąć i zmienić kolejność opcji. Klawiatura: skup się na
         uchwycie, naciśnij Spację, aby podnieść element, strzałki w górę lub w dół, aby przesunąć, Spację

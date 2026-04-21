@@ -163,7 +163,7 @@ export function EventEditForm({
               onChange={(e) => setDeposit(e.target.value)}
               error={state?.errors?.depositCents}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Część ceny całkowitej płatna od razu. Puste = cała kwota przy rejestracji.
             </p>
           </div>
@@ -178,7 +178,7 @@ export function EventEditForm({
               required={balanceDueActive}
               error={state?.errors?.balanceDueAt}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {balanceDueActive
                 ? "Do kiedy uczestnik musi dopłacić pozostałą kwotę (przed startem wydarzenia)."
                 : "Dostępne, gdy zaliczka jest niższa niż cena całkowita — wtedy dopłata jest wymagana w podanym terminie."}
