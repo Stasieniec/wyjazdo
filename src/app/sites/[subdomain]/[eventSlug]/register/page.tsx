@@ -81,7 +81,7 @@ export default async function RegisterPage({
           {depositMode ? (
             <DepositPriceBreakdown
               priceCents={event.priceCents}
-              depositCents={event.depositCents!}
+              depositPerPersonCents={event.depositCents!}
               balanceDueAt={event.balanceDueAt}
               className="text-left"
             />

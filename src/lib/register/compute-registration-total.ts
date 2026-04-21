@@ -1,6 +1,4 @@
-import type { AttendeeType } from "@/lib/validators/attendee-types";
-import { calculateTotal } from "@/lib/pricing";
-import { listActiveAttendeesForParticipant } from "@/lib/db/queries/attendees";
+import { computeRegistrationAmountsCents } from "./compute-registration-amounts";
 
 /**
  * Compute the authoritative registration total (in cents) for a participant
@@ -14,18 +12,9 @@ export async function computeRegistrationTotalCents(
   participantId: string,
   event: { attendeeTypes: string | null; priceCents: number },
 ): Promise<number> {
-  if (!event.attendeeTypes) return event.priceCents;
-  let types: AttendeeType[];
-  try {
-    types = JSON.parse(event.attendeeTypes) as AttendeeType[];
-  } catch {
-    return event.priceCents;
-  }
-  const attendees = await listActiveAttendeesForParticipant(participantId);
-  if (attendees.length === 0) return event.priceCents;
-  const quantities: Record<string, number> = {};
-  for (const a of attendees) {
-    quantities[a.attendeeTypeId] = (quantities[a.attendeeTypeId] ?? 0) + 1;
-  }
-  return calculateTotal(types, quantities).total;
+  const { totalCents } = await computeRegistrationAmountsCents(participantId, {
+    ...event,
+    depositCents: 0,
+  });
+  return totalCents;
 }

@@ -221,7 +221,7 @@ export function RegisterForm({
                 <PriceSummary
                   types={attendeeTypes}
                   quantities={quantities}
-                  depositCents={depositCents}
+                  depositPerPersonCents={depositCents}
                 />
               </>
             )}

@@ -6,7 +6,7 @@ import {
   listPaymentsForParticipant,
 } from "@/lib/db/queries/payments";
 import type { Participant, Event, Organizer } from "@/lib/db/schema";
-import { computeRegistrationTotalCents } from "./compute-registration-total";
+import { computeRegistrationAmountsCents } from "./compute-registration-amounts";
 
 const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -33,8 +33,8 @@ export async function ensureBalancePayment(params: {
   const existing = await listPaymentsForParticipant(participant.id);
   const existingBalance = existing.find((p) => p.kind === "balance");
   const now = Date.now();
-  const totalCents = await computeRegistrationTotalCents(participant.id, event);
-  const balanceAmount = Math.max(0, totalCents - (event.depositCents ?? 0));
+  const { totalCents, effectiveDepositCents } = await computeRegistrationAmountsCents(participant.id, event);
+  const balanceAmount = Math.max(0, totalCents - effectiveDepositCents);
   if (balanceAmount === 0) {
     throw new Error("nothing due — balance already covered");
   }

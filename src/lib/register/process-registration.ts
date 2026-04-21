@@ -468,8 +468,9 @@ export async function processRegistration(
     return { redirectUrl: `${origin}/${slug}/thanks?pid=${participantId}` };
   }
 
-  const depositCents = event.depositCents ?? 0;
-  const effectiveDeposit = Math.min(depositCents, totalCents);
+  const depositPerPerson = event.depositCents ?? 0;
+  const requestedDeposit = depositPerPerson * attendeeRows.length;
+  const effectiveDeposit = Math.min(requestedDeposit, totalCents);
   const depositMode = effectiveDeposit > 0 && effectiveDeposit < totalCents;
   const paymentId = newId();
   const paymentKind: "deposit" | "full" = depositMode ? "deposit" : "full";

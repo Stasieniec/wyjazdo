@@ -24,7 +24,7 @@ import {
   sendOrganizerNewRegistration,
 } from "@/lib/email/send";
 import { publicEventUrl, participantTripUrl, dashboardEventUrl } from "@/lib/urls";
-import { computeRegistrationTotalCents } from "@/lib/register/compute-registration-total";
+import { computeRegistrationAmountsCents } from "@/lib/register/compute-registration-amounts";
 import {
   signParticipantToken,
   getParticipantAuthSecret,
@@ -299,12 +299,10 @@ export async function promoteFromWaitlistAction(form: FormData): Promise<void> {
   if (!activated) throw new Error("activation failed");
 
   // Compute authoritative total from the participant's active attendees.
-  const totalCents = await computeRegistrationTotalCents(participantId, event);
-  const depositCents = event.depositCents ?? 0;
-  const effectiveDeposit = Math.min(depositCents, totalCents);
-  const depositMode = effectiveDeposit > 0 && effectiveDeposit < totalCents;
+  const { totalCents, effectiveDepositCents, depositMode } =
+    await computeRegistrationAmountsCents(participantId, event);
   const paymentKind: "deposit" | "full" = depositMode ? "deposit" : "full";
-  const paymentAmount = depositMode ? effectiveDeposit : totalCents;
+  const paymentAmount = depositMode ? effectiveDepositCents : totalCents;
 
   const now = Date.now();
   const eventDate = new Date(event.startsAt).toLocaleDateString("pl-PL", {

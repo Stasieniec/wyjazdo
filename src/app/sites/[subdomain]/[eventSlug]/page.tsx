@@ -119,7 +119,7 @@ export default async function EventPage({
           {depositMode ? (
             <DepositPriceBreakdown
               priceCents={event.priceCents}
-              depositCents={event.depositCents!}
+              depositPerPersonCents={event.depositCents!}
               balanceDueAt={event.balanceDueAt}
             />
           ) : (

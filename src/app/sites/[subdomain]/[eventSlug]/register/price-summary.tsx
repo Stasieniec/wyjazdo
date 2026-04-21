@@ -5,7 +5,7 @@ import type { AttendeeType } from "@/lib/validators/attendee-types";
 type Props = {
   types: AttendeeType[];
   quantities: Record<string, number>;
-  depositCents: number | null;
+  depositPerPersonCents: number | null;
   currency?: string;
 };
 
@@ -13,7 +13,7 @@ function formatPLN(cents: number): string {
   return (cents / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2 }) + " zł";
 }
 
-export function PriceSummary({ types, quantities, depositCents }: Props) {
+export function PriceSummary({ types, quantities, depositPerPersonCents }: Props) {
   const calc = calculateTotal(types, quantities);
   if (calc.total === 0) return null;
 
@@ -26,7 +26,10 @@ export function PriceSummary({ types, quantities, depositCents }: Props) {
     };
   });
 
-  const deposit = depositCents && depositCents > 0 && depositCents < calc.total ? depositCents : null;
+  const totalAttendees = Object.values(quantities).reduce((a, b) => a + b, 0);
+  const totalDeposit = (depositPerPersonCents ?? 0) * totalAttendees;
+  const effectiveDeposit = Math.min(totalDeposit, calc.total);
+  const deposit = effectiveDeposit > 0 && effectiveDeposit < calc.total ? effectiveDeposit : null;
 
   return (
     <div className="rounded-md border p-4 bg-gray-50">

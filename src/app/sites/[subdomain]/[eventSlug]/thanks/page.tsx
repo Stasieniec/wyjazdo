@@ -8,7 +8,7 @@ import { listPaymentsForParticipant } from "@/lib/db/queries/payments";
 import { derivedStatus } from "@/lib/participant-status";
 import { Card, SubmitButton } from "@/components/ui";
 import { formatPlnFromCents } from "@/lib/format-currency";
-import { computeRegistrationTotalCents } from "@/lib/register/compute-registration-total";
+import { computeRegistrationAmountsCents } from "@/lib/register/compute-registration-amounts";
 
 export const dynamic = "force-dynamic";
 
@@ -103,11 +103,11 @@ export default async function ThanksPage({
 
   const balanceDueCents =
     participant && status === "deposit_paid" && event.depositCents != null
-      ? Math.max(
-          0,
-          (await computeRegistrationTotalCents(participant.id, event)) -
-            event.depositCents,
-        )
+      ? await (async () => {
+          const { totalCents, effectiveDepositCents } =
+            await computeRegistrationAmountsCents(participant.id, event);
+          return Math.max(0, totalCents - effectiveDepositCents);
+        })()
       : 0;
 
   return (
