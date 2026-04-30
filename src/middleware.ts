@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { resolveTenant } from "@/lib/tenant";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
-const isDashboardRoute = createRouteMatcher(["/dashboard(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/onboarding(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   const host = req.headers.get("host") ?? "";
@@ -18,7 +18,7 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.rewrite(url);
   }
 
-  if (isDashboardRoute(req)) {
+  if (isProtectedRoute(req)) {
     await auth.protect();
   }
   return NextResponse.next();
