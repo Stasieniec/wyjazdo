@@ -10,7 +10,7 @@ export default function SignUpPage() {
       >
         wyjazdo
       </Link>
-      <SignUp />
+      <SignUp forceRedirectUrl="/onboarding" signInForceRedirectUrl="/dashboard" />
       <p className="mt-6 text-xs text-muted-foreground">
         Masz już konto?{" "}
         <Link href="/sign-in" className="font-medium text-foreground hover:underline">
