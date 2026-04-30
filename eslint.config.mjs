@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // OpenNext (Cloudflare Workers) build output:
+    ".open-next/**",
+    // Local git worktrees (gitignored siblings of the main checkout):
+    ".worktrees/**",
   ]),
 ]);
 
