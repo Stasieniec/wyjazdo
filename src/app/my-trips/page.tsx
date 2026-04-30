@@ -35,6 +35,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default async function MyTripsIndex() {
   const secret = getParticipantAuthSecret();
+  // Server component renders once per request, so Date.now() is fine here.
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const c = (await cookies()).get("wyjazdo_participant_email")?.value;
   if (!c) redirect("/my-trips/request-link");

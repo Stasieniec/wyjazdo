@@ -48,6 +48,8 @@ export default async function EventPage({
   const event = await getPublishedEventBySlug(organizer.id, eventSlug);
   if (!event) notFound();
 
+  // Server component renders once per request, so Date.now() is fine here.
+  // eslint-disable-next-line react-hooks/purity
   const taken = await countTakenSpots(event.id, Date.now());
   const spotsLeft = Math.max(0, event.capacity - taken);
   const isFull = spotsLeft === 0;

@@ -95,15 +95,16 @@ export function EventDateTimeRange({ defaultStartsAt, defaultEndsAt, error }: Pr
     setRange({ from: fromDate, to: toDate });
   }
 
-  const startsCombined = useMemo(() => {
-    if (!range?.from) return "";
-    return combineLocalDateAndTime(range.from, startTimeStr) ?? "";
-  }, [range?.from, startTimeStr]);
+  // No manual useMemo — React Compiler handles memoization, and the manual
+  // dep arrays `[range?.from, ...]` couldn't be preserved by the compiler
+  // (it infers `range.from` for the dep, not the optional-chained form).
+  const startsCombined = !range?.from
+    ? ""
+    : combineLocalDateAndTime(range.from, startTimeStr) ?? "";
 
-  const endsCombined = useMemo(() => {
-    if (!range?.to) return "";
-    return combineLocalDateAndTime(range.to, endTimeStr) ?? "";
-  }, [range?.to, endTimeStr]);
+  const endsCombined = !range?.to
+    ? ""
+    : combineLocalDateAndTime(range.to, endTimeStr) ?? "";
 
   const startsMs = useMemo(() => {
     if (!startsCombined) return null;

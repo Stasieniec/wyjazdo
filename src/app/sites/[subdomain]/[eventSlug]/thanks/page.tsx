@@ -98,6 +98,8 @@ export default async function ThanksPage({
     ? await listPaymentsForParticipant(participant.id)
     : [];
   const status = participant
+    // Server component renders once per request, so Date.now() is fine here.
+    // eslint-disable-next-line react-hooks/purity
     ? derivedStatus(participant, participantPayments, Date.now())
     : "cancelled";
 

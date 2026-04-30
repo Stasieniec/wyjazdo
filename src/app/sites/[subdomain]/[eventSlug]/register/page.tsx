@@ -20,6 +20,8 @@ export default async function RegisterPage({
   const event = await getPublishedEventBySlug(organizer.id, eventSlug);
   if (!event) notFound();
 
+  // Server component renders once per request, so Date.now() is fine here.
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const taken = await countTakenSpots(event.id, now);
   const isFull = taken >= event.capacity;
@@ -94,7 +96,6 @@ export default async function RegisterPage({
         eventId={event.id}
         subdomain={subdomain}
         eventSlug={eventSlug}
-        isFull={isFull}
         questions={questions}
         consents={consents}
         attendeeTypes={attendeeTypes}

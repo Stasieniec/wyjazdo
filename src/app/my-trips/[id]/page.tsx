@@ -46,6 +46,8 @@ export default async function TripPage({
   const { t } = await searchParams;
 
   const secret = getParticipantAuthSecret();
+  // Server component renders once per request, so Date.now() is fine here.
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
 
   const trip = await getTripView(id);

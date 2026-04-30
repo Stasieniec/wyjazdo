@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useLayoutEffect, useState } from "react";
+import { useState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import { newId } from "@/lib/ids";
 
@@ -39,6 +39,8 @@ function normalizeInitial(q: CustomQuestion): CustomQuestionDraft {
 function sanitizeForSubmit(qs: CustomQuestionDraft[]): CustomQuestion[] {
   return qs.map((q) => {
     if (q.type !== "select") {
+      // Strip `options` for non-select questions (intentionally discarded).
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { options: _omit, ...rest } = q;
       return rest as CustomQuestion;
     }
@@ -155,8 +157,12 @@ function SelectOptionsEditor({
   onRowsChange: (next: string[]) => void;
 }) {
   const [rowIds, setRowIds] = useState<string[]>(() => rows.map(() => newRowId()));
-
-  useLayoutEffect(() => {
+  // Resync rowIds to rows.length without an effect, per React docs pattern
+  // for "adjusting state when a prop changes":
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevRowsLength, setPrevRowsLength] = useState(rows.length);
+  if (rows.length !== prevRowsLength) {
+    setPrevRowsLength(rows.length);
     setRowIds((prev) => {
       if (prev.length === rows.length) return prev;
       const next = [...prev];
@@ -164,7 +170,7 @@ function SelectOptionsEditor({
       next.length = rows.length;
       return next;
     });
-  }, [rows.length]);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

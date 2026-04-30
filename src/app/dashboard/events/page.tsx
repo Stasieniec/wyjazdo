@@ -13,6 +13,8 @@ export default async function EventsListPage() {
   if (!organizer) redirect("/onboarding");
 
   const events = await listEventsForOrganizer(organizer.id);
+  // Server component renders once per request, so Date.now() is fine here.
+  // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   const eventsWithTaken = await Promise.all(
     events.map(async (e) => ({

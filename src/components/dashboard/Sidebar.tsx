@@ -2,9 +2,30 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { WyjazdoMark } from "@/components/brand/WyjazdoMark";
 import { UserMenu } from "@/components/dashboard/UserMenu";
+
+const COLLAPSED_KEY = "wyjazdo-sidebar-collapsed";
+
+function readCollapsed() {
+  return localStorage.getItem(COLLAPSED_KEY) === "true";
+}
+
+function subscribeCollapsed(notify: () => void) {
+  window.addEventListener("storage", notify);
+  window.addEventListener("wyjazdo-sidebar-collapsed-changed", notify);
+  return () => {
+    window.removeEventListener("storage", notify);
+    window.removeEventListener("wyjazdo-sidebar-collapsed-changed", notify);
+  };
+}
+
+function writeCollapsed(next: boolean) {
+  localStorage.setItem(COLLAPSED_KEY, String(next));
+  // Same-tab notification (the `storage` event only fires across tabs).
+  window.dispatchEvent(new Event("wyjazdo-sidebar-collapsed-changed"));
+}
 
 const NAV_ITEMS = [
   {
@@ -69,19 +90,16 @@ interface SidebarProps {
 
 export function Sidebar({ publicUrl, publicLabel }: SidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("wyjazdo-sidebar-collapsed");
-    if (saved === "true") setCollapsed(true);
-  }, []);
+  // SSR returns `false`; client subscribes to localStorage so the saved
+  // preference takes effect after hydration without a setState-in-effect.
+  const collapsed = useSyncExternalStore(
+    subscribeCollapsed,
+    readCollapsed,
+    () => false,
+  );
 
   function toggle() {
-    setCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem("wyjazdo-sidebar-collapsed", String(next));
-      return next;
-    });
+    writeCollapsed(!collapsed);
   }
 
   return (

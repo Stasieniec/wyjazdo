@@ -1,5 +1,5 @@
 // src/lib/db/queries/legal.ts
-import { and, eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import { newId } from "@/lib/ids";
 

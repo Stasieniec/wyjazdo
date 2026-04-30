@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import type { ConsentConfigItem } from "@/lib/validators/consent";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
@@ -15,7 +15,6 @@ type Props = {
   eventId: string;
   subdomain: string;
   eventSlug: string;
-  isFull: boolean;
   questions: CustomQuestion[];
   consents: ConsentConfigItem[];
   attendeeTypes: AttendeeType[];
@@ -49,14 +48,13 @@ export function RegisterForm({
   eventId,
   subdomain,
   eventSlug,
-  isFull,
   questions,
   consents,
   attendeeTypes,
   remainingSpots,
   depositCents,
 }: Props) {
-  const [state, formAction, pending] = useActionState<RegisterFormState, FormData>(
+  const [state, formAction] = useActionState<RegisterFormState, FormData>(
     registerAction,
     null,
   );
@@ -67,23 +65,20 @@ export function RegisterForm({
   const [registrantFirst, setRegistrantFirst] = useState("");
   const [registrantLast, setRegistrantLast] = useState("");
 
-  useEffect(() => {
-    setAttendees((prev) => {
-      if (prev.length === 0) return prev;
-      if (
-        prev[0].firstName === registrantFirst &&
-        prev[0].lastName === registrantLast
-      )
-        return prev;
-      const next = [...prev];
-      next[0] = {
-        ...next[0],
-        firstName: registrantFirst,
-        lastName: registrantLast,
-      };
-      return next;
-    });
-  }, [registrantFirst, registrantLast]);
+  // The first attendee row is always the registrant; their name lives in
+  // `registrantFirst`/`registrantLast` (separate inputs above the form), not
+  // in `attendees[0].firstName`. Overlay them at render time so the hidden
+  // form inputs in AttendeeCard pick up the right value at submit.
+  const renderedAttendees = useMemo<AttendeeState[]>(() => {
+    if (attendees.length === 0) return attendees;
+    const first = attendees[0];
+    if (first.firstName === registrantFirst && first.lastName === registrantLast) {
+      return attendees;
+    }
+    const next = attendees.slice();
+    next[0] = { ...first, firstName: registrantFirst, lastName: registrantLast };
+    return next;
+  }, [attendees, registrantFirst, registrantLast]);
 
   const quantities = useMemo(() => {
     const q: Record<string, number> = {};
@@ -92,7 +87,7 @@ export function RegisterForm({
     return q;
   }, [attendees]);
 
-  const totalAttendees = attendees.length;
+  const totalAttendees = renderedAttendees.length;
   const willBeWaitlisted = remainingSpots === 0 || totalAttendees > remainingSpots;
 
   function addAttendee(typeId: string) {
@@ -162,7 +157,7 @@ export function RegisterForm({
                 type={attendeeTypes[0]}
                 label={attendeeTypes[0].name}
                 canRemove={false}
-                value={attendees[0]}
+                value={renderedAttendees[0]}
                 onChange={(next) => updateAttendee(0, next)}
                 errors={errors}
                 hideNameFields={true}
@@ -170,11 +165,11 @@ export function RegisterForm({
             )
           : (
               <>
-                {attendees.map((a, i) => {
+                {renderedAttendees.map((a, i) => {
                   const type = attendeeTypes.find(
                     (t) => t.id === a.attendeeTypeId,
                   )!;
-                  const sameTypeBefore = attendees
+                  const sameTypeBefore = renderedAttendees
                     .slice(0, i)
                     .filter((x) => x.attendeeTypeId === a.attendeeTypeId).length;
                   const label =
