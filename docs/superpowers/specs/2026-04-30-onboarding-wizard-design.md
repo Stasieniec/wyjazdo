@@ -68,25 +68,45 @@ Server returns `jumpToStep: 2` on subdomain-taken or subdomain-invalid (matches 
 
 ### File plan
 
+### Routing change
+
+The current `/dashboard/onboarding` page renders inside `DashboardLayout` (sidebar + mobile tab bar). The wizard needs the whole screen for the immersive blob aesthetic. The fix is to move the wizard to its own route at `/onboarding` (root), with its own minimal layout.
+
+The `/dashboard/onboarding/payouts` sub-route (Stripe Connect onboarding for receiving payments — separate concern, runs after profile is created) **stays where it is** under the dashboard layout.
+
+All redirects that mean "user has no organizer profile yet, send them to do profile onboarding" change from `redirect("/dashboard/onboarding")` to `redirect("/onboarding")`. The `href` links to `/dashboard/onboarding/payouts` are unchanged.
+
 **New:**
-- `src/app/dashboard/onboarding/OnboardingWizard.tsx` — main component, state + step routing
-- `src/app/dashboard/onboarding/WizardShell.tsx` — visual shell: blob background, pill, progress bar, step transition wrapper
-- `src/app/dashboard/onboarding/steps/StepWelcome.tsx`
-- `src/app/dashboard/onboarding/steps/StepName.tsx`
-- `src/app/dashboard/onboarding/steps/StepSubdomain.tsx`
-- `src/app/dashboard/onboarding/steps/StepEmail.tsx`
-- `src/app/dashboard/onboarding/steps/StepDescription.tsx`
-- `src/app/dashboard/onboarding/steps/StepConsents.tsx`
+- `src/app/onboarding/page.tsx` — server component, fetches `firstName` and `email` from Clerk, redirects already-onboarded users to `/dashboard`, renders the wizard
+- `src/app/onboarding/layout.tsx` — minimal full-screen layout (no sidebar, no nav)
+- `src/app/onboarding/OnboardingWizard.tsx` — main client component, state + step routing
+- `src/app/onboarding/WizardShell.tsx` — visual shell: blob background, pill, progress bar, step transition wrapper
+- `src/app/onboarding/steps/StepWelcome.tsx`
+- `src/app/onboarding/steps/StepName.tsx`
+- `src/app/onboarding/steps/StepSubdomain.tsx`
+- `src/app/onboarding/steps/StepEmail.tsx`
+- `src/app/onboarding/steps/StepDescription.tsx`
+- `src/app/onboarding/steps/StepConsents.tsx`
+- `src/app/onboarding/actions.ts` — moved from `dashboard/onboarding/actions.ts`, adds `jumpToStep` to error returns
 - `src/lib/utils/slug.ts` — slugify with Polish handling
 - `src/lib/utils/slug.test.ts` — vitest tests
 
 **Modified:**
-- `src/app/dashboard/onboarding/page.tsx` — fetch `firstName` and `email` from Clerk via `currentUser()`, pass both to the wizard
-- `src/app/dashboard/onboarding/actions.ts` — add `jumpToStep` to error return shape
-- `src/app/sign-up/[[...rest]]/page.tsx` — add `forceRedirectUrl="/dashboard/onboarding"` on `<SignUp />`
+- `src/middleware.ts` — extend `createRouteMatcher` to include `/onboarding(.*)` so unauthenticated users hit Clerk auth before the wizard
+- `src/app/sign-up/[[...rest]]/page.tsx` — add `forceRedirectUrl="/onboarding"` on `<SignUp />`
+- All `redirect("/dashboard/onboarding")` call sites updated to `redirect("/onboarding")`:
+  - `src/app/dashboard/page.tsx`
+  - `src/app/dashboard/events/page.tsx`
+  - `src/app/dashboard/events/new/page.tsx`
+  - `src/app/dashboard/events/[id]/page.tsx`
+  - `src/app/dashboard/finance/page.tsx`
+  - `src/app/dashboard/settings/page.tsx`
+  - `src/app/dashboard/onboarding/payouts/page.tsx` (the "no organizer → go do profile onboarding" guard)
 
 **Deleted:**
-- `src/app/dashboard/onboarding/OnboardingForm.tsx` — superseded by wizard
+- `src/app/dashboard/onboarding/page.tsx`
+- `src/app/dashboard/onboarding/OnboardingForm.tsx`
+- `src/app/dashboard/onboarding/actions.ts`
 
 ## Sign-up auto-redirect
 
@@ -94,12 +114,12 @@ Add to the Clerk `<SignUp />` element in `src/app/sign-up/[[...rest]]/page.tsx`:
 
 ```tsx
 <SignUp
-  forceRedirectUrl="/dashboard/onboarding"
+  forceRedirectUrl="/onboarding"
   signInForceRedirectUrl="/dashboard"
 />
 ```
 
-After signup, users land directly on the wizard. The existing `/dashboard/page.tsx` guard (redirects to `/dashboard/onboarding` if no organizer) remains as belt-and-suspenders.
+After signup, users land directly on the wizard. The existing `/dashboard/page.tsx` guard (which now redirects to `/onboarding` if no organizer) remains as belt-and-suspenders.
 
 ## Mobile bug — root cause and fix
 
@@ -186,7 +206,7 @@ Single component, Tailwind breakpoints — no separate desktop component.
 
 - **"← Wstecz"** simply decrements the step index. All field values are preserved in state; nothing is re-validated.
 - **Refresh** loses state. Acceptable: 2-minute flow, no sensitive data persisted, GDPR-cleaner. Welcome step explains it'll take 2 minutes so users won't navigate away mid-flow.
-- **Already-onboarded user lands on `/dashboard/onboarding`:** existing logic in `actions.ts` (`if (existing) redirect("/dashboard")`) handles the submit case; we add the same check at page load via `getOrganizerByClerkUserId(userId)` in `page.tsx` and redirect to `/dashboard` if found, so they never see the wizard a second time.
+- **Already-onboarded user lands on `/onboarding`:** existing logic in `actions.ts` (`if (existing) redirect("/dashboard")`) handles the submit case; we add the same check at page load via `getOrganizerByClerkUserId(userId)` in `page.tsx` and redirect to `/dashboard` if found, so they never see the wizard a second time.
 - **Subdomain race condition** (taken between client-check and server-check): server returns `error: "Ten adres jest już zajęty"` with `jumpToStep: 2`; wizard animates back to the Adres step with the error visible above the input.
 
 ## Out of scope
