@@ -7,7 +7,7 @@ export default async function SettingsPage() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
   const organizer = await getOrganizerByClerkUserId(userId);
-  if (!organizer) redirect("/dashboard/onboarding");
+  if (!organizer) redirect("/onboarding");
 
   const social = organizer.socialLinks
     ? (JSON.parse(organizer.socialLinks) as Record<string, string | null>)
