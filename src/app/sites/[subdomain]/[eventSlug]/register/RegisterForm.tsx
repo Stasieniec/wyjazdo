@@ -151,7 +151,7 @@ export function RegisterForm({
         <Input label="Telefon" name="phone" error={state?.errors?.phone} />
 
         {isSingleLegacy
-          ? (attendeeTypes[0].customFields ?? []).length > 0 && (
+          ? (attendeeTypes[0].customFields ?? []).length > 0 ? (
               <AttendeeCard
                 index={0}
                 type={attendeeTypes[0]}
@@ -162,6 +162,12 @@ export function RegisterForm({
                 errors={errors}
                 hideNameFields={true}
               />
+            ) : (
+              <>
+                <input type="hidden" name="attendees[0][attendeeTypeId]" value={attendeeTypes[0].id} />
+                <input type="hidden" name="attendees[0][firstName]" value={renderedAttendees[0]?.firstName ?? ""} />
+                <input type="hidden" name="attendees[0][lastName]" value={renderedAttendees[0]?.lastName ?? ""} />
+              </>
             )
           : (
               <>
