@@ -19,23 +19,26 @@ export async function syncEventPhotos(
   const db = getDb();
   const now = Date.now();
 
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(schema.eventPhotos)
-      .where(eq(schema.eventPhotos.eventId, eventId));
+  const deleteStmt = db
+    .delete(schema.eventPhotos)
+    .where(eq(schema.eventPhotos.eventId, eventId));
 
-    if (photos.length > 0) {
-      await tx.insert(schema.eventPhotos).values(
-        photos.map((p) => ({
-          id: newId(),
-          eventId,
-          url: p.url,
-          position: p.position,
-          createdAt: now,
-        })),
-      );
-    }
-  });
+  if (photos.length === 0) {
+    await deleteStmt;
+    return;
+  }
+
+  const insertStmt = db.insert(schema.eventPhotos).values(
+    photos.map((p) => ({
+      id: newId(),
+      eventId,
+      url: p.url,
+      position: p.position,
+      createdAt: now,
+    })),
+  );
+
+  await db.batch([deleteStmt, insertStmt]);
 }
 
 export async function insertEventPhotos(

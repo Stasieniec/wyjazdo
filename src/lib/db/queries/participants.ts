@@ -12,12 +12,17 @@ export async function insertParticipantWithAttendees(
   attendees: NewAttendee[],
 ): Promise<void> {
   const db = getDb();
-  await db.transaction(async (tx) => {
-    await tx.insert(schema.participants).values(participant);
-    if (attendees.length > 0) {
-      await tx.insert(schema.attendees).values(attendees);
-    }
-  });
+  const insertParticipant = db.insert(schema.participants).values(participant);
+
+  if (attendees.length === 0) {
+    await insertParticipant;
+    return;
+  }
+
+  await db.batch([
+    insertParticipant,
+    db.insert(schema.attendees).values(attendees),
+  ]);
 }
 
 /**
