@@ -12,6 +12,7 @@ export function Textarea({ label, error, className = "", id, ...props }: Textare
       {label && (
         <label htmlFor={inputId} className="block text-sm font-medium text-foreground">
           {label}
+          {props.required && <span aria-hidden className="ml-0.5 text-destructive">*</span>}
         </label>
       )}
       <textarea

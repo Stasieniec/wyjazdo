@@ -14,6 +14,7 @@ export function Select({ label, error, options, placeholder, className = "", id,
       {label && (
         <label htmlFor={inputId} className="block text-sm font-medium text-foreground">
           {label}
+          {props.required && <span aria-hidden className="ml-0.5 text-destructive">*</span>}
         </label>
       )}
       <select

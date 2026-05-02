@@ -227,7 +227,7 @@ export function RegisterForm({
             )}
 
         {questions.map((q) => {
-          const label = `${q.label}${q.required ? " *" : ""}`;
+          const label = q.label;
           const fieldError = state?.errors?.[`q_${q.id}`];
           if (q.type === "long_text") {
             return (
