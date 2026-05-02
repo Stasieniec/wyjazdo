@@ -138,7 +138,7 @@ export function NewEventForm({ subdomain }: { subdomain: string }) {
               name="slug"
               label="Nazwa w URL"
               required
-              pattern="[a-z0-9][a-z0-9-]*[a-z0-9]"
+              pattern="[a-z0-9](?:[a-z0-9]|-)*[a-z0-9]"
               minLength={3}
               maxLength={64}
               placeholder="np. warsztaty-kwietniowe"

@@ -12,6 +12,7 @@ export function Input({ label, error, className = "", id, ...props }: InputProps
       {label && (
         <label htmlFor={inputId} className="block text-sm font-medium text-foreground">
           {label}
+          {props.required && <span aria-hidden className="ml-0.5 text-destructive">*</span>}
         </label>
       )}
       <input
