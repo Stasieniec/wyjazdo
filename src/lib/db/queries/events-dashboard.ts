@@ -47,3 +47,27 @@ export async function updateEvent(
     .set({ ...patch, updatedAt: Date.now() })
     .where(and(eq(schema.events.organizerId, organizerId), eq(schema.events.id, eventId)));
 }
+
+export async function getDraftForOrganizerById(
+  organizerId: string,
+  eventId: string,
+) {
+  return getEventForOrganizer(organizerId, eventId);
+}
+
+export async function setCreationStep(
+  organizerId: string,
+  eventId: string,
+  step: string | null,
+) {
+  await updateEvent(organizerId, eventId, { creationStep: step });
+}
+
+export async function markPublishedFirstTimeIfNeeded(
+  organizerId: string,
+  eventId: string,
+) {
+  const ev = await getEventForOrganizer(organizerId, eventId);
+  if (!ev || ev.publishedAt != null) return;
+  await updateEvent(organizerId, eventId, { publishedAt: Date.now() });
+}

@@ -58,3 +58,24 @@ export async function insertEventPhotos(
     })),
   );
 }
+
+export async function replacePhotosForEvent(
+  eventId: string,
+  photos: { url: string; position: number }[],
+) {
+  const db = getDb();
+  await db
+    .delete(schema.eventPhotos)
+    .where(eq(schema.eventPhotos.eventId, eventId));
+  if (photos.length === 0) return;
+  const now = Date.now();
+  await db.insert(schema.eventPhotos).values(
+    photos.map((p) => ({
+      id: newId(),
+      eventId,
+      url: p.url,
+      position: p.position,
+      createdAt: now,
+    })),
+  );
+}
