@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getOrganizerBySubdomain, getPublishedEventsByOrganizer } from "@/lib/db/queries/organizers";
 import { formatPlnFromCents } from "@/lib/format-currency";
 import type { Metadata } from "next";
+import { publicOrganizerUrl } from "@/lib/urls";
 
 export async function generateMetadata({
   params,
@@ -12,14 +13,26 @@ export async function generateMetadata({
   const { subdomain } = await params;
   const organizer = await getOrganizerBySubdomain(subdomain);
   if (!organizer) return {};
+  const canonicalUrl = publicOrganizerUrl(subdomain);
 
   return {
     title: `${organizer.displayName} — wyjazdo.pl`,
     description: organizer.description?.slice(0, 160) ?? `${organizer.displayName} na wyjazdo.pl`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
+      type: "profile",
+      url: canonicalUrl,
       title: organizer.displayName,
       description: organizer.description?.slice(0, 160) ?? "",
       ...(organizer.coverUrl ? { images: [{ url: organizer.coverUrl }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: organizer.displayName,
+      description: organizer.description?.slice(0, 160) ?? `${organizer.displayName} na wyjazdo.pl`,
+      ...(organizer.coverUrl ? { images: [organizer.coverUrl] } : {}),
     },
   };
 }

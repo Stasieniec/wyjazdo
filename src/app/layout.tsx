@@ -23,6 +23,8 @@ const siteUrl = siteOrigin();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: "Wyjazdo",
+  referrer: "origin-when-cross-origin",
+  category: "travel",
   title: "Wyjazdo — zapisy, płatności i uczestnicy dla organizatorów",
   description:
     "Platforma dla organizatorów wyjazdów, retreatów i warsztatów. Własna subdomena, zapisy, płatności online (BLIK, Przelewy24, karta) i panel uczestników.",
@@ -50,12 +52,32 @@ export const metadata: Metadata = {
     title: "Wyjazdo — zapisy, płatności i uczestnicy",
     description:
       "Platforma dla organizatorów wyjazdów i wydarzeń. Subdomena, formularz zapisu, płatności i lista uczestników.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Wyjazdo — zapisy, płatności i uczestnicy dla organizatorów wyjazdów i wydarzeń",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Wyjazdo — zapisy, płatności i uczestnicy",
     description:
       "Platforma dla organizatorów wyjazdów, retreatów i warsztatów.",
+    images: ["/twitter-image"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   icons: {
     apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
