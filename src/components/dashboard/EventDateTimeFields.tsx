@@ -62,6 +62,6 @@ function formatDurationMs(ms: number): string {
   const parts: string[] = [];
   if (days > 0) parts.push(days === 1 ? "1 dzień" : `${days} dni`);
   if (hours > 0) parts.push(hours === 1 ? "1 godz." : `${hours} godz.`);
-  if (mins > 0 && days === 0) parts.push(`${mins} min`);
+  if (mins > 0) parts.push(`${mins} min`);
   return parts.length === 0 ? "0 min" : parts.join(" ");
 }
