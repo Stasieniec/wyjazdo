@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildPresetTypes, PRESET_IDS } from "./attendee-presets";
+import { buildPresetTypes, PRESET_IDS, PRESET_LABELS } from "./attendee-presets";
 
 describe("buildPresetTypes", () => {
   it("jedna_osoba: single type, qty 1..1, uses provided base price", () => {
@@ -33,5 +33,22 @@ describe("buildPresetTypes", () => {
 
   it("exports a list of preset ids", () => {
     expect(PRESET_IDS).toEqual(["jedna_osoba", "rodzic_z_dziecmi", "grupa"]);
+  });
+});
+
+describe("PRESET_LABELS (rewritten copy)", () => {
+  it("uses 'Tylko siebie' for jedna_osoba", () => {
+    expect(PRESET_LABELS.jedna_osoba.title).toBe("Tylko siebie");
+    expect(PRESET_LABELS.jedna_osoba.description).toContain("tylko siebie");
+  });
+
+  it("keeps 'Rodzic z dziećmi' for rodzic_z_dziecmi", () => {
+    expect(PRESET_LABELS.rodzic_z_dziecmi.title).toBe("Rodzic z dziećmi");
+    expect(PRESET_LABELS.rodzic_z_dziecmi.description).toContain("dzieci");
+  });
+
+  it("uses 'Grupa (kilka osób na raz)' for grupa", () => {
+    expect(PRESET_LABELS.grupa.title).toBe("Grupa (kilka osób na raz)");
+    expect(PRESET_LABELS.grupa.description).toContain("siebie i znajomych");
   });
 });
