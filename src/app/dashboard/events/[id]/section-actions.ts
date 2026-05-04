@@ -76,6 +76,12 @@ export async function saveSectionBasicsAction(
   if (!titleParsed.success) return { errors: zodIssues(titleParsed.error.issues) };
   const descParsed = stepDescriptionSchema.safeParse({ description });
   if (!descParsed.success) return { errors: zodIssues(descParsed.error.issues) };
+  // Block slug changes on already-published events to preserve shareable URLs.
+  if (titleParsed.data.slug !== ev.slug && ev.publishedAt != null) {
+    return {
+      errors: { slug: "Nie można zmienić adresu URL po publikacji wydarzenia." },
+    };
+  }
   if (slug !== ev.slug && (await isSlugTakenForOrganizer(organizer.id, slug))) {
     return { errors: { slug: "Ta nazwa w URL jest już zajęta" } };
   }
