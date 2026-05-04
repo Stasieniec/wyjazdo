@@ -70,13 +70,19 @@ export default async function DashboardOverview() {
       {(organizer.stripeOnboardingComplete !== 1 ||
         organizer.stripePayoutsEnabled !== 1) && (
         <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          Dokończ konfigurację Stripe, aby móc publikować wydarzenia.{" "}
-          <Link
-            href="/dashboard/onboarding/payouts"
-            className="font-medium underline"
-          >
-            Konfiguruj
-          </Link>
+          <p>
+            Zanim opublikujesz swoje pierwsze wydarzenie, dokończ konfigurację Stripe.{" "}
+            <Link
+              href="/dashboard/onboarding/payouts"
+              className="font-medium underline"
+            >
+              Skonfiguruj teraz
+            </Link>
+          </p>
+          <p className="mt-2 text-amber-800">
+            Dzięki temu uczestniczki i uczestnicy będą mogli bezpiecznie opłacać zapisy online,
+            a wypłaty trafią prosto na Twoje konto.
+          </p>
         </div>
       )}
 
