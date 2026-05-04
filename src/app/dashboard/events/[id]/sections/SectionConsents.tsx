@@ -22,7 +22,6 @@ export function SectionConsents({ eventId, initial }: Props) {
       action={action}
       state={state}
     >
-      <input type="hidden" name="consentConfig" value={JSON.stringify(consents)} />
       <EventConsentsEditor initial={consents} name="consentConfig" onChange={setConsents} />
     </SectionShell>
   );

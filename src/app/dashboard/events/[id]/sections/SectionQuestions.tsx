@@ -35,8 +35,7 @@ export function SectionQuestions({ eventId, attendeeTypes, initialCustomQuestion
 
   return (
     <SectionShell id="pytania" title="Pytania w formularzu zapisu" action={action} state={state}>
-      {/* Hidden inputs reflect current state */}
-      <input type="hidden" name="customQuestions" value={JSON.stringify(regQuestions)} />
+      {/* Hidden inputs reflect current state (customQuestions hidden input is rendered by CustomQuestionsEditor below) */}
       {Object.entries(perTypeFields).map(([typeId, fields]) => (
         <input
           key={typeId}
