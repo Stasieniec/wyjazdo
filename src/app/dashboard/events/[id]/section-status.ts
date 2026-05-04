@@ -51,7 +51,7 @@ export function computeSectionStatus(
   const consents = ev.consentConfig ? safeParseArray(ev.consentConfig) : [];
 
   return {
-    podstawy: ev.title.length > 0 && ev.slug.length > 0 ? "filled" : "empty",
+    podstawy: ev.title.length > 0 && ev.slug.length >= 3 ? "filled" : "empty",
     termin: ev.startsAt > 0 && ev.endsAt > ev.startsAt ? "filled" : "empty",
     miejsce: ev.location && ev.location.length > 0 ? "filled" : "empty",
     uczestnicy: types && types.length > 0 ? "filled" : "empty",

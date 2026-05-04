@@ -36,6 +36,25 @@ describe("computeSectionStatus", () => {
     const s = computeSectionStatus(ev, []);
     expect(s.platnosc).toBe("free");
   });
+  it("flags miejsca as 'empty' when capacity < 1", () => {
+    const s = computeSectionStatus({ ...validBase, capacity: 0 }, []);
+    expect(s.miejsca).toBe("empty");
+  });
+  it("flags platnosc as 'filled' when paid event has deposit + balanceDueAt", () => {
+    const ev = {
+      ...validBase,
+      depositCents: 2000,
+      balanceDueAt: 1_700_000_000_000,
+    };
+    const s = computeSectionStatus(ev, []);
+    expect(s.platnosc).toBe("filled");
+  });
+
+  it("flags platnosc as 'empty' when paid event lacks deposit/balance config", () => {
+    const s = computeSectionStatus(validBase, []);
+    // validBase has paid attendee type but null deposit/balanceDueAt
+    expect(s.platnosc).toBe("empty");
+  });
 });
 
 describe("isPublishable", () => {
