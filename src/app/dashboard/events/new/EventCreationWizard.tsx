@@ -72,6 +72,7 @@ export function EventCreationWizard({ subdomain, rootDomain, initialStep, initia
     sp.set("step", next);
     if (eventId) sp.set("eventId", eventId);
     router.push(`/dashboard/events/new?${sp.toString()}`);
+    router.refresh();
   }
 
   function handleResult(result: StepResult) {
@@ -301,15 +302,16 @@ export function EventCreationWizard({ subdomain, rootDomain, initialStep, initia
                 if (!eventId) return;
                 const fd = new FormData();
                 fd.set("consentConfig", consentsJson);
-                await saveStepConsentsAction(eventId, fd);
-                // Action redirects on success.
+                const result = await saveStepConsentsAction(eventId, fd);
+                if (result) handleResult(result);
+                // Action redirects on success; line above is unreachable on the happy path.
               })
             }
             onSkip={() =>
               startTransition(async () => {
                 if (!eventId) return;
-                await saveStepConsentsAction(eventId, new FormData(), true);
-                // Action redirects on success.
+                const result = await saveStepConsentsAction(eventId, new FormData(), true);
+                if (result) handleResult(result);
               })
             }
           />
