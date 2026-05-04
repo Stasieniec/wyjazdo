@@ -36,6 +36,7 @@ export function DateTimePickerField({
 }: Props) {
   const id = useId();
   const popoverRef = useRef<HTMLDivElement>(null);
+  const lastSentRef = useRef<string | null>(null);
 
   const [date, setDate] = useState<Date | undefined>(() =>
     defaultValue != null ? startOfLocalDay(defaultValue) : undefined,
@@ -52,6 +53,8 @@ export function DateTimePickerField({
 
   useEffect(() => {
     if (!onChange) return;
+    if (lastSentRef.current === combined) return;
+    lastSentRef.current = combined;
     if (!combined) {
       onChange(null);
       return;
@@ -63,13 +66,20 @@ export function DateTimePickerField({
   // Close popover on outside click
   useEffect(() => {
     if (!open) return;
-    function handler(e: MouseEvent) {
+    function clickHandler(e: MouseEvent) {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    function keyHandler(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", clickHandler);
+    document.addEventListener("keydown", keyHandler);
+    return () => {
+      document.removeEventListener("mousedown", clickHandler);
+      document.removeEventListener("keydown", keyHandler);
+    };
   }, [open]);
 
   function handleManualBlur() {
