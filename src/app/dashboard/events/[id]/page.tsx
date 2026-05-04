@@ -12,11 +12,10 @@ import { parseParticipantFilterStatus } from "@/lib/participantFilterStatus";
 import { ParticipantFilters } from "@/components/dashboard/ParticipantFilters";
 import ParticipantsTable from "@/components/dashboard/ParticipantsTable";
 import { CopyLinkButton } from "@/components/dashboard/CopyLinkButton";
-import { Button, Card, StatusBadge, SubmitButton } from "@/components/ui";
+import { Button, Card, StatusBadge } from "@/components/ui";
 import { publicEventUrl } from "@/lib/urls";
 import { listPhotosForEvent } from "@/lib/db/queries/event-photos";
-import { changeStatusAction } from "./actions";
-import { EventEditForm } from "./EventEditForm";
+import { EventEditView } from "./EventEditView";
 
 export default async function EventEditPage({
   params,
@@ -36,24 +35,21 @@ export default async function EventEditPage({
   const event = await getEventForOrganizer(organizer.id, id);
   if (!event) notFound();
 
-  const questions: CustomQuestion[] = event.customQuestions
+  const customQuestions: CustomQuestion[] = event.customQuestions
     ? JSON.parse(event.customQuestions)
     : [];
 
-  const initialConsents: ConsentConfigItem[] = event.consentConfig
+  const consents: ConsentConfigItem[] = event.consentConfig
     ? JSON.parse(event.consentConfig)
     : [];
 
   const eventPhotos = await listPhotosForEvent(id);
   const initialPhotos = eventPhotos.map((p) => ({ url: p.url, position: p.position }));
 
-  const initialAttendeeTypes: AttendeeType[] | null = event.attendeeTypes
+  const attendeeTypes: AttendeeType[] | null = event.attendeeTypes
     ? (JSON.parse(event.attendeeTypes) as AttendeeType[])
     : null;
 
-  const publishBound = changeStatusAction.bind(null, id, "published");
-  const unpublishBound = changeStatusAction.bind(null, id, "draft");
-  const archiveBound = changeStatusAction.bind(null, id, "archived");
   const stripeReady =
     organizer.stripeOnboardingComplete === 1 && organizer.stripePayoutsEnabled === 1;
 
@@ -63,7 +59,7 @@ export default async function EventEditPage({
 
   return (
     <div>
-      {/* Header */}
+      {/* Header — passive identity strip (no action buttons) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -73,7 +69,7 @@ export default async function EventEditPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-sm sm:justify-end">
-          {event.status === "published" ? (
+          {event.status === "published" && (
             <>
               <Button
                 href={previewUrl}
@@ -85,53 +81,23 @@ export default async function EventEditPage({
                 Podgląd
               </Button>
               <CopyLinkButton url={previewUrl} />
-              <form action={unpublishBound}>
-                <SubmitButton variant="secondary" size="sm">
-                  Ukryj
-                </SubmitButton>
-              </form>
             </>
-          ) : (
-            <>
-              <form action={publishBound}>
-                <SubmitButton
-                  variant="accent"
-                  size="sm"
-                  disabled={!stripeReady}
-                  title={
-                    !stripeReady
-                      ? "Dokończ konfigurację Stripe, aby opublikować wydarzenie"
-                      : undefined
-                  }
-                >
-                  Opublikuj
-                </SubmitButton>
-              </form>
-              {!stripeReady && (
-                <Link
-                  href="/dashboard/onboarding/payouts"
-                  className="text-xs text-yellow-700 underline"
-                >
-                  Dokończ konfigurację Stripe
-                </Link>
-              )}
-            </>
-          )}
-          {event.status !== "archived" && (
-            <form action={archiveBound}>
-              <SubmitButton variant="ghost" size="sm">
-                Archiwizuj
-              </SubmitButton>
-            </form>
           )}
         </div>
       </div>
 
-      {/* Status hint */}
-      {event.status === "draft" && (
+      {/* Status hints */}
+      {event.status === "draft" && event.creationStep !== "complete" && (
         <div className="mt-4 rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
-          <strong className="font-medium text-foreground">To jest szkic.</strong>{" "}
-          Tylko Ty widzisz tę stronę. Kliknij <em>Opublikuj</em>, aby inni mogli się zapisać.
+          <strong className="font-medium text-foreground">Szkic w trakcie tworzenia.</strong>{" "}
+          {event.creationStep && (
+            <Link
+              href={`/dashboard/events/new?eventId=${id}&step=${event.creationStep}`}
+              className="text-primary underline"
+            >
+              Dokończ tworzenie →
+            </Link>
+          )}
         </div>
       )}
       {event.status === "archived" && (
@@ -172,26 +138,33 @@ export default async function EventEditPage({
 
       {dashboardTab === "edycja" ? (
         <div className="mt-6">
-          <EventEditForm
+          <EventEditView
             eventId={id}
-            showCreationStep2={
-              event.status === "draft" && event.createdAt === event.updatedAt
-            }
             event={{
               title: event.title,
+              slug: event.slug,
               description: event.description,
               location: event.location,
               startsAt: event.startsAt,
               endsAt: event.endsAt,
               capacity: event.capacity,
-              coverUrl: event.coverUrl,
+              attendeeTypes: event.attendeeTypes,
               depositCents: event.depositCents ?? null,
               balanceDueAt: event.balanceDueAt ?? null,
+              coverUrl: event.coverUrl,
+              customQuestions: event.customQuestions,
+              consentConfig: event.consentConfig,
+              status: event.status as "draft" | "published" | "archived",
+              creationStep: event.creationStep ?? null,
+              publishedAt: event.publishedAt ?? null,
             }}
-            initialQuestions={questions}
-            initialConsents={initialConsents}
-            initialPhotos={initialPhotos}
-            initialAttendeeTypes={initialAttendeeTypes}
+            galleryPhotos={initialPhotos}
+            attendeeTypes={attendeeTypes}
+            customQuestions={customQuestions}
+            consents={consents}
+            subdomain={organizer.subdomain}
+            rootDomain={process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl"}
+            stripeReady={stripeReady}
           />
         </div>
       ) : (
@@ -221,8 +194,8 @@ export default async function EventEditPage({
               eventId={event.id}
               eventCapacity={event.capacity}
               eventPriceCents={event.priceCents}
-              questions={questions}
-              attendeeTypes={initialAttendeeTypes}
+              questions={customQuestions}
+              attendeeTypes={attendeeTypes}
               statusFilter={statusFilter}
             />
           </div>

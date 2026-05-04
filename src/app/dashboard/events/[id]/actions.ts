@@ -8,7 +8,7 @@ import { consentConfigSchema } from "@/lib/validators/consent";
 import { attendeeTypesSchema } from "@/lib/validators/attendee-types";
 import { syncEventPhotos } from "@/lib/db/queries/event-photos";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
-import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
+import { getEventForOrganizer, updateEvent, markPublishedFirstTimeIfNeeded } from "@/lib/db/queries/events-dashboard";
 import { getEventById } from "@/lib/db/queries/events";
 import { getPaymentById, setBalanceDueAtForPayment, insertPayment, setPaymentStripeSession, listPaymentsForParticipant, resetPaymentToPending } from "@/lib/db/queries/payments";
 import { getParticipantById, cancelParticipant, activateWaitlistedParticipant } from "@/lib/db/queries/participants";
@@ -197,6 +197,7 @@ export async function changeStatusAction(eventId: string, status: string) {
     if (organizer.stripeOnboardingComplete !== 1 || organizer.stripePayoutsEnabled !== 1) {
       throw new Error("Publikacja wymaga ukończenia konfiguracji Stripe.");
     }
+    await markPublishedFirstTimeIfNeeded(organizer.id, eventId);
   }
   await updateEvent(organizer.id, eventId, { status: parsed.data });
   revalidatePath(`/dashboard/events/${eventId}`);
