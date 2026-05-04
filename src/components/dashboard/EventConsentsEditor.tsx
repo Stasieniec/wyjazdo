@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ConsentConfigItem } from "@/lib/validators/consent";
 import { newId } from "@/lib/ids";
 
 type Props = {
   initial: ConsentConfigItem[];
   name: string;
+  onChange?: (consents: ConsentConfigItem[]) => void;
 };
 
 const PRESET_CONSENTS: Array<{
@@ -34,8 +35,13 @@ const PRESET_CONSENTS: Array<{
   },
 ];
 
-export default function EventConsentsEditor({ initial, name }: Props) {
+export default function EventConsentsEditor({ initial, name, onChange }: Props) {
   const [consents, setConsents] = useState<ConsentConfigItem[]>(initial);
+
+  useEffect(() => {
+    onChange?.(consents);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consents]);
 
   function update(i: number, patch: Partial<ConsentConfigItem>) {
     setConsents((c) => c.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));

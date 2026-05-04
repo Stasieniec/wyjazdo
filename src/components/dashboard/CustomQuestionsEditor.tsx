@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import { newId } from "@/lib/ids";
 
@@ -348,13 +348,22 @@ function SortableQuestionCard({
 export default function CustomQuestionsEditor({
   initial,
   name,
+  onChange,
 }: {
   initial: CustomQuestion[];
   name: string;
+  onChange?: (questions: CustomQuestion[]) => void;
 }) {
   const [questions, setQuestions] = useState<CustomQuestionDraft[]>(() =>
     initial.map(normalizeInitial),
   );
+
+  useEffect(() => {
+    onChange?.(sanitizeForSubmit(questions));
+    // We intentionally only re-fire when the editor's questions change.
+    // The parent's onChange identity is allowed to change between renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questions]);
 
   const questionSensors = useSensors(
     useSensor(PointerSensor, {

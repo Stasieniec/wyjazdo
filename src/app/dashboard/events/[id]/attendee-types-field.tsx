@@ -18,6 +18,12 @@ type Props = {
    * serving as a "starting from" figure for listings.
    */
   priceHiddenName?: string;
+  /**
+   * Whether to render the per-type custom fields editor (and the parent-questions toggle).
+   * When false, only price/quantity controls are shown — the wizard moves the questions UI to a
+   * dedicated step. Defaults to true.
+   */
+  showCustomFieldsEditor?: boolean;
 };
 
 function detectPreset(types: AttendeeType[] | null): PresetId | "custom" {
@@ -54,7 +60,7 @@ function centsToPLNString(cents: number): string {
   return (cents / 100).toString().replace(".", ",");
 }
 
-export function AttendeeTypesField({ initialAttendeeTypes, name = "attendeeTypes", priceHiddenName = "price" }: Props) {
+export function AttendeeTypesField({ initialAttendeeTypes, name = "attendeeTypes", priceHiddenName = "price", showCustomFieldsEditor = true }: Props) {
   const [preset, setPreset] = useState<PresetId | "custom">(() => detectPreset(initialAttendeeTypes));
   const [types, setTypes] = useState<AttendeeType[]>(() => {
     if (initialAttendeeTypes && initialAttendeeTypes.length > 0) return initialAttendeeTypes;
@@ -111,9 +117,9 @@ export function AttendeeTypesField({ initialAttendeeTypes, name = "attendeeTypes
         </div>
       </button>
 
-      {preset === "jedna_osoba" && <JednaOsobaPresetFields types={types} onChange={setTypes} />}
-      {preset === "rodzic_z_dziecmi" && <RodzicPresetFields types={types} onChange={setTypes} />}
-      {preset === "grupa" && <GrupaPresetFields types={types} onChange={setTypes} />}
+      {preset === "jedna_osoba" && <JednaOsobaPresetFields types={types} onChange={setTypes} showCustomFieldsEditor={showCustomFieldsEditor} />}
+      {preset === "rodzic_z_dziecmi" && <RodzicPresetFields types={types} onChange={setTypes} showCustomFieldsEditor={showCustomFieldsEditor} />}
+      {preset === "grupa" && <GrupaPresetFields types={types} onChange={setTypes} showCustomFieldsEditor={showCustomFieldsEditor} />}
       {preset === "custom" && (
         <>
           <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -129,7 +135,7 @@ export function AttendeeTypesField({ initialAttendeeTypes, name = "attendeeTypes
   );
 }
 
-function JednaOsobaPresetFields({ types, onChange }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void }) {
+function JednaOsobaPresetFields({ types, onChange, showCustomFieldsEditor = true }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void; showCustomFieldsEditor?: boolean }) {
   const t = types[0];
   return (
     <div className="space-y-4">
@@ -139,17 +145,22 @@ function JednaOsobaPresetFields({ types, onChange }: { types: AttendeeType[]; on
           onChangeCents={(c) => onChange([{ ...t, priceCents: c }])}
           className="border rounded px-2 py-1" />
       </label>
-      <AttendeeCustomFieldsEditor
-        heading="Pytania o uczestnika"
-        description="Dodatkowe pytania w formularzu zapisu — np. rozmiar koszulki, alergie, dieta."
-        value={t.customFields ?? []}
-        onChange={(cf) => onChange([{ ...t, customFields: cf }])}
-      />
+      <p className="text-xs text-muted-foreground max-w-md">
+        Każdy zapisuje tylko siebie. Jeśli chcesz, żeby ktoś mógł zapisać znajomego, wybierz <strong>Grupa</strong>.
+      </p>
+      {showCustomFieldsEditor && (
+        <AttendeeCustomFieldsEditor
+          heading="Pytania o uczestnika"
+          description="Dodatkowe pytania w formularzu zapisu — np. rozmiar koszulki, alergie, dieta."
+          value={t.customFields ?? []}
+          onChange={(cf) => onChange([{ ...t, customFields: cf }])}
+        />
+      )}
     </div>
   );
 }
 
-function GrupaPresetFields({ types, onChange }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void }) {
+function GrupaPresetFields({ types, onChange, showCustomFieldsEditor = true }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void; showCustomFieldsEditor?: boolean }) {
   const t = types[0];
   return (
     <div className="space-y-4">
@@ -165,17 +176,22 @@ function GrupaPresetFields({ types, onChange }: { types: AttendeeType[]; onChang
           onChange={(e) => onChange([{ ...t, maxQty: Number(e.target.value) }])}
           className="border rounded px-2 py-1" />
       </label>
-      <AttendeeCustomFieldsEditor
-        heading="Pytania o każdego uczestnika"
-        description="Pojawią się w formularzu zapisu dla każdej osoby w grupie — np. stanowisko, dieta, alergie."
-        value={t.customFields ?? []}
-        onChange={(cf) => onChange([{ ...t, customFields: cf }])}
-      />
+      <p className="text-xs text-muted-foreground max-w-md">
+        Tyle osób maksymalnie może zostać zapisanych w jednym zgłoszeniu.
+      </p>
+      {showCustomFieldsEditor && (
+        <AttendeeCustomFieldsEditor
+          heading="Pytania o każdego uczestnika"
+          description="Pojawią się w formularzu zapisu dla każdej osoby w grupie — np. stanowisko, dieta, alergie."
+          value={t.customFields ?? []}
+          onChange={(cf) => onChange([{ ...t, customFields: cf }])}
+        />
+      )}
     </div>
   );
 }
 
-function RodzicPresetFields({ types, onChange }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void }) {
+function RodzicPresetFields({ types, onChange, showCustomFieldsEditor = true }: { types: AttendeeType[]; onChange: (t: AttendeeType[]) => void; showCustomFieldsEditor?: boolean }) {
   const parent = types.find((t) => t.name.toLowerCase() === "rodzic") ?? types[0];
   const child = types.find((t) => t.name.toLowerCase() === "dziecko") ?? types[1];
   const discount = child.graduatedPricing?.[0];
@@ -234,32 +250,36 @@ function RodzicPresetFields({ types, onChange }: { types: AttendeeType[]; onChan
         </div>
       )}
 
-      <AttendeeCustomFieldsEditor
-        heading="Pytania o każde dziecko"
-        description="Pojawią się w formularzu zapisu dla każdego dziecka — np. wiek, alergie, dieta, rozmiar ubrania."
-        value={child.customFields ?? []}
-        onChange={(cf) => updateType(child.id, { customFields: cf })}
-      />
+      {showCustomFieldsEditor && (
+        <AttendeeCustomFieldsEditor
+          heading="Pytania o każde dziecko"
+          description="Pojawią się w formularzu zapisu dla każdego dziecka — np. wiek, alergie, dieta, rozmiar ubrania."
+          value={child.customFields ?? []}
+          onChange={(cf) => updateType(child.id, { customFields: cf })}
+        />
+      )}
 
-      <div>
-        <button
-          type="button"
-          onClick={() => setParentQuestionsOpen(!parentQuestionsOpen)}
-          className="text-sm underline text-gray-700"
-        >
-          {parentQuestionsOpen ? "▾" : "▸"} Pytania o rodzica (opcjonalne)
-        </button>
-        {parentQuestionsOpen && (
-          <div className="mt-3">
-            <AttendeeCustomFieldsEditor
-              heading="Pytania o rodzica"
-              description="Dodatkowe pytania do rodzica — np. nr telefonu kontaktowego w razie sytuacji nagłej. Dane podstawowe (imię, nazwisko, email, telefon) są i tak zbierane przy zapisie."
-              value={parent.customFields ?? []}
-              onChange={(cf) => updateType(parent.id, { customFields: cf })}
-            />
-          </div>
-        )}
-      </div>
+      {showCustomFieldsEditor && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setParentQuestionsOpen(!parentQuestionsOpen)}
+            className="text-sm underline text-gray-700"
+          >
+            {parentQuestionsOpen ? "▾" : "▸"} Pytania o rodzica (opcjonalne)
+          </button>
+          {parentQuestionsOpen && (
+            <div className="mt-3">
+              <AttendeeCustomFieldsEditor
+                heading="Pytania o rodzica"
+                description="Dodatkowe pytania do rodzica — np. nr telefonu kontaktowego w razie sytuacji nagłej. Dane podstawowe (imię, nazwisko, email, telefon) są i tak zbierane przy zapisie."
+                value={parent.customFields ?? []}
+                onChange={(cf) => updateType(parent.id, { customFields: cf })}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
