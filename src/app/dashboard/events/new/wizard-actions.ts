@@ -8,14 +8,9 @@ import {
   getEventForOrganizer,
   insertEvent,
   isSlugTakenForOrganizer,
-  setCreationStep,
   updateEvent,
 } from "@/lib/db/queries/events-dashboard";
-import {
-  insertEventPhotos,
-  listPhotosForEvent,
-  replacePhotosForEvent,
-} from "@/lib/db/queries/event-photos";
+import { replacePhotosForEvent } from "@/lib/db/queries/event-photos";
 import {
   stepTitleSchema,
   stepDescriptionSchema,

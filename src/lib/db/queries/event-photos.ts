@@ -64,12 +64,17 @@ export async function replacePhotosForEvent(
   photos: { url: string; position: number }[],
 ) {
   const db = getDb();
-  await db
+  const deleteStmt = db
     .delete(schema.eventPhotos)
     .where(eq(schema.eventPhotos.eventId, eventId));
-  if (photos.length === 0) return;
+
+  if (photos.length === 0) {
+    await deleteStmt;
+    return;
+  }
+
   const now = Date.now();
-  await db.insert(schema.eventPhotos).values(
+  const insertStmt = db.insert(schema.eventPhotos).values(
     photos.map((p) => ({
       id: newId(),
       eventId,
@@ -78,4 +83,6 @@ export async function replacePhotosForEvent(
       createdAt: now,
     })),
   );
+
+  await db.batch([deleteStmt, insertStmt]);
 }
