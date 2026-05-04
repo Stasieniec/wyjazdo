@@ -53,6 +53,8 @@ export const events = sqliteTable(
     consentConfig: text("consent_config"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
+    creationStep: text("creation_step"),
+    publishedAt: integer("published_at"),
   },
   (t) => ({
     organizerIdx: index("events_organizer_idx").on(t.organizerId),
