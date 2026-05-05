@@ -3,17 +3,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eventBaseSchema, customQuestionSchema } from "@/lib/validators/event";
-import { consentConfigSchema } from "@/lib/validators/consent";
-import { attendeeTypesSchema } from "@/lib/validators/attendee-types";
-import { syncEventPhotos } from "@/lib/db/queries/event-photos";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
 import { getEventById } from "@/lib/db/queries/events";
 import { getPaymentById, setBalanceDueAtForPayment, insertPayment, setPaymentStripeSession, listPaymentsForParticipant, resetPaymentToPending } from "@/lib/db/queries/payments";
 import { getParticipantById, cancelParticipant, activateWaitlistedParticipant } from "@/lib/db/queries/participants";
 import { softCancelAttendee, listActiveAttendeesForParticipant } from "@/lib/db/queries/attendees";
-import { zodIssuesToRecord } from "@/lib/zod-errors";
 import { countTakenSpots } from "@/lib/capacity";
 import { getStripe } from "@/lib/stripe";
 import { newId } from "@/lib/ids";
@@ -29,160 +24,6 @@ import {
   signParticipantToken,
   getParticipantAuthSecret,
 } from "@/lib/participant-auth";
-
-export type SaveEventFormState = { errors?: Record<string, string> } | null;
-
-export async function saveEventAction(
-  eventId: string,
-  _prev: SaveEventFormState,
-  formData: FormData,
-): Promise<SaveEventFormState> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
-  const organizer = await getOrganizerByClerkUserId(userId);
-  if (!organizer) throw new Error("No organizer");
-  const existing = await getEventForOrganizer(organizer.id, eventId);
-  if (!existing) throw new Error("Not found");
-
-  let questionsParsed;
-  try {
-    const questionsRaw = String(formData.get("customQuestions") ?? "[]");
-    questionsParsed = z.array(customQuestionSchema).safeParse(JSON.parse(questionsRaw));
-  } catch {
-    return { errors: { customQuestions: "Nieprawidłowy format listy pytań." } };
-  }
-  if (!questionsParsed.success) {
-    return {
-      errors: {
-        customQuestions:
-          questionsParsed.error.issues[0]?.message ?? "Błąd walidacji pytań niestandardowych.",
-      },
-    };
-  }
-
-  let consentsParsed;
-  try {
-    const consentsRaw = String(formData.get("consentConfig") ?? "[]");
-    consentsParsed = consentConfigSchema.safeParse(JSON.parse(consentsRaw));
-  } catch {
-    return { errors: { consentConfig: "Nieprawidłowy format listy zgód." } };
-  }
-  if (!consentsParsed.success) {
-    return {
-      errors: {
-        consentConfig:
-          consentsParsed.error.issues[0]?.message ?? "Błąd walidacji zgód.",
-      },
-    };
-  }
-
-  const rawAttendeeTypes = String(formData.get("attendeeTypes") ?? "").trim();
-  let attendeeTypesForSchema: unknown = null;
-  if (rawAttendeeTypes) {
-    let parsedArr: unknown;
-    try {
-      parsedArr = JSON.parse(rawAttendeeTypes);
-    } catch {
-      return { errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." } };
-    }
-    const parsed = attendeeTypesSchema.safeParse(parsedArr);
-    if (!parsed.success) {
-      return { errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." } };
-    }
-    attendeeTypesForSchema = parsed.data;
-  }
-
-  const depositRaw = formData.get("deposit") as string;
-  const balanceDueAtRaw = formData.get("balanceDueAt") as string;
-  const depositCents =
-    depositRaw && depositRaw.trim() !== ""
-      ? Math.round(Number(depositRaw) * 100)
-      : null;
-  const balanceDueAt =
-    balanceDueAtRaw && balanceDueAtRaw.trim() !== ""
-      ? new Date(balanceDueAtRaw).getTime()
-      : null;
-
-  const raw = {
-    slug: existing.slug,
-    title: String(formData.get("title") ?? ""),
-    description: (formData.get("description") as string) || undefined,
-    location: (formData.get("location") as string) || undefined,
-    startsAt: new Date(String(formData.get("startsAt") ?? "")).getTime(),
-    endsAt: new Date(String(formData.get("endsAt") ?? "")).getTime(),
-    priceCents: Math.round(Number(formData.get("price") ?? 0) * 100),
-    currency: "PLN" as const,
-    capacity: Number(formData.get("capacity") ?? 0),
-    coverUrl: (formData.get("coverUrl") as string) || undefined,
-    customQuestions: questionsParsed.data,
-    consentConfig: consentsParsed.data,
-    attendeeTypes: attendeeTypesForSchema,
-    depositCents,
-    balanceDueAt,
-  };
-  const parsed = eventBaseSchema.safeParse(raw);
-  if (!parsed.success) {
-    const err = zodIssuesToRecord(parsed.error.issues);
-    if (err.priceCents) {
-      err.price = err.priceCents;
-      delete err.priceCents;
-    }
-    return { errors: err };
-  }
-  if (parsed.data.endsAt < parsed.data.startsAt) {
-    return {
-      errors: {
-        startsAt: "Koniec wydarzenia musi być po jego początku.",
-        endsAt: "Koniec wydarzenia musi być po jego początku.",
-      },
-    };
-  }
-
-  await updateEvent(organizer.id, eventId, {
-    title: parsed.data.title,
-    description: parsed.data.description ?? null,
-    location: parsed.data.location ?? null,
-    startsAt: parsed.data.startsAt,
-    endsAt: parsed.data.endsAt,
-    priceCents: parsed.data.priceCents,
-    capacity: parsed.data.capacity,
-    coverUrl: parsed.data.coverUrl || null,
-    customQuestions: JSON.stringify(parsed.data.customQuestions),
-    consentConfig: JSON.stringify(parsed.data.consentConfig),
-    attendeeTypes: parsed.data.attendeeTypes
-      ? JSON.stringify(parsed.data.attendeeTypes)
-      : null,
-    depositCents: parsed.data.depositCents ?? null,
-    balanceDueAt: parsed.data.balanceDueAt ?? null,
-  });
-
-  // Sync gallery photos
-  let galleryPhotos: { url: string; position: number }[] = [];
-  try {
-    const galleryRaw = String(formData.get("galleryPhotos") ?? "[]");
-    const galleryArr = JSON.parse(galleryRaw);
-    if (Array.isArray(galleryArr)) {
-      galleryPhotos = galleryArr
-        .filter(
-          (p: unknown): p is { url: string; position: number } =>
-            typeof p === "object" &&
-            p !== null &&
-            typeof (p as Record<string, unknown>).url === "string" &&
-            ((p as Record<string, unknown>).url as string).startsWith("/api/images/") &&
-            typeof (p as Record<string, unknown>).position === "number" &&
-            Number.isInteger((p as Record<string, unknown>).position) &&
-            ((p as Record<string, unknown>).position as number) >= 0,
-        )
-        .slice(0, 5);
-    }
-  } catch {
-    // Ignore malformed gallery data — keep existing photos
-  }
-  await syncEventPhotos(eventId, galleryPhotos);
-
-  revalidatePath(`/dashboard/events/${eventId}`);
-  return {};
-}
 
 const statusSchema = z.enum(["draft", "published", "archived"]);
 
