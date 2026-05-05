@@ -11,6 +11,7 @@ type DashboardEventCardProps = {
   capacity: number;
   location: string | null;
   status: EventStatus;
+  creationStep: string | null;
 };
 
 const MONTHS_PL = ["STY", "LUT", "MAR", "KWI", "MAJ", "CZE", "LIP", "SIE", "WRZ", "PAŹ", "LIS", "GRU"];
@@ -23,10 +24,13 @@ export function DashboardEventCard({
   capacity,
   location,
   status,
+  creationStep,
 }: DashboardEventCardProps) {
   const editHref = `/dashboard/events/${id}`;
   const participantsHref = `/dashboard/events/${id}?tab=uczestnicy`;
   const isFull = capacity > 0 && taken >= capacity;
+  const isUnfinishedDraft = creationStep !== null && creationStep !== "complete";
+  const resumeHref = `/dashboard/events/new?eventId=${id}&step=${creationStep}`;
 
   const date = new Date(startsAt);
   const day = date.getDate();
@@ -82,12 +86,20 @@ export function DashboardEventCard({
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
-          <Button href={editHref} variant="secondary" size="sm">
-            Edytuj
-          </Button>
-          <Button href={participantsHref} variant="accent" size="sm">
-            Uczestnicy
-          </Button>
+          {isUnfinishedDraft ? (
+            <Button href={resumeHref} variant="accent" size="sm">
+              Dokończ tworzenie →
+            </Button>
+          ) : (
+            <>
+              <Button href={editHref} variant="secondary" size="sm">
+                Edytuj
+              </Button>
+              <Button href={participantsHref} variant="accent" size="sm">
+                Uczestnicy
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </article>

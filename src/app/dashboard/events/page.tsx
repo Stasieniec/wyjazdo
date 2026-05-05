@@ -73,6 +73,7 @@ export default async function EventsListPage() {
                 capacity={e.capacity}
                 location={e.location}
                 status={e.status}
+                creationStep={e.creationStep}
               />
             </li>
           ))}
