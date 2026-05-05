@@ -26,7 +26,7 @@ import {
 import { customQuestionSchema } from "@/lib/validators/event";
 import { consentConfigSchema } from "@/lib/validators/consent";
 import { z } from "zod";
-import { nextStepId, type StepId } from "@/lib/wizard/event-creation-steps";
+import { isStepIdValid, nextStepId, visibleStepsFor, type StepId } from "@/lib/wizard/event-creation-steps";
 
 export type StepResult =
   | { ok: true; eventId: string; nextStep: StepId | "complete" }
@@ -62,6 +62,23 @@ function loadAttendeeTypes(json: string | null): AttendeeType[] | null {
 function pricesFromTypes(types: AttendeeType[] | null): number {
   if (!types || types.length === 0) return 0;
   return types.reduce((m, t) => Math.max(m, t.priceCents), 0);
+}
+
+// Forward-only watermark: only advance creationStep when `next` is later than what's already saved.
+// Editing an earlier step must not regress the watermark.
+function advanceCreationStep(
+  saved: string | null,
+  next: StepId | "complete",
+  types: AttendeeType[] | null,
+): StepId | "complete" {
+  if (saved === "complete") return "complete";
+  if (next === "complete") return "complete";
+  if (saved == null || !isStepIdValid(saved)) return next;
+  const visible = visibleStepsFor(types);
+  const savedIdx = visible.indexOf(saved as StepId);
+  const nextIdx = visible.indexOf(next);
+  if (savedIdx === -1) return next;
+  return nextIdx > savedIdx ? next : (saved as StepId);
 }
 
 // ---------- Step 1: Title (creates the row on first call) ----------
@@ -127,10 +144,12 @@ export async function saveStepTitleAction(
       };
     }
   }
+  const titleTypes = loadAttendeeTypes(ev.attendeeTypes);
+  const titleNext = nextStepId("tytul", titleTypes) ?? "opis";
   await updateEvent(organizer.id, eventId, {
     title: parsed.data.title,
     slug: parsed.data.slug,
-    creationStep: nextStepId("tytul", loadAttendeeTypes(ev.attendeeTypes)) ?? "opis",
+    creationStep: advanceCreationStep(ev.creationStep, titleNext, titleTypes),
   });
   return { ok: true, eventId, nextStep: "opis" };
 }
@@ -154,10 +173,11 @@ export async function saveStepDescriptionAction(
       };
     }
   }
-  const next = nextStepId("opis", loadAttendeeTypes(ev.attendeeTypes)) ?? "termin";
+  const descTypes = loadAttendeeTypes(ev.attendeeTypes);
+  const next = nextStepId("opis", descTypes) ?? "termin";
   await updateEvent(organizer.id, eventId, {
     description: skip ? ev.description : description.trim() || null,
-    creationStep: next,
+    creationStep: advanceCreationStep(ev.creationStep, next, descTypes),
   });
   return { ok: true, eventId, nextStep: next };
 }
@@ -187,11 +207,12 @@ export async function saveStepDatesAction(
       values: { startsAt: startsRaw, endsAt: endsRaw },
     };
   }
-  const next = nextStepId("termin", loadAttendeeTypes(ev.attendeeTypes)) ?? "miejsce";
+  const datesTypes = loadAttendeeTypes(ev.attendeeTypes);
+  const next = nextStepId("termin", datesTypes) ?? "miejsce";
   await updateEvent(organizer.id, eventId, {
     startsAt: parsed.data.startsAt,
     endsAt: parsed.data.endsAt,
-    creationStep: next,
+    creationStep: advanceCreationStep(ev.creationStep, next, datesTypes),
   });
   return { ok: true, eventId, nextStep: next };
 }
@@ -215,10 +236,11 @@ export async function saveStepLocationAction(
       };
     }
   }
-  const next = nextStepId("miejsce", loadAttendeeTypes(ev.attendeeTypes)) ?? "uczestnicy";
+  const locTypes = loadAttendeeTypes(ev.attendeeTypes);
+  const next = nextStepId("miejsce", locTypes) ?? "uczestnicy";
   await updateEvent(organizer.id, eventId, {
     location: skip ? ev.location : location.trim() || null,
-    creationStep: next,
+    creationStep: advanceCreationStep(ev.creationStep, next, locTypes),
   });
   return { ok: true, eventId, nextStep: next };
 }
@@ -230,7 +252,7 @@ export async function saveStepAttendeesAction(
   formData: FormData,
 ): Promise<StepResult> {
   const organizer = await requireOrganizer();
-  await requireOwnedDraft(organizer.id, eventId);
+  const ev = await requireOwnedDraft(organizer.id, eventId);
   const raw = String(formData.get("attendeeTypes") ?? "");
   if (!raw.trim()) {
     return {
@@ -260,7 +282,7 @@ export async function saveStepAttendeesAction(
   await updateEvent(organizer.id, eventId, {
     attendeeTypes: JSON.stringify(types),
     priceCents,
-    creationStep: next,
+    creationStep: advanceCreationStep(ev.creationStep, next, types),
   });
   return { ok: true, eventId, nextStep: next };
 }
@@ -286,7 +308,7 @@ export async function saveStepCapacityAction(
   const next = nextStepId("miejsca", types) ?? "platnosc";
   await updateEvent(organizer.id, eventId, {
     capacity: parsed.data.capacity,
-    creationStep: next,
+    creationStep: advanceCreationStep(ev.creationStep, next, types),
   });
   return { ok: true, eventId, nextStep: next };
 }
@@ -307,7 +329,7 @@ export async function saveStepPaymentAction(
     await updateEvent(organizer.id, eventId, {
       depositCents: null,
       balanceDueAt: null,
-      creationStep: next,
+      creationStep: advanceCreationStep(ev.creationStep, next, types),
     });
     return { ok: true, eventId, nextStep: next };
   }
@@ -328,7 +350,7 @@ export async function saveStepPaymentAction(
   await updateEvent(organizer.id, eventId, {
     depositCents: depositOn ? depositCents : null,
     balanceDueAt: depositOn ? balanceDueAt : null,
-    creationStep: next,
+    creationStep: advanceCreationStep(ev.creationStep, next, types),
   });
   return { ok: true, eventId, nextStep: next };
 }
@@ -345,7 +367,9 @@ export async function saveStepPhotosAction(
   const types = loadAttendeeTypes(ev.attendeeTypes);
   const next = nextStepId("zdjecia", types) ?? "pytania";
   if (skip) {
-    await updateEvent(organizer.id, eventId, { creationStep: next });
+    await updateEvent(organizer.id, eventId, {
+      creationStep: advanceCreationStep(ev.creationStep, next, types),
+    });
     return { ok: true, eventId, nextStep: next };
   }
   const coverUrl = String(formData.get("coverUrl") ?? "");
@@ -372,7 +396,7 @@ export async function saveStepPhotosAction(
   }
   await updateEvent(organizer.id, eventId, {
     coverUrl: coverUrl || null,
-    creationStep: next,
+    creationStep: advanceCreationStep(ev.creationStep, next, types),
   });
   await replacePhotosForEvent(eventId, gallery);
   return { ok: true, eventId, nextStep: next };
@@ -393,7 +417,9 @@ export async function saveStepQuestionsAction(
   const next = nextStepId("pytania", types) ?? "zgody";
 
   if (skip) {
-    await updateEvent(organizer.id, eventId, { creationStep: next });
+    await updateEvent(organizer.id, eventId, {
+      creationStep: advanceCreationStep(ev.creationStep, next, types),
+    });
     return { ok: true, eventId, nextStep: next };
   }
 
@@ -431,12 +457,12 @@ export async function saveStepQuestionsAction(
     await updateEvent(organizer.id, eventId, {
       customQuestions: JSON.stringify(regParsed.data),
       attendeeTypes: JSON.stringify(updatedTypes),
-      creationStep: next,
+      creationStep: advanceCreationStep(ev.creationStep, next, types),
     });
   } else {
     await updateEvent(organizer.id, eventId, {
       customQuestions: JSON.stringify(regParsed.data),
-      creationStep: next,
+      creationStep: advanceCreationStep(ev.creationStep, next, types),
     });
   }
   return { ok: true, eventId, nextStep: next };
