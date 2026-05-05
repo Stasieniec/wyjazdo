@@ -72,7 +72,7 @@ export function EventEditView({
           {showPostWizardBanner && (
             <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
               <p className="text-sm">
-                <strong>✓ Wszystko gotowe — sprawdź szczegóły i kliknij Opublikuj.</strong>
+                <strong>Wszystko gotowe — sprawdź szczegóły i kliknij Opublikuj.</strong>
                 {!stripeReady && " Najpierw dokończ konfigurację Stripe."}
               </p>
             </div>
