@@ -66,11 +66,12 @@ export function EventCreationWizard({ subdomain, rootDomain, initialStep, initia
   const stepIndex = Math.max(1, visible.indexOf(initialStep) + 1);
   const totalSteps = visible.length;
 
-  function navigateToStep(next: StepId) {
+  function navigateToStep(next: StepId, eventIdForUrl?: string | null) {
     setErrors({});
     const sp = new URLSearchParams(searchParams.toString());
     sp.set("step", next);
-    if (eventId) sp.set("eventId", eventId);
+    const id = eventIdForUrl ?? eventId;
+    if (id) sp.set("eventId", id);
     router.push(`/dashboard/events/new?${sp.toString()}`);
     router.refresh();
   }
@@ -85,7 +86,7 @@ export function EventCreationWizard({ subdomain, rootDomain, initialStep, initia
       router.push(`/dashboard/events/${result.eventId}`);
       return;
     }
-    navigateToStep(result.nextStep);
+    navigateToStep(result.nextStep, result.eventId);
   }
 
   function back() {
