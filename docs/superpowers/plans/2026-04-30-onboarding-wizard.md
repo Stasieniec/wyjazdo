@@ -794,7 +794,7 @@ export function StepSubdomain({ value, onChange, error, onBack, onNext }: Props)
         tabIndex={-1}
         className="text-3xl font-extrabold tracking-tight text-[#1E3A5F] outline-none md:text-4xl"
       >
-        Twój adres strony
+        Twój adres do zapisów
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-[#6B7280] md:text-base">
         Krótki adres, który będziesz wysyłać uczestnikom — sugerujemy go na podstawie nazwy.
