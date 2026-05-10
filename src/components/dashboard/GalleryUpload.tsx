@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { processImageForUpload, processingErrorMessage } from "@/lib/image/process-upload";
+
+const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,image/bmp,image/tiff,.heic,.heif";
 
 interface GalleryPhoto {
   url: string;
@@ -33,8 +36,15 @@ export function GalleryUpload({
       setUploadError(null);
       setUploading(true);
       try {
+        let processed: File;
+        try {
+          processed = await processImageForUpload(file, { maxDim: 2000 });
+        } catch (err) {
+          setUploadError(processingErrorMessage(err));
+          return;
+        }
         const body = new FormData();
-        body.append("file", file);
+        body.append("file", processed);
         const res = await fetch("/api/images/upload", { method: "POST", body });
         const data: { url?: string; error?: string } = await res.json();
         if (!res.ok) {
@@ -161,7 +171,7 @@ export function GalleryUpload({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept={ACCEPT}
         onChange={onFileChange}
         className="sr-only"
         tabIndex={-1}
