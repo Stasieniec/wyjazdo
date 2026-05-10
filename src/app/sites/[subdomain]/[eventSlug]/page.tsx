@@ -10,6 +10,7 @@ import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { listPhotosForEvent } from "@/lib/db/queries/event-photos";
 import { PhotoGallery } from "@/components/sites/PhotoGallery";
 import type { Metadata } from "next";
+import { publicEventUrl } from "@/lib/urls";
 
 export async function generateMetadata({
   params,
@@ -21,6 +22,7 @@ export async function generateMetadata({
   if (!organizer) return {};
   const event = await getPublishedEventBySlug(organizer.id, eventSlug);
   if (!event) return {};
+  const canonicalUrl = publicEventUrl(subdomain, eventSlug);
 
   const priceLabel = formatPlnFromCents(event.priceCents);
 
@@ -29,10 +31,21 @@ export async function generateMetadata({
     description: event.description
       ? event.description.slice(0, 160)
       : `${event.title} · ${priceLabel} · ${organizer.displayName}`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
+      type: "article",
+      url: canonicalUrl,
       title: event.title,
       description: event.description?.slice(0, 160) ?? "",
       ...(event.coverUrl ? { images: [{ url: event.coverUrl }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: event.title,
+      description: event.description?.slice(0, 160) ?? `${event.title} · ${organizer.displayName}`,
+      ...(event.coverUrl ? { images: [event.coverUrl] } : {}),
     },
   };
 }
