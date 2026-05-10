@@ -3,6 +3,10 @@ import { eq } from "drizzle-orm";
 import { publicEventUrl, siteOrigin } from "@/lib/urls";
 import { getDb, schema } from "@/lib/db/client";
 
+// getDb() reaches into the Cloudflare context, which is not available during
+// static prerendering. Render the sitemap at request time instead.
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteOrigin();
   const db = getDb();
