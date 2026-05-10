@@ -41,23 +41,72 @@ export function StepPayment({ defaultDepositCents, defaultBalanceDueAt, errors, 
         Jak chcesz pobierać płatność?
       </h1>
       <p className="mt-3 text-sm text-[#6B7280] md:text-base">
-        Domyślnie uczestniczki płacą całą kwotę przy zapisie. Możesz pobrać tylko zaliczkę i wyznaczyć termin dopłaty.
+        Wybierz jeden z dwóch sposobów. Możesz to zmienić później.
       </p>
-      <div className="mt-7 space-y-4 rounded-2xl bg-white p-5 shadow-[0_8px_20px_rgba(30,58,95,0.06)]">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={depositOn} onChange={(e) => setDepositOn(e.target.checked)} />
-          <span>Pobieram tylko zaliczkę</span>
-        </label>
-        {depositOn && (
-          <div className="space-y-3 border-t border-border pt-3">
-            <label className="block text-sm">
-              Zaliczka za osobę (PLN)
-              <ZlotyInput valueCents={depositCents} onChangeCents={setDepositCents} className="mt-1 w-full rounded border border-border px-2 py-1" />
-              {errors?.depositCents && <p className="mt-1 text-sm text-destructive">{errors.depositCents}</p>}
-            </label>
-            <Input name="balanceDueAt" type="datetime-local" label="Termin dopłaty reszty" value={balanceDueAt} onChange={(e) => setBalanceDueAt(e.target.value)} required={depositOn} error={errors?.balanceDueAt} />
+      <div className="mt-7 space-y-3">
+        <label
+          className={`block cursor-pointer rounded-2xl border-2 bg-white p-4 transition ${
+            !depositOn ? "border-[#E8683A] shadow-[0_8px_20px_rgba(232,104,58,0.15)]" : "border-border hover:border-[#E8683A]/40"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <input
+              type="radio"
+              name="paymentMode"
+              value="full"
+              checked={!depositOn}
+              onChange={() => setDepositOn(false)}
+              className="mt-1.5"
+            />
+            <div className="flex-1">
+              <div className="text-base font-semibold text-[#1E3A5F]">Cała kwota od razu</div>
+              <p className="mt-1 text-sm text-[#6B7280]">
+                Uczestnicy płacą pełną cenę przy zapisie. Najprostsze — masz pieniądze od razu, nie musisz pilnować dopłat.
+              </p>
+            </div>
           </div>
-        )}
+        </label>
+
+        <label
+          className={`block cursor-pointer rounded-2xl border-2 bg-white p-4 transition ${
+            depositOn ? "border-[#E8683A] shadow-[0_8px_20px_rgba(232,104,58,0.15)]" : "border-border hover:border-[#E8683A]/40"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <input
+              type="radio"
+              name="paymentMode"
+              value="deposit"
+              checked={depositOn}
+              onChange={() => setDepositOn(true)}
+              className="mt-1.5"
+            />
+            <div className="flex-1">
+              <div className="text-base font-semibold text-[#1E3A5F]">Zaliczka teraz, reszta później</div>
+              <p className="mt-1 text-sm text-[#6B7280]">
+                Uczestnicy płacą tylko zaliczkę przy zapisie. Resztę dopłacają do wyznaczonego przez Ciebie terminu (np. miesiąc przed wydarzeniem).
+              </p>
+              {depositOn && (
+                <div className="mt-4 space-y-3 border-t border-border pt-4">
+                  <label className="block text-sm">
+                    <span className="font-medium text-[#1E3A5F]">Zaliczka za osobę (PLN)</span>
+                    <ZlotyInput valueCents={depositCents} onChangeCents={setDepositCents} className="mt-1 w-full rounded border border-border px-2 py-1" />
+                    {errors?.depositCents && <p className="mt-1 text-sm text-destructive">{errors.depositCents}</p>}
+                  </label>
+                  <Input
+                    name="balanceDueAt"
+                    type="datetime-local"
+                    label="Termin dopłaty reszty"
+                    value={balanceDueAt}
+                    onChange={(e) => setBalanceDueAt(e.target.value)}
+                    required
+                    error={errors?.balanceDueAt}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </label>
       </div>
       <WizardFooter onBack={onBack} pending={pending} showSkip onSkip={onSkip} />
     </form>

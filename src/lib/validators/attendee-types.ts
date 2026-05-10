@@ -32,3 +32,34 @@ export const attendeeTypeSchema = z
 export type AttendeeType = z.infer<typeof attendeeTypeSchema>;
 
 export const attendeeTypesSchema = z.array(attendeeTypeSchema).min(1).max(10);
+
+/**
+ * Strip empty option strings and validate each per-attendee field, dropping
+ * malformed entries silently. Used by save actions before persisting so an
+ * editor row left blank during typing doesn't sit in the DB and break
+ * publish-time validation later.
+ */
+export function sanitizeAttendeeCustomFields(input: unknown): AttendeeCustomField[] | undefined {
+  if (!Array.isArray(input)) return undefined;
+  const cleaned: AttendeeCustomField[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== "object") continue;
+    const o = raw as Record<string, unknown>;
+    const candidate: Record<string, unknown> = {
+      id: o.id,
+      label: o.label,
+      type: o.type,
+      required: !!o.required,
+    };
+    if (o.type === "select" && Array.isArray(o.options)) {
+      const opts = (o.options as unknown[])
+        .filter((s): s is string => typeof s === "string")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (opts.length > 0) candidate.options = opts;
+    }
+    const parsed = attendeeCustomFieldSchema.safeParse(candidate);
+    if (parsed.success) cleaned.push(parsed.data);
+  }
+  return cleaned.length > 0 ? cleaned : undefined;
+}

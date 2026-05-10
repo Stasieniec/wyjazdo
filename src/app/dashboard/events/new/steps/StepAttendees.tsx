@@ -29,10 +29,10 @@ export function StepAttendees({ defaultAttendeeTypes, error, pending, onBack, on
   return (
     <form className="flex flex-1 flex-col" onSubmit={handleSubmit}>
       <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-extrabold tracking-tight text-[#1E3A5F] outline-none md:text-4xl">
-        Kto bierze udział?
+        Kogo zapisuje uczestnik?
       </h1>
       <p className="mt-3 text-sm text-[#6B7280] md:text-base">
-        Wybierz szablon i ustaw cenę. Pytania o uczestników skonfigurujesz w kolejnym kroku.
+        Wybierz, jak ma wyglądać formularz zapisu, i ustaw cenę. Pytania skonfigurujesz w kolejnym kroku.
       </p>
       {error && <p role="alert" className="mt-5 rounded-lg bg-[#FEF2F2] px-3 py-2 text-sm font-medium text-[#DC2626]">{error}</p>}
       <div className="mt-7">

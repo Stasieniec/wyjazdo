@@ -19,6 +19,7 @@ import {
 } from "@/lib/validators/event-wizard";
 import {
   attendeeTypesSchema,
+  sanitizeAttendeeCustomFields,
   type AttendeeType,
 } from "@/lib/validators/attendee-types";
 import { customQuestionSchema } from "@/lib/validators/event";
@@ -263,7 +264,8 @@ export async function saveSectionQuestionsAction(
         if (!raw.trim()) return t;
         try {
           const arr = JSON.parse(raw);
-          return Array.isArray(arr) ? { ...t, customFields: arr } : t;
+          const cleaned = sanitizeAttendeeCustomFields(arr);
+          return { ...t, customFields: cleaned };
         } catch {
           return t;
         }

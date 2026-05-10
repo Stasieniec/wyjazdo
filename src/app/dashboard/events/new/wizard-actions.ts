@@ -21,6 +21,7 @@ import {
 } from "@/lib/validators/event-wizard";
 import {
   attendeeTypesSchema,
+  sanitizeAttendeeCustomFields,
   type AttendeeType,
 } from "@/lib/validators/attendee-types";
 import { customQuestionSchema } from "@/lib/validators/event";
@@ -449,7 +450,8 @@ export async function saveStepQuestionsAction(
       if (!raw.trim()) return t;
       try {
         const arr = JSON.parse(raw);
-        return { ...t, customFields: arr };
+        const cleaned = sanitizeAttendeeCustomFields(arr);
+        return { ...t, customFields: cleaned };
       } catch {
         return t;
       }
@@ -517,3 +519,4 @@ function zodIssues(issues: z.ZodIssue[]): Record<string, string> {
   }
   return out;
 }
+
