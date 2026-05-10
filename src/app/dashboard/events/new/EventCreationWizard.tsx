@@ -73,7 +73,6 @@ export function EventCreationWizard({ subdomain, rootDomain, initialStep, initia
     const id = eventIdForUrl ?? eventId;
     if (id) sp.set("eventId", id);
     router.push(`/dashboard/events/new?${sp.toString()}`);
-    router.refresh();
   }
 
   function handleResult(result: StepResult) {
