@@ -12,7 +12,7 @@ export function DocsCard({ topic, wide }: Props) {
   return (
     <Link
       href={`/pomoc/${topic.slug}`}
-      className={`group relative flex flex-col rounded-2xl border border-primary/5 bg-white p-6 shadow-[0_15px_40px_-30px_rgba(30,58,95,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_50px_-25px_rgba(30,58,95,0.5)] ${
+      className={`flex flex-col rounded-2xl border border-primary/5 bg-white p-6 shadow-[0_15px_40px_-30px_rgba(30,58,95,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_50px_-25px_rgba(30,58,95,0.5)] ${
         wide ? "sm:col-span-2 lg:col-span-3" : ""
       }`}
     >
