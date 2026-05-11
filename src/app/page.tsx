@@ -670,7 +670,7 @@ const SKETCH_NATURAL: Record<string, { w: number; h: number }> = {
   "/sketches/heart.png": { w: 218, h: 192 },
   "/sketches/heart-small.png": { w: 90, h: 81 },
   "/sketches/flower.png": { w: 206, h: 321 },
-  "/sketches/leaf.png": { w: 162, h: 127 },
+  "/sketches/leaf.png": { w: 185, h: 131 },
   "/sketches/floral.png": { w: 177, h: 574 },
 };
 
