@@ -52,6 +52,12 @@ export default function MarketingPage() {
           <Show when="signed-out">
             <div className="flex items-center gap-3 text-sm">
               <Link
+                href="/pomoc"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Pomoc
+              </Link>
+              <Link
                 href="/sign-in"
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
@@ -67,6 +73,12 @@ export default function MarketingPage() {
           </Show>
           <Show when="signed-in">
             <div className="flex items-center gap-4 text-sm">
+              <Link
+                href="/pomoc"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Pomoc
+              </Link>
               <Link
                 href="/dashboard"
                 className="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-all hover:bg-primary/90"
