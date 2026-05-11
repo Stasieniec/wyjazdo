@@ -40,14 +40,14 @@ export default function Page() {
         </p>
 
         <p>
-          Żeby zacząć, w panelu kliknij <em>„+ Nowe wydarzenie"</em>.
+          Żeby zacząć, w panelu kliknij <em>„+ Nowe wydarzenie”</em>.
         </p>
 
         <h2>1. Tytuł</h2>
         <p>
           Nazwa wydarzenia, którą zobaczą uczestniczki — na przykład{" "}
-          <em>„Retreat jogi w Bieszczadach"</em> albo{" "}
-          <em>„Weekend ceramiki, listopad 2026"</em>. Krótko, konkretnie.
+          <em>„Retreat jogi w Bieszczadach”</em> albo{" "}
+          <em>„Weekend ceramiki, listopad 2026”</em>. Krótko, konkretnie.
           Tytuł trafia także do adresu strony Twojego wydarzenia.
         </p>
 
@@ -74,20 +74,20 @@ export default function Page() {
         <h2>4. Miejsce</h2>
         <p>
           Adres lub nazwa miejsca. Może być ogólne („Bieszczady, ośrodek
-          Słoneczne Wzgórze") albo dokładne („Lutowiska, ul. Bieszczadzka 12").
+          Słoneczne Wzgórze”) albo dokładne („Lutowiska, ul. Bieszczadzka 12”).
           Pojawi się na stronie wydarzenia.
         </p>
 
         <h2>5. Uczestnicy</h2>
         <p>
           Definiujesz <strong>typy uczestników</strong> — czyli rodzaje
-          biletów. Najprościej: jeden typ („Uczestniczka") z jedną ceną.
+          biletów. Najprościej: jeden typ („Uczestniczka”) z jedną ceną.
           Bardziej rozbudowanie: kilka typów z różnymi cenami (na przykład
-          „Dorosły" i „Dziecko") albo cena malejąca przy większej liczbie osób.
+          „Dorosły” i „Dziecko”) albo cena malejąca przy większej liczbie osób.
         </p>
         <p>
           Każdy typ ma minimalną i maksymalną liczbę osób w jednym zapisie —
-          dzięki temu możesz mieć na przykład <em>„Pakiet rodzinny — od 2 do 5 osób"</em>.
+          dzięki temu możesz mieć na przykład <em>„Pakiet rodzinny — od 2 do 5 osób”</em>.
         </p>
 
         <h2>6. Liczba miejsc</h2>
@@ -128,8 +128,8 @@ export default function Page() {
         <h2>9. Pytania</h2>
         <p>
           Własne pytania, które uczestniczki dostaną w formularzu zapisu — na
-          przykład <em>„Czy masz alergie pokarmowe?"</em>, <em>„Z jakiego miasta
-          przyjeżdżasz?"</em>, <em>„Preferencje co do pokoju"</em>. Możesz wybrać
+          przykład <em>„Czy masz alergie pokarmowe?”</em>, <em>„Z jakiego miasta
+          przyjeżdżasz?”</em>, <em>„Preferencje co do pokoju”</em>. Możesz wybrać
           typ pola (krótka odpowiedź, długa odpowiedź, wybór z listy) i czy
           pytanie jest obowiązkowe.
         </p>
@@ -145,7 +145,7 @@ export default function Page() {
         <h2>Publikacja</h2>
         <p>
           Po przejściu wszystkich kroków zobaczysz podgląd swojej strony.
-          Kiedy klikniesz <em>„Opublikuj"</em>, wydarzenie staje się widoczne
+          Kiedy klikniesz <em>„Opublikuj”</em>, wydarzenie staje się widoczne
           pod Twoją subdomeną i można się zapisywać.
         </p>
 
