@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { eq } from "drizzle-orm";
 import { publicEventUrl, siteOrigin } from "@/lib/urls";
 import { getDb, schema } from "@/lib/db/client";
+import { TOPICS } from "@/lib/docs/topics";
 
 // getDb() reaches into the Cloudflare context, which is not available during
 // static prerendering. Render the sitemap at request time instead.
@@ -41,6 +42,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  const docsPages: MetadataRoute.Sitemap = [
+    {
+      url: `${base}/pomoc`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    ...TOPICS.map((topic) => ({
+      url: `${base}/pomoc/${topic.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+  ];
+
   const eventPages: MetadataRoute.Sitemap = publishedEvents.map((event) => ({
     url: publicEventUrl(event.subdomain, event.slug),
     lastModified: new Date(event.updatedAt),
@@ -50,6 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticPages,
+    ...docsPages,
     ...eventPages,
   ];
 }
