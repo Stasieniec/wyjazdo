@@ -10,6 +10,14 @@ export default clerkMiddleware(async (auth, req) => {
   const tenant = resolveTenant(host, ROOT);
   const url = req.nextUrl.clone();
 
+  if (tenant.kind === "tenant" && url.pathname.startsWith("/admin")) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
+  if (tenant.kind !== "tenant" && url.pathname.startsWith("/admin")) {
+    return NextResponse.next();
+  }
+
   if (tenant.kind === "tenant") {
     if (url.pathname.startsWith("/api") || url.pathname.startsWith("/_next")) {
       return NextResponse.next();
