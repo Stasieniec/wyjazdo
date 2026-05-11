@@ -64,7 +64,7 @@ export default function Page() {
         <h2>Konfiguracja Stripe — co musisz zrobić</h2>
         <p>
           Raz, przed pierwszym płatnym wydarzeniem. Wyjazdo przeprowadzi Cię
-          przez to w panelu (kliknij <em>„Skonfiguruj teraz"</em> w żółtej
+          przez to w panelu (kliknij <em>„Skonfiguruj teraz&rdquo;</em> w żółtej
           ramce na <Link href="/dashboard">Przeglądzie</Link>).
         </p>
         <p>Stripe poprosi Cię o:</p>
@@ -89,7 +89,7 @@ export default function Page() {
         <p>
           Możesz pobrać od uczestniczki całość ceny od razu albo podzielić
           ją na <strong>zaliczkę</strong> i <strong>resztę przed wyjazdem</strong>.
-          Drugą opcję ustawiasz w kroku <em>„Płatność"</em> kreatora wydarzenia
+          Drugą opcję ustawiasz w kroku <em>„Płatność&rdquo;</em> kreatora wydarzenia
           — podajesz wysokość zaliczki i datę, do której uczestniczka ma
           dopłacić.
         </p>

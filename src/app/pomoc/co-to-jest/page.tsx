@@ -75,7 +75,7 @@ export default function Page() {
           </li>
         </ol>
 
-        <h2>Co dostajesz &quot;w pakiecie&quot;</h2>
+        <h2>Co dostajesz „w pakiecie&rdquo;</h2>
         <ul>
           <li>Własną stronę z adresem <em>twojaSubdomena.wyjazdo.pl</em>.</li>
           <li>Formularz zapisów z polami, które sama wybierasz.</li>
@@ -95,7 +95,7 @@ export default function Page() {
 
         <p>
           Jeśli chcesz spróbować —{" "}
-          <Link href="/pomoc/jak-zaczac">przejdź do przewodnika &quot;Jak zacząć&quot;</Link>.
+          <Link href="/pomoc/jak-zaczac">przejdź do przewodnika „Jak zacząć&rdquo;</Link>.
         </p>
       </DocsArticle>
       <RelatedTopics slug={SLUG} />

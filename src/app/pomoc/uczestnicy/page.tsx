@@ -78,16 +78,16 @@ export default function Page() {
 
         <h2>Własne pytania — gdzie zobaczyć odpowiedzi</h2>
         <p>
-          Jeśli w kroku <em>„Pytania"</em>{" "}
+          Jeśli w kroku <em>„Pytania&rdquo;</em>{" "}
           (<Link href="/pomoc/tworzenie-wydarzenia">w kreatorze wydarzenia</Link>){" "}
-          dodałaś własne pytania (np. „Alergie pokarmowe?"), odpowiedzi
+          dodałaś własne pytania (np. „Alergie pokarmowe?&rdquo;), odpowiedzi
           uczestniczek znajdziesz w szczegółach każdego zapisu — kliknij
           rząd na liście, żeby otworzyć kartę osoby.
         </p>
 
         <h2>Anulowanie i zwrot</h2>
         <p>
-          Kliknij wiersz uczestniczki i wybierz <em>„Anuluj zapis"</em>.
+          Kliknij wiersz uczestniczki i wybierz <em>„Anuluj zapis&rdquo;</em>.
           Wyjazdo zapyta, czy chcesz zwrócić pełną kwotę, część czy nic
           (np. potrącić zaliczkę zgodnie z Twoim regulaminem).
         </p>
@@ -104,7 +104,7 @@ export default function Page() {
 
         <h2>Eksport do pliku CSV</h2>
         <p>
-          Nad listą uczestniczek znajdziesz przycisk <em>„Eksportuj"</em>.
+          Nad listą uczestniczek znajdziesz przycisk <em>„Eksportuj&rdquo;</em>.
           Wyjazdo pobierze plik CSV z imionami, e-mailami, statusami i
           odpowiedziami na Twoje pytania. Plik otwiera się w Excelu, Numbers
           albo Arkuszach Google.
