@@ -175,6 +175,34 @@ export function Sidebar({ publicUrl, publicLabel }: SidebarProps) {
         {!collapsed && <span>Zwiń panel</span>}
       </button>
 
+      <Link
+        href="/pomoc"
+        className={`mx-3 mt-2 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-all duration-150 ${
+          pathname.startsWith("/pomoc")
+            ? "bg-white/12 font-semibold text-white"
+            : "text-white/60 hover:bg-white/8 hover:text-white/80"
+        } ${collapsed ? "mx-2 justify-center px-0" : ""}`}
+        title={collapsed ? "Pomoc" : undefined}
+        aria-current={pathname.startsWith("/pomoc") ? "page" : undefined}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 18 18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+          className="shrink-0"
+        >
+          <circle cx="9" cy="9" r="7" />
+          <path d="M7.2 6.8a1.9 1.9 0 013.8 0c0 1.2-1.9 1.5-1.9 3M9 13h.01" />
+        </svg>
+        {!collapsed && <span>Pomoc</span>}
+      </Link>
+
       {/* User menu */}
       <div className={`mt-auto border-t border-white/10 px-4 py-3 ${collapsed ? "flex justify-center px-2" : ""}`}>
         <UserMenu dropUp />
