@@ -357,7 +357,7 @@ export default function MarketingPage() {
       </section>
 
       {/* ── Benefits ── */}
-      <section className="relative overflow-hidden bg-[#FAF1E2] px-6 py-20 sm:py-24">
+      <section className="relative overflow-hidden bg-[#FAF1E2] px-6 pt-20 pb-12 sm:pt-24 sm:pb-16">
         <div className="relative mx-auto max-w-5xl">
           <div className="mb-12 text-center">
             <Sketch
@@ -410,13 +410,22 @@ export default function MarketingPage() {
             />
           </div>
         </div>
-        <SectionWave fill="white" />
       </section>
 
-      {/* ── Testimonial ── */}
-      <section className="relative overflow-hidden bg-white px-6 py-20 sm:py-24">
+      {/* ── Testimonial — continues on cream from Benefits ── */}
+      <section className="relative overflow-hidden bg-[#FAF1E2] px-6 pb-20 pt-4 sm:pb-24 sm:pt-6">
+        {/* Ambient decorative sketches flanking the quote */}
+        <Sketch
+          src="/sketches/flower.png"
+          className="pointer-events-none absolute top-6 left-[4%] hidden h-32 opacity-25 sm:block lg:left-[10%] lg:h-40"
+        />
+        <Sketch
+          src="/sketches/floral.png"
+          className="pointer-events-none absolute top-2 right-[4%] hidden h-44 opacity-20 sm:block lg:right-[10%] lg:h-56"
+        />
+
         <div className="relative mx-auto max-w-2xl text-center">
-          <HandQuoteMark className="mx-auto mb-6 h-12 w-12 text-accent/45" />
+          <HandQuoteMark className="mx-auto mb-4 h-10 w-10 text-accent/55" />
           <blockquote>
             <p className="font-[family-name:var(--font-ibm-plex-serif)] text-2xl italic leading-relaxed text-foreground sm:text-[1.7rem]">
               Wyjazdo oszczędza mi godziny każdego miesiąca. Jeden link
@@ -661,7 +670,7 @@ const SKETCH_NATURAL: Record<string, { w: number; h: number }> = {
   "/sketches/heart.png": { w: 218, h: 192 },
   "/sketches/heart-small.png": { w: 90, h: 81 },
   "/sketches/flower.png": { w: 206, h: 321 },
-  "/sketches/leaf.png": { w: 97, h: 95 },
+  "/sketches/leaf.png": { w: 162, h: 127 },
   "/sketches/floral.png": { w: 177, h: 574 },
 };
 
