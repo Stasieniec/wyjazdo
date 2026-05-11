@@ -93,6 +93,22 @@ export default function MarketingPage() {
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden bg-[#FAF1E2]">
+        {/* Inline SVG defs for asymmetric swirl clip on hero image */}
+        <svg width="0" height="0" className="absolute" aria-hidden focusable="false">
+          <defs>
+            <clipPath id="hero-swirl" clipPathUnits="objectBoundingBox">
+              <path d="M 0.36 0
+                       C 0.24 0.05, 0.16 0.16, 0.18 0.30
+                       C 0.20 0.42, 0.06 0.48, 0.09 0.62
+                       C 0.12 0.78, 0.22 0.84, 0.20 0.92
+                       C 0.19 0.97, 0.26 0.99, 0.34 1
+                       L 1 1
+                       L 1 0
+                       Z" />
+            </clipPath>
+          </defs>
+        </svg>
+
         <div
           aria-hidden
           className="pointer-events-none absolute -left-32 top-1/3 h-[420px] w-[420px] rounded-full bg-accent/10 blur-3xl"
@@ -100,8 +116,11 @@ export default function MarketingPage() {
 
         {/* Two-column area */}
         <div className="relative lg:min-h-[calc(100vh-3.5rem-72px)]">
-          <div className="relative mx-auto flex max-w-7xl flex-col justify-center px-6 pt-14 pb-12 lg:min-h-[calc(100vh-3.5rem-72px)] lg:py-16 lg:pr-[44rem]">
-            <SmallLeaf className="mb-4 h-7 w-14 text-accent/70" />
+          <div className="relative z-10 mx-auto flex max-w-7xl flex-col justify-center px-6 pt-14 pb-12 lg:min-h-[calc(100vh-3.5rem-72px)] lg:py-16 lg:pr-[26rem] xl:pr-[34rem] 2xl:pr-[44rem]">
+            <Sketch
+              src="/sketches/leaf.png"
+              className="mb-4 h-10 opacity-80"
+            />
 
             <h1 className="font-[family-name:var(--font-ibm-plex-serif)] text-[2.75rem] font-medium leading-[1.02] tracking-[-0.02em] text-primary sm:text-6xl lg:text-[5.25rem]">
               Mniej chaosu,
@@ -160,46 +179,59 @@ export default function MarketingPage() {
                 <br />
                 kameralnych wyjazdów
               </p>
+              <Sketch
+                src="/sketches/heart-small.png"
+                className="ml-1 h-9 opacity-70"
+              />
             </div>
           </div>
 
-          {/* Desktop image — bleeds to viewport right edge */}
-          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 lg:block">
+          {/* Desktop image — bleeds to viewport right edge with asymmetric swirl */}
+          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[55%] lg:block xl:w-[58%] 2xl:w-[60%]">
             <div className="relative h-full">
               <div
-                className="absolute inset-y-8 left-8 right-0 bg-primary/5 drop-shadow-[0_30px_40px_rgba(30,58,95,0.35)]"
-                style={{
-                  clipPath:
-                    "polygon(34% 0%, 26% 2%, 19% 5%, 13% 9%, 8% 15%, 5% 22%, 3% 30%, 2% 39%, 3% 48%, 4% 56%, 3% 65%, 2% 74%, 4% 82%, 9% 90%, 15% 96%, 22% 100%, 100% 100%, 100% 0%)",
-                }}
+                className="absolute inset-0 drop-shadow-[0_30px_40px_rgba(30,58,95,0.35)]"
+                style={{ clipPath: "url(#hero-swirl)" }}
               >
                 <Image
                   src="/hero_image.png"
                   alt="Organizatorki przy stole z herbatą"
                   fill
                   priority
-                  sizes="50vw"
+                  sizes="60vw"
                   className="object-cover"
                   style={{ objectPosition: "55% center" }}
                 />
               </div>
 
-              <FloatingCard className="pointer-events-auto absolute right-10 top-[10%] w-[220px]">
-                <CardHeader icon={<UserIcon className="h-3.5 w-3.5" />} label="Zapisy" />
-                <div className="mt-1.5 flex items-baseline gap-1.5 tabular-nums">
-                  <span className="text-3xl font-semibold text-primary">24</span>
-                  <span className="text-base text-muted-foreground/70">/ 30</span>
+              {/* Decorative floral sketch tucked behind the swirl */}
+              <Sketch
+                src="/sketches/floral.png"
+                className="absolute left-[6%] bottom-[6%] h-[40%] opacity-25"
+              />
+
+              <FloatingCard className="pointer-events-auto absolute right-[14%] top-[8%] w-[230px] xl:right-[16%] xl:w-[260px] 2xl:w-[280px]">
+                <CardHeader icon={<UserIcon className="h-4 w-4" />} label="Zapisy" />
+                <div className="mt-2 flex items-baseline gap-2 tabular-nums">
+                  <span className="text-4xl font-semibold text-primary">24</span>
+                  <span className="text-lg text-muted-foreground/70">/ 30</span>
                 </div>
-                <p className="text-xs text-muted-foreground">miejsc zajętych</p>
-                <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                <p className="text-sm text-muted-foreground">miejsc zajętych</p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                   <div className="h-full w-[80%] rounded-full bg-accent" />
                 </div>
               </FloatingCard>
 
-              <FloatingCard className="pointer-events-auto absolute right-2 top-[36%] w-[240px]">
-                <CardHeader icon={<WalletIcon className="h-3.5 w-3.5" />} label="Płatności" />
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <div className="space-y-0.5 text-sm">
+              {/* Heart sketch decoration between widgets */}
+              <Sketch
+                src="/sketches/heart.png"
+                className="absolute right-[24%] top-[28%] z-[1] h-12 opacity-70 xl:h-14"
+              />
+
+              <FloatingCard className="pointer-events-auto absolute right-[8%] top-[33%] w-[250px] xl:right-[10%] xl:w-[280px] 2xl:w-[300px]">
+                <CardHeader icon={<WalletIcon className="h-4 w-4" />} label="Płatności" />
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <div className="space-y-1 text-base">
                     <p>
                       <span className="font-semibold text-success">14</span>{" "}
                       <span className="text-muted-foreground">opłaconych</span>
@@ -209,37 +241,41 @@ export default function MarketingPage() {
                       <span className="text-muted-foreground">oczekuje</span>
                     </p>
                   </div>
-                  <DonutChart filled={0.58} />
+                  <DonutChart filled={0.58} size={56} />
                 </div>
               </FloatingCard>
 
-              <FloatingCard className="pointer-events-auto absolute right-10 top-[60%] w-[240px]">
-                <CardHeader icon={<UsersIcon className="h-3.5 w-3.5" />} label="Uczestniczki" />
-                <div className="mt-2 flex items-center gap-2">
+              <FloatingCard className="pointer-events-auto absolute right-[16%] top-[57%] w-[250px] xl:right-[18%] xl:w-[280px] 2xl:w-[300px]">
+                <CardHeader icon={<UsersIcon className="h-4 w-4" />} label="Uczestniczki" />
+                <div className="mt-2.5 flex items-center gap-2">
                   <div className="flex -space-x-2">
-                    <AvatarChip className="bg-[#E8D5BA]" initials="A" small />
-                    <AvatarChip className="bg-[#E5C9C2]" initials="M" small />
-                    <AvatarChip className="bg-[#CDCEBE]" initials="J" small />
-                    <AvatarChip className="bg-[#E8D5BA]" initials="E" small />
-                    <AvatarChip className="bg-[#E5C9C2]" initials="K" small />
+                    <AvatarChip className="bg-[#E8D5BA]" initials="A" />
+                    <AvatarChip className="bg-[#E5C9C2]" initials="M" />
+                    <AvatarChip className="bg-[#CDCEBE]" initials="J" />
+                    <AvatarChip className="bg-[#E8D5BA]" initials="E" />
+                    <AvatarChip className="bg-[#E5C9C2]" initials="K" />
                   </div>
-                  <span className="text-xs font-medium text-muted-foreground">+8</span>
+                  <span className="text-sm font-medium text-muted-foreground">+8</span>
                 </div>
-                <p className="mt-2 text-xs font-medium text-primary">Zobacz wszystkie →</p>
+                <p className="mt-2.5 text-sm font-medium text-primary">Zobacz wszystkie →</p>
               </FloatingCard>
 
-              <div className="pointer-events-auto absolute bottom-12 right-16 w-[300px] rounded-2xl border border-primary/5 bg-white px-4 py-3 shadow-[0_20px_50px_-20px_rgba(30,58,95,0.3)]">
+              <div className="pointer-events-auto absolute bottom-[18%] right-[10%] w-[320px] rounded-2xl border border-primary/5 bg-white px-5 py-4 shadow-[0_20px_50px_-20px_rgba(30,58,95,0.3)] xl:right-[12%] xl:w-[360px] 2xl:w-[380px]">
                 <div className="flex items-start gap-3">
                   <AvatarChip className="bg-[#E5C9C2]" initials="K" />
                   <div className="flex-1">
-                    <p className="font-[family-name:var(--font-ibm-plex-serif)] text-sm italic font-medium leading-snug text-foreground">
+                    <p className="font-[family-name:var(--font-ibm-plex-serif)] text-base italic font-medium leading-snug text-foreground">
                       „Wreszcie mam wszystko
                       <br />w&nbsp;jednym miejscu"
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1.5 text-sm text-muted-foreground">
                       Kasia, organizatorka wyjazdów
                     </p>
                   </div>
+                  <Sketch
+                    src="/sketches/heart-small.png"
+                    className="h-7 opacity-70"
+                  />
                 </div>
               </div>
             </div>
@@ -261,10 +297,10 @@ export default function MarketingPage() {
           </div>
         </div>
 
-        <SectionWave fill="white" />
+        <HeroBottomWave />
 
         {/* Bottom feature strip */}
-        <div className="relative bg-white px-6 py-6">
+        <div className="relative bg-white px-6 py-7">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-around gap-y-3 gap-x-8 text-sm text-foreground">
             <FeaturePill
               icon={
@@ -300,7 +336,11 @@ export default function MarketingPage() {
       {/* ── Trust strip ── */}
       <section className="relative bg-white px-6 pt-12 pb-0">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-center text-base text-muted-foreground">
-          <SmallLeaf className="hidden h-6 w-16 -scale-x-100 text-accent/55 sm:block" />
+          <Sketch
+            src="/sketches/branch.png"
+            flip
+            className="hidden h-7 opacity-60 sm:block"
+          />
           <p>
             Już ponad{" "}
             <span className="font-[family-name:var(--font-ibm-plex-serif)] text-xl italic font-semibold text-primary">
@@ -308,7 +348,10 @@ export default function MarketingPage() {
             </span>{" "}
             zorganizowanych z&nbsp;Wyjazdo
           </p>
-          <SmallLeaf className="hidden h-6 w-16 text-accent/55 sm:block" />
+          <Sketch
+            src="/sketches/branch.png"
+            className="hidden h-7 opacity-60 sm:block"
+          />
         </div>
         <SectionWave fill="#FAF1E2" />
       </section>
@@ -317,7 +360,10 @@ export default function MarketingPage() {
       <section className="relative overflow-hidden bg-[#FAF1E2] px-6 py-20 sm:py-24">
         <div className="relative mx-auto max-w-5xl">
           <div className="mb-12 text-center">
-            <SmallLeaf className="mx-auto mb-3 h-6 w-16 text-accent/60" />
+            <Sketch
+              src="/sketches/branch.png"
+              className="mx-auto mb-3 h-7 opacity-70"
+            />
             <h2 className="font-[family-name:var(--font-ibm-plex-serif)] text-3xl font-medium tracking-[-0.015em] text-primary sm:text-4xl">
               Wszystko, czego potrzebujesz —{" "}
               <span className="italic text-accent">w&nbsp;jednym miejscu</span>
@@ -407,7 +453,10 @@ export default function MarketingPage() {
         />
 
         <div className="relative mx-auto max-w-2xl text-center">
-          <SmallLeaf className="mx-auto mb-3 h-6 w-16 text-accent/70" />
+          <Sketch
+            src="/sketches/branch.png"
+            className="mx-auto mb-3 h-7 opacity-80"
+          />
           <h2 className="font-[family-name:var(--font-ibm-plex-serif)] text-3xl font-medium tracking-[-0.015em] text-white sm:text-4xl">
             Gotowa, żeby{" "}
             <span className="italic text-accent">uprościć</span> organizację?
@@ -579,14 +628,14 @@ function AvatarChip({
   );
 }
 
-function DonutChart({ filled }: { filled: number }) {
+function DonutChart({ filled, size = 44 }: { filled: number; size?: number }) {
   const r = 14;
   const c = 2 * Math.PI * r;
   const offset = c * (1 - filled);
   return (
     <svg
-      width="44"
-      height="44"
+      width={size}
+      height={size}
       viewBox="0 0 36 36"
       aria-hidden
       className="shrink-0 -rotate-90"
@@ -604,6 +653,40 @@ function DonutChart({ filled }: { filled: number }) {
         strokeDashoffset={offset}
       />
     </svg>
+  );
+}
+
+const SKETCH_NATURAL: Record<string, { w: number; h: number }> = {
+  "/sketches/branch.png": { w: 197, h: 88 },
+  "/sketches/heart.png": { w: 218, h: 192 },
+  "/sketches/heart-small.png": { w: 90, h: 81 },
+  "/sketches/flower.png": { w: 206, h: 321 },
+  "/sketches/leaf.png": { w: 97, h: 95 },
+  "/sketches/floral.png": { w: 177, h: 574 },
+};
+
+function Sketch({
+  src,
+  className,
+  flip,
+}: {
+  src: string;
+  className?: string;
+  flip?: boolean;
+}) {
+  const { w, h } = SKETCH_NATURAL[src] ?? { w: 100, h: 100 };
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      width={w}
+      height={h}
+      aria-hidden
+      decoding="async"
+      loading="lazy"
+      className={`${flip ? "-scale-x-100 " : ""}inline-block w-auto max-w-fit shrink-0 self-start ${className ?? ""}`}
+    />
   );
 }
 
@@ -680,22 +763,27 @@ function UsersIcon({ className }: { className?: string }) {
   );
 }
 
-function SmallLeaf({ className }: { className?: string }) {
+function HeroBottomWave() {
   return (
     <svg
-      className={className}
-      viewBox="0 0 80 32"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 1440 120"
+      preserveAspectRatio="none"
+      className="-mb-px block h-20 w-full sm:h-24 md:h-28"
       aria-hidden
     >
-      <path d="M 4 26 C 22 14, 50 10, 76 14" />
-      <path d="M 22 19 C 23 9, 32 8, 35 16 C 30 19, 24 21, 22 19 Z" />
-      <path d="M 44 13 C 45 3, 54 2, 57 10 C 52 13, 46 15, 44 13 Z" />
-      <path d="M 62 11 C 63 1, 72 0, 75 8 C 70 11, 64 13, 62 11 Z" />
+      {/* Funky asymmetric wave: deeper curl on the left, gentle rise on the right */}
+      <path
+        fill="white"
+        d="M 0,72 C 120,118 260,108 380,80 C 520,46 640,12 800,46 C 960,80 1100,108 1260,72 C 1340,54 1400,40 1440,48 L 1440,120 L 0,120 Z"
+      />
+      <path
+        d="M 0,72 C 120,118 260,108 380,80 C 520,46 640,12 800,46 C 960,80 1100,108 1260,72 C 1340,54 1400,40 1440,48"
+        fill="none"
+        stroke="rgba(232,104,58,0.22)"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
     </svg>
   );
 }
