@@ -63,6 +63,7 @@ export default function PomocHubPage() {
         </p>
       </header>
 
+      <h2 className="sr-only">Tematy pomocy</h2>
       <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <DocsCard topic={intro} wide />
         {middle.map((topic) => (
