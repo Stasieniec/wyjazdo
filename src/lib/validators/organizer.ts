@@ -7,8 +7,27 @@ export const subdomainSchema = z
   .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, "Dozwolone małe litery, cyfry i myślniki");
 
 export const RESERVED_SUBDOMAINS = new Set([
-  "www", "app", "api", "dashboard", "admin", "assets", "static",
-  "help", "support", "mail", "blog", "my-trips",
+  // Infra / system
+  "www", "app", "api", "cdn", "static", "assets", "media", "images", "files",
+  "mail", "smtp", "status", "health", "secure", "security",
+  // Current app routes (must not be claimable — would shadow root pages)
+  "dashboard", "onboarding", "my-trips", "pomoc",
+  "sign-in", "sign-up", "signin", "signup",
+  "regulamin", "polityka-prywatnosci", "dpa", "cookies", "organizer-terms",
+  // Auth / account synonyms
+  "admin", "auth", "login", "logout", "account", "accounts", "user", "users",
+  // Help / content
+  "help", "support", "contact", "kontakt", "about", "info", "blog", "news",
+  "docs", "faq",
+  // Commerce / payments
+  "billing", "pay", "payment", "payments", "checkout", "stripe",
+  "webhook", "webhooks",
+  // Brand
+  "wyjazdo", "wyjazd",
+  // Environments / ops
+  "dev", "staging", "test", "prod", "production", "preview", "demo",
+  "root", "host", "system", "internal", "private",
+  "email", "emails",
 ]);
 
 export const organizerProfileSchema = z.object({
