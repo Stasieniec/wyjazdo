@@ -1,4 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 // HMAC-SHA256 signed admin session cookie. Stateless: no DB lookup.
 // Format: `${issuedAtMs}.${hmac_base64url}`. TTL enforced at verify time.
@@ -73,4 +75,48 @@ export function getAdminSessionSecret(): string {
   const s = (env as unknown as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
   if (!s) throw new Error("ADMIN_SESSION_SECRET not set");
   return s;
+}
+
+// ── Session cookie management ──────────────────────────────────────────────
+
+const isProd = process.env.NODE_ENV === "production";
+
+export async function issueAdminSessionCookie(nowMs: number = Date.now()): Promise<void> {
+  const secret = getAdminSessionSecret();
+  const value = await signAdminSession(nowMs, secret);
+  const jar = await cookies();
+  jar.set(ADMIN_SESSION_COOKIE, value, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax",
+    path: "/admin",
+    maxAge: Math.floor(ADMIN_SESSION_TTL_MS / 1000),
+  });
+}
+
+export async function clearAdminSessionCookie(): Promise<void> {
+  const jar = await cookies();
+  jar.set(ADMIN_SESSION_COOKIE, "", {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax",
+    path: "/admin",
+    maxAge: 0,
+  });
+}
+
+export async function requireAdmin(): Promise<void> {
+  const jar = await cookies();
+  const raw = jar.get(ADMIN_SESSION_COOKIE)?.value;
+  if (!raw) redirect("/admin/login");
+
+  const secret = getAdminSessionSecret();
+  const nowMs = Date.now();
+  const result = await verifyAdminSession(raw, secret, nowMs);
+  if (!result) redirect("/admin/login");
+
+  const remaining = result.issuedAtMs + ADMIN_SESSION_TTL_MS - nowMs;
+  if (remaining < ADMIN_SESSION_REFRESH_THRESHOLD_MS) {
+    await issueAdminSessionCookie(nowMs);
+  }
 }
