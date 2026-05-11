@@ -25,17 +25,21 @@ export const metadata: Metadata = {
   applicationName: "Wyjazdo",
   referrer: "origin-when-cross-origin",
   category: "travel",
-  title: "Wyjazdo — zapisy, płatności i uczestnicy dla organizatorów",
+  title: "Wyjazdo — system zapisów i płatności dla organizatorów wyjazdów i warsztatów",
   description:
-    "Platforma dla organizatorów wyjazdów, retreatów i warsztatów. Własna subdomena, zapisy, płatności online (BLIK, Przelewy24, karta) i panel uczestników.",
+    "System zapisów na wyjazdy, retreaty i warsztaty: własna strona wydarzenia na subdomenie, formularz zapisu, płatności online BLIK / Przelewy24 / karta i panel uczestników. Zastąp Google Forms i ręczne przelewy.",
   keywords: [
     "wyjazdo",
-    "organizacja wyjazdów",
+    "system zapisów",
     "zapisy na wyjazd",
-    "płatności online",
+    "zapisy na warsztaty",
+    "organizacja wyjazdów",
+    "platforma do organizacji retreatów",
+    "płatności BLIK Przelewy24",
+    "panel organizatora wyjazdów",
+    "strona wydarzenia",
     "retreat",
-    "warsztaty",
-    "wydarzenia",
+    "warsztaty wyjazdowe",
   ],
   authors: [{ name: "Wyjazdo", url: siteUrl }],
   creator: "Wyjazdo",
@@ -49,9 +53,9 @@ export const metadata: Metadata = {
     locale: "pl_PL",
     url: siteUrl,
     siteName: "Wyjazdo",
-    title: "Wyjazdo — zapisy, płatności i uczestnicy",
+    title: "Wyjazdo — system zapisów i płatności dla organizatorów wyjazdów",
     description:
-      "Platforma dla organizatorów wyjazdów i wydarzeń. Subdomena, formularz zapisu, płatności i lista uczestników.",
+      "Twoja strona wydarzenia na subdomenie, zapisy, płatności BLIK / Przelewy24 / karta i lista uczestników. Dla organizatorów wyjazdów, retreatów i warsztatów.",
     images: [
       {
         url: "/opengraph-image",
@@ -63,9 +67,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Wyjazdo — zapisy, płatności i uczestnicy",
+    title: "Wyjazdo — system zapisów i płatności dla organizatorów wyjazdów",
     description:
-      "Platforma dla organizatorów wyjazdów, retreatów i warsztatów.",
+      "Strona wydarzenia, zapisy i płatności online dla organizatorów wyjazdów, retreatów i warsztatów.",
     images: ["/twitter-image"],
   },
   robots: {

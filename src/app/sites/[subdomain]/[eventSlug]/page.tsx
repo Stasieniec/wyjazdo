@@ -10,7 +10,7 @@ import type { AttendeeType } from "@/lib/validators/attendee-types";
 import { listPhotosForEvent } from "@/lib/db/queries/event-photos";
 import { PhotoGallery } from "@/components/sites/PhotoGallery";
 import type { Metadata } from "next";
-import { publicEventUrl } from "@/lib/urls";
+import { publicEventUrl, publicOrganizerUrl } from "@/lib/urls";
 
 export async function generateMetadata({
   params,
@@ -73,6 +73,51 @@ export default async function EventPage({
   const eventPhotos = await listPhotosForEvent(event.id);
   const galleryPhotos = eventPhotos.map((p) => ({ url: p.url, position: p.position }));
 
+  const canonicalUrl = publicEventUrl(subdomain, eventSlug);
+  const organizerUrl = publicOrganizerUrl(subdomain);
+  const offerPriceCents = attendeeTypes && attendeeTypes.length > 0
+    ? Math.min(...attendeeTypes.map((t) => t.priceCents))
+    : event.priceCents;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    description: event.description ?? `${event.title} — ${organizer.displayName}`,
+    startDate: new Date(event.startsAt).toISOString(),
+    endDate: new Date(event.endsAt).toISOString(),
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    url: canonicalUrl,
+    ...(event.coverUrl ? { image: [event.coverUrl] } : {}),
+    location: event.location
+      ? {
+          "@type": "Place",
+          name: event.location,
+          address: event.location,
+        }
+      : {
+          "@type": "Place",
+          name: "Lokalizacja podana po zapisie",
+          address: "Polska",
+        },
+    organizer: {
+      "@type": "Organization",
+      name: organizer.displayName,
+      url: organizerUrl,
+      ...(organizer.logoUrl ? { logo: organizer.logoUrl } : {}),
+    },
+    offers: {
+      "@type": "Offer",
+      url: canonicalUrl,
+      price: (offerPriceCents / 100).toFixed(2),
+      priceCurrency: "PLN",
+      availability: isFull
+        ? "https://schema.org/SoldOut"
+        : "https://schema.org/InStock",
+      validFrom: new Date(event.publishedAt ?? event.createdAt).toISOString(),
+    },
+  };
+
   const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", {
     day: "numeric",
     month: "long",
@@ -91,13 +136,17 @@ export default async function EventPage({
       className="min-h-screen bg-background"
       style={{ "--brand": brandColor } as React.CSSProperties}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Hero / Cover */}
       {event.coverUrl ? (
         <div className="relative h-64 w-full sm:h-80">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={event.coverUrl}
-            alt=""
+            alt={`${event.title} — ${organizer.displayName}`}
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -188,7 +237,7 @@ export default async function EventPage({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={organizer.logoUrl}
-                alt=""
+                alt={`Logo organizatora ${organizer.displayName}`}
                 className="h-10 w-10 rounded-full object-cover"
               />
             ) : (

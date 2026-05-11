@@ -52,18 +52,37 @@ export default async function OrganizerProfilePage({
     : {};
   const brandColor = organizer.brandColor ?? "#1E3A5F";
 
+  const canonicalUrl = publicOrganizerUrl(subdomain);
+  const sameAs = Object.values(social).filter(
+    (v): v is string => typeof v === "string" && v.length > 0,
+  );
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: organizer.displayName,
+    url: canonicalUrl,
+    ...(organizer.logoUrl ? { logo: organizer.logoUrl } : {}),
+    ...(organizer.coverUrl ? { image: organizer.coverUrl } : {}),
+    ...(organizer.description ? { description: organizer.description } : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+  };
+
   return (
     <main
       className="min-h-screen bg-background"
       style={{ "--brand": brandColor } as React.CSSProperties}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Cover */}
       {organizer.coverUrl ? (
         <div className="relative z-0 h-48 w-full sm:h-64">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={organizer.coverUrl}
-            alt=""
+            alt={`${organizer.displayName} — wyjazdy i wydarzenia`}
             className="h-full w-full object-cover"
           />
         </div>
@@ -80,7 +99,7 @@ export default async function OrganizerProfilePage({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={organizer.logoUrl}
-              alt=""
+              alt={`Logo ${organizer.displayName}`}
               className="h-20 w-20 rounded-xl border-4 border-background object-cover shadow-sm"
             />
           ) : (
