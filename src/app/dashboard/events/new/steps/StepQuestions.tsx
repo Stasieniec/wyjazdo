@@ -58,7 +58,7 @@ export function StepQuestions({ attendeeTypes, defaultRegistrationQuestions, pen
         {isParent && child && (
           <Card>
             <h2 className="text-base font-semibold">Pytania o każde dziecko</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Pojawią się dla każdego dziecka osobno — np. wiek, alergie, dieta.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Pojawią się dla każdego dziecka osobno — np. wiek, rozmiar koszulki.</p>
             <div className="mt-4">
               <AttendeeCustomFieldsEditor heading="" description="" value={perTypeFields[child.id] ?? []} onChange={(cf) => setPerTypeFields((prev) => ({ ...prev, [child.id]: cf } as Record<string, AttendeeCustomField[]>))} />
             </div>
@@ -76,7 +76,7 @@ export function StepQuestions({ attendeeTypes, defaultRegistrationQuestions, pen
         {!isParent && single && (
           <Card>
             <h2 className="text-base font-semibold">{single.maxQty > 1 ? "Pytania o każdego uczestnika" : "Pytania o uczestnika"}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{single.maxQty > 1 ? "Pojawią się dla każdej osoby w grupie — np. dieta, alergie." : "Pojawią się w formularzu zapisu — np. rozmiar koszulki, dieta."}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{single.maxQty > 1 ? "Pojawią się dla każdej osoby w grupie — np. wiek, rozmiar koszulki." : "Pojawią się w formularzu zapisu — np. rozmiar koszulki, preferencje wegetariańskie."}</p>
             <div className="mt-4">
               <AttendeeCustomFieldsEditor heading="" description="" value={perTypeFields[single.id] ?? []} onChange={(cf) => setPerTypeFields((prev) => ({ ...prev, [single.id]: cf } as Record<string, AttendeeCustomField[]>))} />
             </div>

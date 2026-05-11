@@ -83,15 +83,15 @@ export async function createOrganizerAction(formData: FormData): Promise<CreateO
   });
 
   // Record consent audit trail (best-effort -- don't block onboarding if docs not seeded yet)
-  const [regulamin, privacyPolicy, dpa] = await Promise.all([
-    getLatestDocument("regulamin"),
+  const [organizerTerms, privacyPolicy, dpa] = await Promise.all([
+    getLatestDocument("organizer_terms"),
     getLatestDocument("privacy_policy"),
     getLatestDocument("dpa"),
   ]);
 
   const consentPromises: Promise<void>[] = [];
-  if (regulamin) {
-    consentPromises.push(insertOrganizerConsent({ organizerId, documentId: regulamin.id, ipAddress: ip }));
+  if (organizerTerms) {
+    consentPromises.push(insertOrganizerConsent({ organizerId, documentId: organizerTerms.id, ipAddress: ip }));
   }
   if (privacyPolicy) {
     consentPromises.push(insertOrganizerConsent({ organizerId, documentId: privacyPolicy.id, ipAddress: ip }));

@@ -20,6 +20,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useState } from "react";
 import type { CustomQuestion } from "@/lib/validators/event";
 import { newId } from "@/lib/ids";
+import {
+  detectSpecialCategoryHint,
+  specialCategoryWarning,
+} from "@/lib/legal/special-category-detection";
 
 /** In-editor draft: select `options` may include empty strings until submit. */
 type CustomQuestionDraft = Omit<CustomQuestion, "options"> & {
@@ -339,9 +343,24 @@ function SortableQuestionCard({
               onRowsChange={(next) => onUpdate({ options: next })}
             />
           )}
+          <SpecialCategoryWarning label={q.label} />
         </div>
       </div>
     </li>
+  );
+}
+
+function SpecialCategoryWarning({ label }: { label: string }) {
+  const kind = detectSpecialCategoryHint(label);
+  if (!kind) return null;
+  return (
+    <p
+      role="note"
+      className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900"
+    >
+      <span className="font-semibold">Uwaga RODO:</span>{" "}
+      {specialCategoryWarning(kind)}
+    </p>
   );
 }
 

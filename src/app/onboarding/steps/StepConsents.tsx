@@ -77,12 +77,12 @@ export function StepConsents({
         >
           Akceptuję{" "}
           <a
-            href="/regulamin"
+            href="/organizer-terms"
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold text-[#1E3A5F] underline underline-offset-4 hover:text-[#E8683A]"
           >
-            Regulamin serwisu wyjazdo.pl
+            Regulamin dla Organizatorów wyjazdo.pl
           </a>
         </ConsentRow>
         <ConsentRow
@@ -107,7 +107,7 @@ export function StepConsents({
         >
           Akceptuję{" "}
           <a
-            href="/regulamin#umowa-powierzenia"
+            href="/dpa"
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold text-[#1E3A5F] underline underline-offset-4 hover:text-[#E8683A]"

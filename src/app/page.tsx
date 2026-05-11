@@ -65,7 +65,7 @@ export default function MarketingPage() {
               </Link>
               <Link
                 href="/sign-up"
-                className="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-all hover:bg-primary/90"
+                className="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_6px_16px_rgba(30,58,95,0.25)] active:scale-[0.97]"
               >
                 Wypróbuj za darmo
               </Link>
@@ -81,7 +81,7 @@ export default function MarketingPage() {
               </Link>
               <Link
                 href="/dashboard"
-                className="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-all hover:bg-primary/90"
+                className="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_6px_16px_rgba(30,58,95,0.25)] active:scale-[0.97]"
               >
                 Panel organizatora
               </Link>
@@ -103,7 +103,7 @@ export default function MarketingPage() {
           <div className="relative mx-auto flex max-w-7xl flex-col justify-center px-6 pt-14 pb-12 lg:min-h-[calc(100vh-3.5rem-72px)] lg:py-16 lg:pr-[44rem]">
             <SmallLeaf className="mb-4 h-7 w-14 text-accent/70" />
 
-            <h1 className="font-[family-name:var(--font-ibm-plex-serif)] text-[2.75rem] font-semibold leading-[1.02] tracking-tight text-primary sm:text-6xl lg:text-[5.25rem]">
+            <h1 className="font-[family-name:var(--font-ibm-plex-serif)] text-[2.75rem] font-medium leading-[1.02] tracking-[-0.02em] text-primary sm:text-6xl lg:text-[5.25rem]">
               Mniej chaosu,
               <br />
               <span className="text-accent">więcej czasu</span>
@@ -120,13 +120,13 @@ export default function MarketingPage() {
               <Show when="signed-out">
                 <Link
                   href="/sign-up"
-                  className="inline-flex items-center rounded-xl bg-accent px-7 py-4 text-base font-semibold text-white shadow-[--shadow-warm] transition-all hover:bg-accent/90"
+                  className="inline-flex items-center rounded-xl bg-accent px-7 py-4 text-base font-semibold text-white shadow-[--shadow-warm] transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-[0_8px_24px_rgba(232,104,58,0.4)] active:translate-y-0 active:scale-[0.98]"
                 >
                   Zobacz, jak to działa →
                 </Link>
                 <Link
                   href="/sign-in"
-                  className="inline-flex items-center rounded-xl border border-primary/15 bg-white px-7 py-4 text-base font-semibold text-primary transition-all hover:bg-white/70"
+                  className="inline-flex items-center rounded-xl border border-primary/15 bg-white px-7 py-4 text-base font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white hover:shadow-[0_8px_24px_rgba(30,58,95,0.12)] active:translate-y-0 active:scale-[0.98]"
                 >
                   Zaloguj się
                 </Link>
@@ -134,13 +134,13 @@ export default function MarketingPage() {
               <Show when="signed-in">
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center rounded-xl bg-accent px-7 py-4 text-base font-semibold text-white shadow-[--shadow-warm] transition-all hover:bg-accent/90"
+                  className="inline-flex items-center rounded-xl bg-accent px-7 py-4 text-base font-semibold text-white shadow-[--shadow-warm] transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-[0_8px_24px_rgba(232,104,58,0.4)] active:translate-y-0 active:scale-[0.98]"
                 >
                   Zobacz, jak to działa →
                 </Link>
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center rounded-xl border border-primary/15 bg-white px-7 py-4 text-base font-semibold text-primary transition-all hover:bg-white/70"
+                  className="inline-flex items-center rounded-xl border border-primary/15 bg-white px-7 py-4 text-base font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white hover:shadow-[0_8px_24px_rgba(30,58,95,0.12)] active:translate-y-0 active:scale-[0.98]"
                 >
                   Przejdź do panelu
                 </Link>
@@ -150,10 +150,10 @@ export default function MarketingPage() {
             {/* Trust line */}
             <div className="mt-12 flex items-center gap-4">
               <div className="flex -space-x-2">
-                <AvatarChip className="bg-gradient-to-br from-amber-300 to-amber-500" initials="A" />
-                <AvatarChip className="bg-gradient-to-br from-rose-300 to-rose-500" initials="M" />
-                <AvatarChip className="bg-gradient-to-br from-emerald-300 to-emerald-500" initials="J" />
-                <AvatarChip className="bg-gradient-to-br from-sky-300 to-sky-500" initials="E" />
+                <AvatarChip className="bg-[#E8D5BA]" initials="A" />
+                <AvatarChip className="bg-[#E5C9C2]" initials="M" />
+                <AvatarChip className="bg-[#CDCEBE]" initials="J" />
+                <AvatarChip className="bg-[#E8D5BA]" initials="E" />
               </div>
               <p className="text-sm leading-snug text-muted-foreground">
                 Zaufane przez organizatorki
@@ -217,11 +217,11 @@ export default function MarketingPage() {
                 <CardHeader icon={<UsersIcon className="h-3.5 w-3.5" />} label="Uczestniczki" />
                 <div className="mt-2 flex items-center gap-2">
                   <div className="flex -space-x-2">
-                    <AvatarChip className="bg-gradient-to-br from-amber-300 to-amber-500" initials="A" small />
-                    <AvatarChip className="bg-gradient-to-br from-rose-300 to-rose-500" initials="M" small />
-                    <AvatarChip className="bg-gradient-to-br from-emerald-300 to-emerald-500" initials="J" small />
-                    <AvatarChip className="bg-gradient-to-br from-sky-300 to-sky-500" initials="E" small />
-                    <AvatarChip className="bg-gradient-to-br from-violet-300 to-violet-500" initials="K" small />
+                    <AvatarChip className="bg-[#E8D5BA]" initials="A" small />
+                    <AvatarChip className="bg-[#E5C9C2]" initials="M" small />
+                    <AvatarChip className="bg-[#CDCEBE]" initials="J" small />
+                    <AvatarChip className="bg-[#E8D5BA]" initials="E" small />
+                    <AvatarChip className="bg-[#E5C9C2]" initials="K" small />
                   </div>
                   <span className="text-xs font-medium text-muted-foreground">+8</span>
                 </div>
@@ -230,7 +230,7 @@ export default function MarketingPage() {
 
               <div className="pointer-events-auto absolute bottom-12 right-16 w-[300px] rounded-2xl border border-primary/5 bg-white px-4 py-3 shadow-[0_20px_50px_-20px_rgba(30,58,95,0.3)]">
                 <div className="flex items-start gap-3">
-                  <AvatarChip className="bg-gradient-to-br from-amber-200 to-rose-300" initials="K" />
+                  <AvatarChip className="bg-[#E5C9C2]" initials="K" />
                   <div className="flex-1">
                     <p className="font-[family-name:var(--font-ibm-plex-serif)] text-sm italic font-medium leading-snug text-foreground">
                       „Wreszcie mam wszystko
@@ -318,7 +318,7 @@ export default function MarketingPage() {
         <div className="relative mx-auto max-w-5xl">
           <div className="mb-12 text-center">
             <SmallLeaf className="mx-auto mb-3 h-6 w-16 text-accent/60" />
-            <h2 className="font-[family-name:var(--font-ibm-plex-serif)] text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
+            <h2 className="font-[family-name:var(--font-ibm-plex-serif)] text-3xl font-medium tracking-[-0.015em] text-primary sm:text-4xl">
               Wszystko, czego potrzebujesz —{" "}
               <span className="italic text-accent">w&nbsp;jednym miejscu</span>
             </h2>
@@ -378,10 +378,7 @@ export default function MarketingPage() {
               telefonów ani&nbsp;maili.
             </p>
             <footer className="mt-8 flex items-center justify-center gap-3">
-              <AvatarChip
-                className="bg-gradient-to-br from-amber-200 to-rose-300"
-                initials="MK"
-              />
+              <AvatarChip className="bg-[#E5C9C2]" initials="MK" />
               <div className="text-left">
                 <div className="font-semibold text-foreground">Marta Kowalska</div>
                 <div className="text-sm text-muted-foreground">
@@ -411,7 +408,7 @@ export default function MarketingPage() {
 
         <div className="relative mx-auto max-w-2xl text-center">
           <SmallLeaf className="mx-auto mb-3 h-6 w-16 text-accent/70" />
-          <h2 className="font-[family-name:var(--font-ibm-plex-serif)] text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+          <h2 className="font-[family-name:var(--font-ibm-plex-serif)] text-3xl font-medium tracking-[-0.015em] text-white sm:text-4xl">
             Gotowa, żeby{" "}
             <span className="italic text-accent">uprościć</span> organizację?
           </h2>
@@ -421,7 +418,7 @@ export default function MarketingPage() {
           <Show when="signed-out">
             <Link
               href="/sign-up"
-              className="mt-8 inline-flex items-center rounded-xl bg-accent px-8 py-4 font-semibold text-white shadow-lg shadow-accent/30 transition-all hover:bg-accent/90"
+              className="mt-8 inline-flex items-center rounded-xl bg-accent px-8 py-4 font-semibold text-white shadow-lg shadow-accent/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-[0_12px_32px_rgba(232,104,58,0.5)] active:translate-y-0 active:scale-[0.98]"
             >
               Zacznij za darmo →
             </Link>
@@ -429,7 +426,7 @@ export default function MarketingPage() {
           <Show when="signed-in">
             <Link
               href="/dashboard"
-              className="mt-8 inline-flex items-center rounded-xl bg-accent px-8 py-4 font-semibold text-white shadow-lg shadow-accent/30 transition-all hover:bg-accent/90"
+              className="mt-8 inline-flex items-center rounded-xl bg-accent px-8 py-4 font-semibold text-white shadow-lg shadow-accent/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-[0_12px_32px_rgba(232,104,58,0.5)] active:translate-y-0 active:scale-[0.98]"
             >
               Przejdź do panelu →
             </Link>
@@ -439,7 +436,7 @@ export default function MarketingPage() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-border bg-white px-6 py-10">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <Link
               href="/"
@@ -448,7 +445,7 @@ export default function MarketingPage() {
               <WyjazdoMark className="h-6 w-6" />
               wyjazdo.pl
             </Link>
-            <nav className="flex gap-6 text-xs text-muted-foreground">
+            <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
               <Link
                 href="/regulamin"
                 className="transition-colors hover:text-foreground"
@@ -456,10 +453,22 @@ export default function MarketingPage() {
                 Regulamin
               </Link>
               <Link
+                href="/organizer-terms"
+                className="transition-colors hover:text-foreground"
+              >
+                Regulamin organizatorów
+              </Link>
+              <Link
                 href="/polityka-prywatnosci"
                 className="transition-colors hover:text-foreground"
               >
                 Polityka prywatności
+              </Link>
+              <Link
+                href="/cookies"
+                className="transition-colors hover:text-foreground"
+              >
+                Cookies
               </Link>
               <a
                 href="mailto:kontakt@wyjazdo.pl"
@@ -470,6 +479,15 @@ export default function MarketingPage() {
             </nav>
             <p className="text-xs text-muted-foreground">
               &copy; {new Date().getFullYear()} wyjazdo.pl
+            </p>
+          </div>
+          <div className="border-t border-border/60 pt-5 text-center text-xs leading-relaxed text-muted-foreground sm:text-left">
+            <p>
+              Wyjazdo to platforma prowadzona przez{" "}
+              <span className="font-semibold text-foreground">
+                Narrative Impact Jacek Wasilewski
+              </span>
+              , ul. Krechowiecka 5 lok. 11, 01-635 Warszawa, NIP PL 5221330690.
             </p>
           </div>
         </div>
@@ -492,7 +510,7 @@ function BenefitCard({
   description: string;
 }) {
   return (
-    <div className="relative rounded-2xl border border-primary/5 bg-white/70 p-6 shadow-[0_15px_40px_-30px_rgba(30,58,95,0.4)] backdrop-blur-sm">
+    <div className="relative rounded-2xl border border-primary/5 bg-white/70 p-6 shadow-[0_15px_40px_-30px_rgba(30,58,95,0.4)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/10 hover:shadow-[0_25px_55px_-25px_rgba(30,58,95,0.55)]">
       <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-accent/12 text-accent">
         {icon}
       </div>
@@ -554,7 +572,7 @@ function AvatarChip({
   const size = small ? "h-7 w-7 text-[10px]" : "h-9 w-9 text-xs";
   return (
     <span
-      className={`${size} inline-flex items-center justify-center rounded-full font-semibold text-white ring-2 ring-white ${className ?? ""}`}
+      className={`${size} inline-flex items-center justify-center rounded-full font-semibold text-primary/75 ring-2 ring-white ${className ?? ""}`}
     >
       {initials}
     </span>

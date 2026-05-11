@@ -1,5 +1,9 @@
 "use client";
 import type { AttendeeCustomField, AttendeeType } from "@/lib/validators/attendee-types";
+import {
+  detectSpecialCategoryHint,
+  specialCategoryWarning,
+} from "@/lib/legal/special-category-detection";
 
 type CustomFields = NonNullable<AttendeeType["customFields"]>;
 
@@ -21,7 +25,7 @@ type Props = {
 };
 
 const DEFAULT_DESCRIPTION =
-  "Pola do wypełnienia przez uczestnika w formularzu zapisu — po jednym zestawie dla każdej osoby tego typu. Dobre do pytań typu wiek, rozmiar koszulki, alergie czy dieta.";
+  "Pola do wypełnienia przez uczestnika w formularzu zapisu — po jednym zestawie dla każdej osoby tego typu. Dobre do pytań typu wiek, rozmiar koszulki, preferencje wegetariańskie / wegańskie.";
 
 export function AttendeeCustomFieldsEditor({ value, onChange, heading = "Dodatkowe pola", description }: Props) {
   const fields = value ?? [];
@@ -87,6 +91,7 @@ export function AttendeeCustomFieldsEditor({ value, onChange, heading = "Dodatko
               onChange={(next) => patchField(i, { options: next })}
             />
           )}
+          <SpecialCategoryWarning label={f.label} />
         </div>
       ))}
       <button
@@ -97,6 +102,20 @@ export function AttendeeCustomFieldsEditor({ value, onChange, heading = "Dodatko
         + Dodaj pole
       </button>
     </div>
+  );
+}
+
+function SpecialCategoryWarning({ label }: { label: string }) {
+  const kind = detectSpecialCategoryHint(label);
+  if (!kind) return null;
+  return (
+    <p
+      role="note"
+      className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900"
+    >
+      <span className="font-semibold">Uwaga RODO:</span>{" "}
+      {specialCategoryWarning(kind)}
+    </p>
   );
 }
 
