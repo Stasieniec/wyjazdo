@@ -64,6 +64,13 @@ export function RegisterForm({
   );
   const [registrantFirst, setRegistrantFirst] = useState("");
   const [registrantLast, setRegistrantLast] = useState("");
+  // React 19 resets uncontrolled inputs after a form action returns, even on
+  // validation errors. Hold these client-side so the user doesn't lose them
+  // when the server returns errors.
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [consentValues, setConsentValues] = useState<Record<string, boolean>>({});
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
 
   // The first attendee row is always the registrant; their name lives in
   // `registrantFirst`/`registrantLast` (separate inputs above the form), not
@@ -146,9 +153,17 @@ export function RegisterForm({
           label="Email"
           name="email"
           required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           error={state?.errors?.email}
         />
-        <Input label="Telefon" name="phone" error={state?.errors?.phone} />
+        <Input
+          label="Telefon"
+          name="phone"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          error={state?.errors?.phone}
+        />
 
         {isSingleLegacy
           ? (attendeeTypes[0].customFields ?? []).length > 0 ? (
@@ -234,15 +249,21 @@ export function RegisterForm({
 
         {questions.map((q) => {
           const label = q.label;
-          const fieldError = state?.errors?.[`q_${q.id}`];
+          const name = `q_${q.id}`;
+          const fieldError = state?.errors?.[name];
+          const value = questionAnswers[q.id] ?? "";
+          const setValue = (v: string) =>
+            setQuestionAnswers((prev) => ({ ...prev, [q.id]: v }));
           if (q.type === "long_text") {
             return (
               <Textarea
                 key={q.id}
                 label={label}
-                name={`q_${q.id}`}
+                name={name}
                 required={q.required}
                 rows={3}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
                 error={fieldError}
               />
             );
@@ -252,10 +273,12 @@ export function RegisterForm({
               <Select
                 key={q.id}
                 label={label}
-                name={`q_${q.id}`}
+                name={name}
                 required={q.required}
                 placeholder="—"
                 options={q.options?.map((opt) => ({ value: opt, label: opt })) ?? []}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
                 error={fieldError}
               />
             );
@@ -264,15 +287,24 @@ export function RegisterForm({
             <Input
               key={q.id}
               label={label}
-              name={`q_${q.id}`}
+              name={name}
               required={q.required}
               maxLength={500}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
               error={fieldError}
             />
           );
         })}
 
-        <ConsentCheckboxes eventConsents={consents} errors={state?.errors} />
+        <ConsentCheckboxes
+          eventConsents={consents}
+          errors={state?.errors}
+          values={consentValues}
+          onChange={(name, checked) =>
+            setConsentValues((prev) => ({ ...prev, [name]: checked }))
+          }
+        />
 
         {state?.errors?._form && (
           <p className="text-sm text-destructive" role="alert">

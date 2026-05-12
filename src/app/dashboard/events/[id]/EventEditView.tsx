@@ -16,6 +16,7 @@ import { PublishControls } from "./PublishControls";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import type { CustomQuestion } from "@/lib/validators/event";
 import type { ConsentConfigItem } from "@/lib/validators/consent";
+import { publicEventUrl } from "@/lib/urls";
 
 type FullEvent = EventForStatus & {
   status: "draft" | "published" | "archived";
@@ -53,6 +54,7 @@ export function EventEditView({
     event.status === "draft" &&
     event.publishedAt === null;
 
+  const previewUrl = publicEventUrl(subdomain, event.slug);
   const publishSlot = (
     <PublishControls
       eventId={eventId}
@@ -60,6 +62,7 @@ export function EventEditView({
       stripeReady={stripeReady}
       publishable={publishCheck.ok}
       missing={publishCheck.ok ? [] : publishCheck.missing}
+      previewUrl={previewUrl}
     />
   );
 

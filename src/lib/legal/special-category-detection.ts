@@ -57,12 +57,12 @@ export function detectSpecialCategoryHint(label: string): SpecialCategoryKind | 
 
 export function specialCategoryWarning(kind: SpecialCategoryKind): string {
   const what: Record<SpecialCategoryKind, string> = {
-    health: "danych o zdrowiu (alergie, dieta medyczna, choroby)",
+    health: "zdrowia (np. alergie, dieta, choroby)",
     religion: "przekonań religijnych lub światopoglądowych",
     ethnicity: "pochodzenia rasowego lub etnicznego",
-    sexual: "życia seksualnego lub orientacji seksualnej",
+    sexual: "życia seksualnego lub orientacji",
     political: "poglądów politycznych",
     union: "przynależności do związków zawodowych",
   };
-  return `To pytanie może dotyczyć ${what[kind]} — danych szczególnej kategorii (RODO art. 9). Wymaga osobnej, wyraźnej zgody uczestnika i właściwej podstawy prawnej. Rozważ inną formę pytania lub zapytaj prawnika przed publikacją.`;
+  return `To pytanie dotyczy ${what[kind]}. Pamiętaj, żeby dodać odpowiednią zgodę RODO w kroku „Zgody i regulaminy".`;
 }

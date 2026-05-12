@@ -18,7 +18,7 @@ import {
   sendPaymentConfirmation,
   sendOrganizerNewRegistration,
 } from "@/lib/email/send";
-import { publicEventUrl, participantTripUrl, dashboardEventUrl } from "@/lib/urls";
+import { publicEventUrl, participantTripUrl, dashboardEventParticipantsUrl } from "@/lib/urls";
 import { computeRegistrationAmountsCents } from "@/lib/register/compute-registration-amounts";
 import {
   signParticipantToken,
@@ -208,7 +208,7 @@ export async function promoteFromWaitlistAction(form: FormData): Promise<void> {
           eventTitle: event.title,
           spotsInfo: `${takenAfter} / ${event.capacity}`,
           isWaitlisted: false,
-          dashboardUrl: dashboardEventUrl(event.id),
+          dashboardUrl: dashboardEventParticipantsUrl(event.id),
         }),
       );
     }

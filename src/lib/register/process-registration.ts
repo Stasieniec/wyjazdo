@@ -29,7 +29,7 @@ import {
   sendOrganizerNewRegistration,
   sendPaymentConfirmation,
 } from "@/lib/email/send";
-import { dashboardEventUrl, participantTripUrl, publicEventUrl } from "@/lib/urls";
+import { dashboardEventParticipantsUrl, participantTripUrl, publicEventUrl } from "@/lib/urls";
 import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
 
 const PENDING_TTL_MS = 30 * 60 * 1000;
@@ -415,7 +415,7 @@ export async function processRegistration(
           eventTitle: event.title,
           spotsInfo: `${takenAfter} / ${event.capacity} (pełne)`,
           isWaitlisted: true,
-          dashboardUrl: dashboardEventUrl(event.id),
+          dashboardUrl: dashboardEventParticipantsUrl(event.id),
         }),
       );
     }
@@ -488,7 +488,7 @@ export async function processRegistration(
           eventTitle: event.title,
           spotsInfo: `${takenAfter} / ${event.capacity}`,
           isWaitlisted: false,
-          dashboardUrl: dashboardEventUrl(event.id),
+          dashboardUrl: dashboardEventParticipantsUrl(event.id),
         }),
       );
     }

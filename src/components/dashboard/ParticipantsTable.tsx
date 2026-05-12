@@ -189,7 +189,7 @@ export default function ParticipantsTable({
                   </td>
                   <td className="py-2 pr-4">
                     <span className={`rounded-full px-2 py-0.5 text-xs ${statusColor(ds)}`}>
-                      {ds}
+                      {statusLabel(ds)}
                     </span>
                   </td>
                   <td className="py-2 pr-4">
@@ -434,6 +434,19 @@ function statusColor(status: DerivedStatus): string {
     case "cancelled": return "bg-muted text-muted-foreground";
     case "refunded": return "bg-destructive/10 text-destructive";
     default: return "bg-muted text-muted-foreground";
+  }
+}
+
+function statusLabel(status: DerivedStatus): string {
+  switch (status) {
+    case "paid": return "Opłacony";
+    case "deposit_paid": return "Zaliczka";
+    case "overdue": return "Zalegający";
+    case "pending": return "Oczekuje";
+    case "waitlisted": return "Lista rezerwowa";
+    case "cancelled": return "Anulowany";
+    case "refunded": return "Zwrócony";
+    default: return status;
   }
 }
 

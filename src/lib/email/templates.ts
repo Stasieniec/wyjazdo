@@ -127,7 +127,7 @@ export function newRegistrationHtml(params: {
     <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">
       Miejsca: ${params.spotsInfo}
     </p>
-    ${button(params.dashboardUrl, "Otwórz panel")}
+    ${button(params.dashboardUrl, "Zobacz listę uczestników")}
   `);
 }
 

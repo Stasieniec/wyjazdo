@@ -158,16 +158,15 @@ export default async function EventPage({
         />
       )}
 
-      {/* Gallery thumbnails */}
-      {galleryPhotos.length > 0 && (
-        <div className="mx-auto max-w-3xl">
-          <PhotoGallery photos={galleryPhotos} />
-        </div>
-      )}
-
       <div className="mx-auto max-w-3xl px-6">
-        {/* Title area — overlaps hero slightly */}
-        <div className={event.coverUrl ? "-mt-12 relative" : "pt-8"}>
+        {/* Title area — overlaps hero slightly only when no gallery sits between */}
+        <div
+          className={
+            event.coverUrl && galleryPhotos.length === 0
+              ? "-mt-12 relative"
+              : "pt-8"
+          }
+        >
           <Link
             href="/"
             className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -178,6 +177,16 @@ export default async function EventPage({
             {event.title}
           </h1>
         </div>
+      </div>
+
+      {/* Gallery thumbnails — placed after the title to avoid colliding with the organizer back-link */}
+      {galleryPhotos.length > 0 && (
+        <div className="mx-auto mt-6 max-w-3xl">
+          <PhotoGallery photos={galleryPhotos} />
+        </div>
+      )}
+
+      <div className="mx-auto max-w-3xl px-6">
 
         {/* Info grid */}
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

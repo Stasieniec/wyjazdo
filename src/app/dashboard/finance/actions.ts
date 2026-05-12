@@ -1,9 +1,7 @@
 "use server";
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { createManualPayout } from "@/lib/stripe-finance";
-import { createExpressLoginLink } from "@/lib/stripe-connect";
 import { revalidatePath } from "next/cache";
 
 export async function payoutAvailableAction(form: FormData): Promise<void> {
@@ -22,13 +20,4 @@ export async function payoutAvailableAction(form: FormData): Promise<void> {
     currency,
   });
   revalidatePath("/dashboard/finance");
-}
-
-export async function openExpressDashboardAction(): Promise<void> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("unauthorized");
-  const organizer = await getOrganizerByClerkUserId(userId);
-  if (!organizer || !organizer.stripeAccountId) throw new Error("not connected");
-  const { url } = await createExpressLoginLink(organizer.stripeAccountId);
-  redirect(url);
 }

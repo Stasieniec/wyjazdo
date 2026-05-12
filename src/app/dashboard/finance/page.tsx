@@ -8,9 +8,26 @@ import {
   getRecentPayments,
 } from "@/lib/db/queries/finance";
 import { fetchConnectBalance, fetchRecentPayouts } from "@/lib/stripe-finance";
-import { payoutAvailableAction, openExpressDashboardAction } from "./actions";
+import { payoutAvailableAction } from "./actions";
 import { Button, Card } from "@/components/ui";
 import { formatPlnFromCents } from "@/lib/format-currency";
+
+function payoutStatusLabel(status: string): string {
+  switch (status) {
+    case "paid":
+      return "Wypłacone";
+    case "pending":
+      return "Oczekuje";
+    case "in_transit":
+      return "W drodze";
+    case "canceled":
+      return "Anulowane";
+    case "failed":
+      return "Nieudane";
+    default:
+      return status;
+  }
+}
 
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString("pl-PL", {
@@ -200,7 +217,7 @@ export default async function FinancePage() {
                               ? formatPlnFromCents(p.amount)
                               : `${(p.amount / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${p.currency.toUpperCase()}`}
                           </td>
-                          <td className="px-4 py-3 capitalize text-muted-foreground">{p.status}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{payoutStatusLabel(p.status)}</td>
                           <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                             {new Date(p.created * 1000).toLocaleDateString("pl-PL", {
                               day: "numeric",
@@ -216,15 +233,24 @@ export default async function FinancePage() {
               </div>
             )}
 
-            {/* Express dashboard — primary CTA */}
-            <form action={openExpressDashboardAction} className="pt-1">
-              <Button type="submit" variant="primary" size="lg" className="w-full sm:w-auto">
+            {/* Express dashboard — primary CTA. Uses a GET route so the
+                browser opens the redirect target in a new tab; server actions
+                with target="_blank" are not honored by React 19. */}
+            <div className="pt-1">
+              <Button
+                href="/api/stripe/express-login"
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="primary"
+                size="lg"
+                className="w-full sm:w-auto"
+              >
                 Otwórz panel Stripe Express
               </Button>
               <p className="mt-2 text-xs text-muted-foreground">
                 Zaloguje Cię do Stripe w osobnej karcie — tam zarządzasz wypłatami i danymi konta.
               </p>
-            </form>
+            </div>
           </div>
         ) : null}
       </section>

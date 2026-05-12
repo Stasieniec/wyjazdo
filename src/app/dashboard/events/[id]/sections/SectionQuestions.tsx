@@ -32,6 +32,9 @@ export function SectionQuestions({ eventId, attendeeTypes, initialCustomQuestion
   const child = isParent ? types.find((t) => t.name.toLowerCase() === "dziecko") : null;
   const parent = isParent ? types.find((t) => t.name.toLowerCase() === "rodzic") : null;
   const single = !isParent && types.length >= 1 ? types[0] : null;
+  const isIndividual = !!single && single.maxQty === 1 && single.minQty === 1;
+  const hasIndividualPerAttendee =
+    isIndividual && (perTypeFields[single!.id]?.length ?? 0) > 0;
 
   return (
     <SectionShell id="pytania" title="Pytania w formularzu zapisu" action={action} state={state}>
@@ -89,15 +92,15 @@ export function SectionQuestions({ eventId, attendeeTypes, initialCustomQuestion
           </div>
         </Card>
       )}
-      {!isParent && single && (
+      {!isParent && single && (!isIndividual || hasIndividualPerAttendee) && (
         <Card>
           <h3 className="text-sm font-semibold">
-            {single.maxQty > 1 ? "Pytania o każdego uczestnika" : "Pytania o uczestnika"}
+            {isIndividual ? "Pytania o uczestnika (starszy układ)" : "Pytania o każdego uczestnika"}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {single.maxQty > 1
-              ? "Pojawią się dla każdej osoby w grupie."
-              : "Pojawią się w formularzu zapisu."}
+            {isIndividual
+              ? "Wcześniej dodane pytania per-uczestnik. Możesz je tu edytować lub przenieść do sekcji poniżej."
+              : "Pojawią się dla każdej osoby w grupie."}
           </p>
           <div className="mt-3">
             <AttendeeCustomFieldsEditor
@@ -115,9 +118,13 @@ export function SectionQuestions({ eventId, attendeeTypes, initialCustomQuestion
         </Card>
       )}
       <Card>
-        <h3 className="text-sm font-semibold">Pytania raz na całe zgłoszenie</h3>
+        <h3 className="text-sm font-semibold">
+          {isIndividual ? "Pytania w formularzu zapisu" : "Pytania raz na całe zgłoszenie"}
+        </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Pojawi się raz, niezależnie od liczby osób.
+          {isIndividual
+            ? "Pojawią się w formularzu zapisu."
+            : "Pojawi się raz, niezależnie od liczby osób."}
         </p>
         <div className="mt-3">
           <CustomQuestionsEditor

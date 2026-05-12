@@ -356,9 +356,9 @@ function SpecialCategoryWarning({ label }: { label: string }) {
   return (
     <p
       role="note"
-      className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900"
+      className="mt-2 rounded-md bg-muted/60 px-3 py-2 text-sm leading-relaxed text-muted-foreground"
     >
-      <span className="font-semibold">Uwaga RODO:</span>{" "}
+      <span className="font-medium text-foreground">Przypomnienie RODO:</span>{" "}
       {specialCategoryWarning(kind)}
     </p>
   );

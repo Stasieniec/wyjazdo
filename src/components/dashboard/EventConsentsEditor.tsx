@@ -77,16 +77,16 @@ export default function EventConsentsEditor({ initial, name, onChange }: Props) 
       {/* Read-only: platform consents */}
       <div className="mb-4 rounded-md border border-border/80 bg-muted/30 p-3">
         <p className="text-xs font-medium text-muted-foreground">
-          Zgody wymagane przez platformę (zawsze widoczne, nie można usunąć)
+          Zgody wymagane przez platformę (zawsze widoczne uczestnikom, nie można usunąć)
         </p>
         <ul className="mt-2 space-y-1 text-sm text-foreground">
           <li className="flex items-center gap-2">
-            <span className="inline-block h-4 w-4 rounded border border-primary bg-primary/10" />
+            <span aria-hidden className="text-muted-foreground">•</span>
             Akceptacja Regulaminu serwisu wyjazdo.pl
             <span className="ml-auto text-xs text-muted-foreground">wymagane</span>
           </li>
           <li className="flex items-center gap-2">
-            <span className="inline-block h-4 w-4 rounded border border-primary bg-primary/10" />
+            <span aria-hidden className="text-muted-foreground">•</span>
             Zapoznanie się z Polityką Prywatności
             <span className="ml-auto text-xs text-muted-foreground">wymagane</span>
           </li>

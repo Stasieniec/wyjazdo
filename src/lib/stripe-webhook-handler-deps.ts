@@ -12,7 +12,7 @@ import {
   unrecordProcessedWebhookEvent,
 } from "@/lib/db/queries/webhook-events";
 import { sendPaymentConfirmation, sendOrganizerNewRegistration } from "@/lib/email/send";
-import { dashboardEventUrl, publicEventUrl, participantTripUrl } from "@/lib/urls";
+import { dashboardEventParticipantsUrl, publicEventUrl, participantTripUrl } from "@/lib/urls";
 import { countTakenSpots } from "@/lib/capacity";
 import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
 import type { WebhookDeps } from "@/lib/webhook-handler";
@@ -62,7 +62,7 @@ export function buildWebhookDeps(): WebhookDeps {
             eventTitle: ctx.event.title,
             spotsInfo: `${taken} / ${ctx.event.capacity}`,
             isWaitlisted: false,
-            dashboardUrl: dashboardEventUrl(ctx.event.id),
+            dashboardUrl: dashboardEventParticipantsUrl(ctx.event.id),
           }),
         );
       }

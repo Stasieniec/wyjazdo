@@ -45,6 +45,9 @@ export function StepQuestions({ attendeeTypes, defaultRegistrationQuestions, pen
   const child = isParent ? types.find((t) => t.name.toLowerCase() === "dziecko") : null;
   const parent = isParent ? types.find((t) => t.name.toLowerCase() === "rodzic") : null;
   const single = !isParent && types.length >= 1 ? types[0] : null;
+  // Individual signup (single person, one zgłoszenie = one osoba) — only one
+  // questions section is needed; merge per-attendee + global into the global one.
+  const isIndividual = !!single && single.maxQty === 1 && single.minQty === 1;
 
   return (
     <form className="flex flex-1 flex-col" onSubmit={handleSubmit}>
@@ -73,18 +76,18 @@ export function StepQuestions({ attendeeTypes, defaultRegistrationQuestions, pen
             </div>
           </Card>
         )}
-        {!isParent && single && (
+        {!isParent && single && !isIndividual && (
           <Card>
-            <h2 className="text-base font-semibold">{single.maxQty > 1 ? "Pytania o każdego uczestnika" : "Pytania o uczestnika"}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{single.maxQty > 1 ? "Pojawią się dla każdej osoby w grupie — np. wiek, rozmiar koszulki." : "Pojawią się w formularzu zapisu — np. rozmiar koszulki, preferencje wegetariańskie."}</p>
+            <h2 className="text-base font-semibold">Pytania o każdego uczestnika</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Pojawią się dla każdej osoby w grupie — np. wiek, rozmiar koszulki.</p>
             <div className="mt-4">
               <AttendeeCustomFieldsEditor heading="" description="" value={perTypeFields[single.id] ?? []} onChange={(cf) => setPerTypeFields((prev) => ({ ...prev, [single.id]: cf } as Record<string, AttendeeCustomField[]>))} />
             </div>
           </Card>
         )}
         <Card>
-          <h2 className="text-base font-semibold">Pytania raz na całe zgłoszenie</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Pojawi się raz, niezależnie od liczby osób — np. „Skąd się dowiedziałaś?", uwagi, dane do faktury.</p>
+          <h2 className="text-base font-semibold">{isIndividual ? "Pytania w formularzu zapisu" : "Pytania raz na całe zgłoszenie"}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{isIndividual ? "Pojawią się w formularzu zapisu — np. rozmiar koszulki, preferencje wegetariańskie, „Skąd się dowiedziałaś?\"." : "Pojawi się raz, niezależnie od liczby osób — np. „Skąd się dowiedziałaś?\", uwagi, dane do faktury."}</p>
           <div className="mt-4">
             <CustomQuestionsEditor initial={regQuestions} name="customQuestions" onChange={setRegQuestions} />
           </div>

@@ -36,6 +36,11 @@ export function dashboardEventUrl(eventId: string): string {
   return `${protocol()}://${rootDomain()}/dashboard/events/${eventId}`;
 }
 
+/** Absolute URL of the organizer's dashboard event — participants tab. */
+export function dashboardEventParticipantsUrl(eventId: string): string {
+  return `${dashboardEventUrl(eventId)}?tab=uczestnicy`;
+}
+
 /** Absolute URL of a participant's trip page (unsigned — append ?t=token for auth). */
 export function participantTripUrl(participantId: string): string {
   return `${protocol()}://${rootDomain()}/my-trips/${participantId}`;
