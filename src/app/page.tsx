@@ -4,6 +4,7 @@ import { IBM_Plex_Serif } from "next/font/google";
 import { Show } from "@clerk/nextjs";
 import { WyjazdoMark } from "@/components/brand/WyjazdoMark";
 import { UserMenu } from "@/components/dashboard/UserMenu";
+import { HeroFeedbackCTA } from "@/components/landing/HeroFeedbackCTA";
 import { siteOrigin } from "@/lib/urls";
 
 const ibmPlexSerif = IBM_Plex_Serif({
@@ -41,7 +42,7 @@ export default function MarketingPage() {
 
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 border-b border-border bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3.5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
           <Link
             href="/"
             className="flex items-center gap-2 font-bold tracking-tight text-primary"
@@ -50,10 +51,10 @@ export default function MarketingPage() {
             wyjazdo
           </Link>
           <Show when="signed-out">
-            <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-2 text-sm sm:gap-3">
               <Link
                 href="/pomoc"
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                className="hidden text-muted-foreground transition-colors hover:text-foreground sm:inline"
               >
                 Pomoc
               </Link>
@@ -65,25 +66,27 @@ export default function MarketingPage() {
               </Link>
               <Link
                 href="/sign-up"
-                className="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_6px_16px_rgba(30,58,95,0.25)] active:scale-[0.97]"
+                className="rounded-lg bg-primary px-3 py-1.5 font-semibold text-white transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_6px_16px_rgba(30,58,95,0.25)] active:scale-[0.97] sm:px-4 sm:py-2"
               >
-                Wypróbuj za darmo
+                Wypróbuj
+                <span className="hidden sm:inline">&nbsp;za darmo</span>
               </Link>
             </div>
           </Show>
           <Show when="signed-in">
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-2 text-sm sm:gap-4">
               <Link
                 href="/pomoc"
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                className="hidden text-muted-foreground transition-colors hover:text-foreground sm:inline"
               >
                 Pomoc
               </Link>
               <Link
                 href="/dashboard"
-                className="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_6px_16px_rgba(30,58,95,0.25)] active:scale-[0.97]"
+                className="whitespace-nowrap rounded-lg bg-primary px-3 py-1.5 font-semibold text-white transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_6px_16px_rgba(30,58,95,0.25)] active:scale-[0.97] sm:px-4 sm:py-2"
               >
-                Panel organizatora
+                <span className="sm:hidden">Panel</span>
+                <span className="hidden sm:inline">Panel organizatora</span>
               </Link>
               <UserMenu />
             </div>
@@ -122,7 +125,7 @@ export default function MarketingPage() {
               className="mb-4 h-10 opacity-80"
             />
 
-            <h1 className="font-[family-name:var(--font-ibm-plex-serif)] text-[2.75rem] font-medium leading-[1.02] tracking-[-0.02em] text-primary sm:text-6xl lg:text-[5.25rem]">
+            <h1 className="font-[family-name:var(--font-ibm-plex-serif)] text-[2.25rem] font-medium leading-[1.05] tracking-[-0.02em] text-primary sm:text-6xl sm:leading-[1.02] lg:text-[5.25rem]">
               Mniej chaosu,
               <br />
               <span className="text-accent">więcej czasu</span>
@@ -135,17 +138,12 @@ export default function MarketingPage() {
               z&nbsp;uczestniczkami — bez arkuszy i&nbsp;stresu.
             </p>
 
-            <div className="mt-9 flex flex-wrap items-center gap-3">
+            <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <HeroFeedbackCTA />
               <Show when="signed-out">
                 <Link
-                  href="/sign-up"
-                  className="inline-flex items-center rounded-xl bg-accent px-7 py-4 text-base font-semibold text-white shadow-[--shadow-warm] transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-[0_8px_24px_rgba(232,104,58,0.4)] active:translate-y-0 active:scale-[0.98]"
-                >
-                  Zobacz, jak to działa →
-                </Link>
-                <Link
                   href="/sign-in"
-                  className="inline-flex items-center rounded-xl border border-primary/15 bg-white px-7 py-4 text-base font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white hover:shadow-[0_8px_24px_rgba(30,58,95,0.12)] active:translate-y-0 active:scale-[0.98]"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-primary/15 bg-white px-7 py-4 text-base font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white hover:shadow-[0_8px_24px_rgba(30,58,95,0.12)] active:translate-y-0 active:scale-[0.98] sm:w-auto sm:justify-start"
                 >
                   Zaloguj się
                 </Link>
@@ -153,13 +151,7 @@ export default function MarketingPage() {
               <Show when="signed-in">
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center rounded-xl bg-accent px-7 py-4 text-base font-semibold text-white shadow-[--shadow-warm] transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-[0_8px_24px_rgba(232,104,58,0.4)] active:translate-y-0 active:scale-[0.98]"
-                >
-                  Zobacz, jak to działa →
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center rounded-xl border border-primary/15 bg-white px-7 py-4 text-base font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white hover:shadow-[0_8px_24px_rgba(30,58,95,0.12)] active:translate-y-0 active:scale-[0.98]"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-primary/15 bg-white px-7 py-4 text-base font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white hover:shadow-[0_8px_24px_rgba(30,58,95,0.12)] active:translate-y-0 active:scale-[0.98] sm:w-auto sm:justify-start"
                 >
                   Przejdź do panelu
                 </Link>
@@ -301,7 +293,7 @@ export default function MarketingPage() {
 
         {/* Bottom feature strip */}
         <div className="relative bg-white px-6 py-7">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-around gap-y-3 gap-x-8 text-sm text-foreground">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-y-3 gap-x-6 text-sm text-foreground sm:justify-around sm:gap-x-8">
             <FeaturePill
               icon={
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
