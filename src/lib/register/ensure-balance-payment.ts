@@ -7,6 +7,10 @@ import {
 } from "@/lib/db/queries/payments";
 import type { Participant, Event, Organizer } from "@/lib/db/schema";
 import { computeRegistrationAmountsCents } from "./compute-registration-amounts";
+import {
+  signParticipantToken,
+  getParticipantAuthSecret,
+} from "@/lib/participant-auth";
 
 const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -77,6 +81,9 @@ export async function ensureBalancePayment(params: {
     });
   }
 
+  const token = await signParticipantToken(participant.id, getParticipantAuthSecret());
+  const tripUrl = `${origin}/my-trips/${participant.id}?t=${encodeURIComponent(token)}`;
+
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
@@ -97,8 +104,8 @@ export async function ensureBalancePayment(params: {
         application_fee_amount: 0,
         metadata: { payment_id: paymentId, participant_id: participant.id },
       },
-      success_url: `${origin}/my-trips/${participant.id}`,
-      cancel_url: `${origin}/my-trips/${participant.id}`,
+      success_url: tripUrl,
+      cancel_url: tripUrl,
       expires_at: Math.floor((now + PENDING_TTL_MS) / 1000),
     },
     { stripeAccount: organizer.stripeAccountId },
