@@ -116,19 +116,23 @@ describe("recordPaymentSuccess", () => {
   });
 });
 
-describe("recordPaymentSuccess retries (review findings)", () => {
-  it("a retry after a crash between recording and flagging still flags the overbooking", async () => {
+describe("overbooking flag (review findings)", () => {
+  it("does not flag a guest who already held a place when they pay while the event is over capacity", async () => {
     const { db, ev } = await setup(2);
-    const late = await seedRegistration(db, ev.id, { seats: 2, payments: [{ status: "expired" }] });
-    await seedRegistration(db, ev.id, { seats: 2, payments: [{ status: "succeeded" }] });
-    // First delivery: the row was updated, then the worker died before flagging.
-    testDb().d1.sqlite
-      .prepare("UPDATE payments SET status = 'succeeded', stripe_payment_intent_id = 'pi_1' WHERE id = ?")
-      .run(late.payments[0].id);
-    await success(late.payments[0].id!, "pi_1");
-    expect(rows("SELECT attention_reason FROM participants WHERE id = ?", late.participant.id)).toEqual([
-      { attention_reason: "overbooked" },
+    const a = await seedRegistration(db, ev.id, {
+      seats: 2,
+      payments: [
+        { kind: "deposit", status: "succeeded" },
+        { kind: "balance", status: "pending", amountCents: 196_000 },
+      ],
+    });
+    // A late payer already pushed the event over capacity.
+    await seedRegistration(db, ev.id, { seats: 1, payments: [{ status: "succeeded" }] });
+    await success(a.payments[1].id!, "pi_bal", 196_000);
+    expect(rows("SELECT attention_reason FROM participants WHERE id = ?", a.participant.id)).toEqual([
+      { attention_reason: null },
     ]);
+    expect(email.sendOrganizerAttention).not.toHaveBeenCalled();
   });
 });
 

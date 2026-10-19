@@ -1,8 +1,6 @@
-import { eq } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db/client";
 import {
   getPaymentById,
-  markPaymentSucceeded,
+  recordSuccessAtomically,
   expirePendingPaymentsForParticipant,
   listPaymentsForParticipant,
 } from "@/lib/db/queries/payments";
@@ -13,6 +11,7 @@ import {
 } from "@/lib/db/queries/participants";
 import type { Organizer, Participant } from "@/lib/db/schema";
 import { countTakenSpots } from "@/lib/capacity";
+import { holdsPlace } from "@/lib/participant-status";
 import {
   sendOrganizerAttention,
   sendOrganizerNewRegistration,
@@ -44,18 +43,27 @@ export async function recordPaymentSuccess(params: {
   amountCents: number;
   paidAt: number;
 }): Promise<boolean> {
-  const transitioned = await markPaymentSucceeded({
-    paymentId: params.paymentId,
+  const before = await getPaymentById(params.paymentId);
+  if (!before) return false;
+  const ctxBefore = await getParticipantWithContext(before.participantId);
+  if (!ctxBefore) return false;
+
+  const now = Date.now();
+  const paymentsBefore = await listPaymentsForParticipant(before.participantId);
+  const transitioned = await recordSuccessAtomically({
+    paymentId: before.id,
+    participantId: before.participantId,
+    eventId: ctxBefore.event.id,
+    capacity: ctxBefore.event.capacity,
     stripePaymentIntentId: params.providerPaymentId,
     amountCents: params.amountCents,
-    applicationFeeCents: null,
     paidAt: params.paidAt,
+    heldPlaceBefore: holdsPlace(ctxBefore.participant, paymentsBefore, now),
+    nowMs: now,
   });
 
-  const payment = await getPaymentById(params.paymentId);
-  if (!payment) return transitioned;
-  const ctx = await getParticipantWithContext(payment.participantId);
-  if (!ctx) return transitioned;
+  const payment = (await getPaymentById(params.paymentId)) ?? before;
+  const ctx = (await getParticipantWithContext(payment.participantId)) ?? ctxBefore;
 
   if (!transitioned) {
     const isSecondCharge =
@@ -70,18 +78,18 @@ export async function recordPaymentSuccess(params: {
         incoming: params.providerPaymentId,
       });
       await flag(ctx, "duplicate_payment", params.amountCents, params.paidAt);
-      return false;
     }
-    // A redelivery of a success already recorded. If an earlier attempt died
-    // after recording but before the follow-up below, finish it now. Flags
-    // are only raised if none is set, so a plain duplicate changes nothing.
-    if (payment.status === "succeeded") await applySuccessConsequences(ctx, payment, params.paidAt, true);
     return false;
   }
 
-  const outcome = await applySuccessConsequences(ctx, payment, params.paidAt, false);
-  if (outcome.cancelled) return true;
-  const taken = outcome.taken;
+  // Flags raised by this very payment (same stamp) get an email.
+  const reason = ctx.participant.attentionReason;
+  if (reason && ctx.participant.attentionAt === now) {
+    await notifyAttention(ctx, reason, payment.amountCents);
+  }
+  if (ctx.participant.lifecycleStatus === "cancelled") return true;
+
+  const taken = await countTakenSpots(ctx.event.id, Date.now());
 
   const token = await signParticipantToken(payment.participantId, getParticipantAuthSecret());
   const myTripsUrl = `${participantTripUrl(payment.participantId)}?t=${encodeURIComponent(token)}`;
@@ -117,47 +125,14 @@ export async function recordPaymentSuccess(params: {
   return true;
 }
 
-/**
- * State that follows from a recorded success: a cancelled participant is
- * flagged, a waitlisted one becomes active, an overbooked event is flagged.
- * Safe to run again on a retry.
- */
-async function applySuccessConsequences(
-  ctx: NonNullable<Awaited<ReturnType<typeof getParticipantWithContext>>>,
-  payment: { amountCents: number },
-  paidAt: number,
-  isRetry: boolean,
-): Promise<{ cancelled: boolean; taken: number }> {
-  const alreadyFlagged = isRetry && ctx.participant.attentionReason != null;
-  if (ctx.participant.lifecycleStatus === "cancelled") {
-    if (!alreadyFlagged) await flag(ctx, "paid_while_cancelled", payment.amountCents, paidAt);
-    return { cancelled: true, taken: 0 };
-  }
+type FlagContext = { participant: Participant; event: { id: string; title: string }; organizer: Organizer };
 
-  if (ctx.participant.lifecycleStatus === "waitlisted") {
-    // Only reachable through a race with an undone promotion. They paid, so
-    // they are in; the overbooking check below catches a full event.
-    const db = getDb();
-    await db
-      .update(schema.participants)
-      .set({ lifecycleStatus: "active", updatedAt: Date.now() })
-      .where(eq(schema.participants.id, ctx.participant.id));
-  }
-
-  const taken = await countTakenSpots(ctx.event.id, Date.now());
-  if (taken > ctx.event.capacity && !alreadyFlagged) {
-    await flag(ctx, "overbooked", payment.amountCents, paidAt);
-  }
-  return { cancelled: false, taken };
+async function flag(ctx: FlagContext, reason: AttentionReason, amountCents: number, nowMs: number) {
+  await setParticipantAttention(ctx.participant.id, reason, nowMs);
+  await notifyAttention(ctx, reason, amountCents);
 }
 
-async function flag(
-  ctx: { participant: Participant; event: { id: string; title: string }; organizer: Organizer },
-  reason: AttentionReason,
-  amountCents: number,
-  nowMs: number,
-) {
-  await setParticipantAttention(ctx.participant.id, reason, nowMs);
+async function notifyAttention(ctx: FlagContext, reason: AttentionReason, amountCents: number) {
   if (!ctx.organizer.contactEmail) return;
   await sendOrganizerAttention({
     to: ctx.organizer.contactEmail,

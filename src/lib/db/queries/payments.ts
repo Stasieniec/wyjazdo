@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import type { NewPayment, Payment } from "@/lib/db/schema";
 import { takenSeatsSql } from "@/lib/capacity";
-import { changesOf, conditionalInsertSql } from "@/lib/db/conditional-insert";
+import { changesOf, conditionalInsertSql, runAtomically } from "@/lib/db/conditional-insert";
 
 export async function insertPayment(row: NewPayment): Promise<void> {
   const db = getDb();
@@ -63,38 +63,52 @@ export async function setPaymentStripeSession(paymentId: string, sessionId: stri
 }
 
 /**
- * Records a successful payment. A success wins over pending, failed and
- * expired: money was taken, so the row must say so even if a decline or the
- * expiry cron got there first. Refunded rows are left alone.
- * Returns true only on the transition, so callers send emails once.
+ * Records a success and everything that follows from it in one batch, so a
+ * crash cannot leave the money recorded without the consequences:
+ * - the payment becomes succeeded (wins over pending/failed/expired);
+ * - a cancelled participant is flagged 'paid_while_cancelled';
+ * - a waitlisted participant becomes active;
+ * - if the participant did not hold a place before this payment
+ *   (heldPlaceBefore false) and the event is now over capacity, they are
+ *   flagged 'overbooked'. Guests who already held a place are never flagged.
+ * Every follow-up statement only fires if statement 1 changed this row in
+ * this batch (matched by the exact updated_at stamp and payment intent).
+ * Returns whether the payment row transitioned.
  */
-export async function markPaymentSucceeded(params: {
+export async function recordSuccessAtomically(params: {
   paymentId: string;
+  participantId: string;
+  eventId: string;
+  capacity: number;
   stripePaymentIntentId: string;
   amountCents: number;
-  applicationFeeCents: number | null;
   paidAt: number;
+  heldPlaceBefore: boolean;
+  nowMs: number;
 }): Promise<boolean> {
   const db = getDb();
-  const updated = await db
-    .update(schema.payments)
-    .set({
-      status: "succeeded",
-      stripePaymentIntentId: params.stripePaymentIntentId,
-      amountCents: params.amountCents,
-      stripeApplicationFee: params.applicationFeeCents,
-      paidAt: params.paidAt,
-      expiresAt: null,
-      updatedAt: Date.now(),
-    })
-    .where(
-      and(
-        eq(schema.payments.id, params.paymentId),
-        inArray(schema.payments.status, ["pending", "failed", "expired"]),
-      ),
-    )
-    .returning({ id: schema.payments.id });
-  return updated.length > 0;
+  const stamp = params.nowMs;
+  const justPaid = sql`EXISTS (SELECT 1 FROM payments jp WHERE jp.id = ${params.paymentId}
+    AND jp.status = 'succeeded' AND jp.updated_at = ${stamp}
+    AND jp.stripe_payment_intent_id IS ${params.stripePaymentIntentId})`;
+  const statements = [
+    sql`UPDATE payments SET status = 'succeeded', stripe_payment_intent_id = ${params.stripePaymentIntentId},
+        amount_cents = ${params.amountCents}, stripe_application_fee = NULL, paid_at = ${params.paidAt},
+        expires_at = NULL, updated_at = ${stamp}
+      WHERE id = ${params.paymentId} AND status IN ('pending', 'failed', 'expired')`,
+    sql`UPDATE participants SET attention_reason = 'paid_while_cancelled', attention_at = ${stamp}
+      WHERE id = ${params.participantId} AND lifecycle_status = 'cancelled' AND ${justPaid}`,
+    sql`UPDATE participants SET lifecycle_status = 'active', updated_at = ${stamp}
+      WHERE id = ${params.participantId} AND lifecycle_status = 'waitlisted' AND ${justPaid}`,
+  ];
+  if (!params.heldPlaceBefore) {
+    statements.push(sql`UPDATE participants SET attention_reason = 'overbooked', attention_at = ${stamp}
+      WHERE id = ${params.participantId} AND lifecycle_status = 'active' AND attention_reason IS NULL
+        AND ${justPaid}
+        AND ${takenSeatsSql(params.eventId, params.nowMs)} > ${params.capacity}`);
+  }
+  const results = await runAtomically(db, statements);
+  return changesOf(results[0]) > 0;
 }
 
 /**

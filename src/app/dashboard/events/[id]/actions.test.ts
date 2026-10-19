@@ -25,7 +25,10 @@ const checkout = vi.hoisted(() => ({
   getCheckoutSessionState: vi.fn(async () => ({ state: "gone" as const })),
   closeCheckoutSession: vi.fn(async (): Promise<"closed" | "complete"> => "closed"),
 }));
-vi.mock("@/lib/stripe-checkout", () => checkout);
+vi.mock("@/lib/stripe-checkout", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/stripe-checkout")>()),
+  ...checkout,
+}));
 
 import { resetTestDb, rows, testDb } from "@/test/db-mock";
 import { seedEvent, seedOrganizer, seedRegistration } from "@/test/fixtures";

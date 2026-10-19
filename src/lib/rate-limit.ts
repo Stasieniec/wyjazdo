@@ -18,14 +18,14 @@ const hits = new Map<string, number[]>();
  * Returns true if the request should be allowed, false if rate-limited.
  * @param key — typically IP address or `ip:email` combo
  */
-export function checkRateLimit(key: string): boolean {
+export function checkRateLimit(key: string, max: number = maxPerWindow): boolean {
   const now = Date.now();
   const timestamps = hits.get(key) ?? [];
 
   // Purge entries outside the window
   const recent = timestamps.filter((t) => now - t < windowMs);
 
-  if (recent.length >= maxPerWindow) {
+  if (recent.length >= max) {
     hits.set(key, recent);
     return false;
   }

@@ -52,6 +52,7 @@ export default async function MyTripsIndex() {
       kind: p.kind as PaymentLike["kind"],
       status: p.status as PaymentLike["status"],
       dueAt: p.dueAt,
+      expiresAt: p.expiresAt,
     });
     byPid.set(p.participantId, list);
   }

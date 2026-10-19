@@ -4,7 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "unknown";
-  if (!checkRateLimit(`register:${ip.split(",")[0].trim()}`)) {
+  if (!checkRateLimit(`register:${ip.split(",")[0].trim()}`, 20)) {
     return NextResponse.json(
       { errors: { _form: "Zbyt wiele prób. Spróbuj ponownie za minutę." } },
       { status: 429 },

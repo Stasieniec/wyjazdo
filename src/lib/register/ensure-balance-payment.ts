@@ -15,8 +15,9 @@ import {
   closeCheckoutSession,
   createCheckoutSession,
   getCheckoutSessionState,
+  sessionBlocksNewCheckout,
 } from "@/lib/stripe-checkout";
-import { CheckoutBlockedError } from "./first-payment";
+import { CheckoutBlockedError, STALE_CREATE_MS } from "./first-payment";
 
 const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -66,13 +67,14 @@ export async function ensureBalancePayment(params: {
   const expiresAt = now + PENDING_TTL_MS;
   let row = reusableBalanceRow(payments);
   // Pending with no session yet: another request is creating its checkout.
-  if (row?.status === "pending" && !row.stripeSessionId) {
+  // A row left like that by a request that died is taken over after a while.
+  if (row?.status === "pending" && !row.stripeSessionId && now - row.updatedAt < STALE_CREATE_MS) {
     throw new CheckoutBlockedError("payment_in_progress");
   }
 
   if (row?.status === "pending" && row.stripeSessionId) {
     const state = await getCheckoutSessionState(accountId, row.stripeSessionId);
-    if (state.state === "complete") throw new CheckoutBlockedError("payment_in_progress");
+    if (sessionBlocksNewCheckout(state, row.status)) throw new CheckoutBlockedError("payment_in_progress");
     if (state.state === "open" && state.amountCents === owed && row.amountCents === owed) {
       return state.url;
     }
@@ -84,7 +86,7 @@ export async function ensureBalancePayment(params: {
     // Expired or failed row: its session should be dead, but make sure a
     // late completion is not about to land before reusing the row.
     const state = await getCheckoutSessionState(accountId, row.stripeSessionId);
-    if (state.state === "complete") throw new CheckoutBlockedError("payment_in_progress");
+    if (sessionBlocksNewCheckout(state, row.status)) throw new CheckoutBlockedError("payment_in_progress");
     if (state.state === "open") {
       const closed = await closeCheckoutSession(accountId, row.stripeSessionId);
       if (closed === "complete") throw new CheckoutBlockedError("payment_in_progress");

@@ -13,7 +13,10 @@ export async function registerAction(
 ): Promise<RegisterFormState> {
   const h = await headers();
   const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (!checkRateLimit(`register:${ip}`)) {
+  // Per IP and address, plus a looser per-IP cap so a shared office or
+  // family connection can still register several people.
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!checkRateLimit(`register:${ip}:${email}`) || !checkRateLimit(`register:${ip}`, 20)) {
     return { errors: { _form: "Zbyt wiele prób. Spróbuj ponownie za minutę." } };
   }
   const result = await processRegistration(formData);

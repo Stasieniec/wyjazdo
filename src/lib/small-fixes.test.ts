@@ -74,12 +74,27 @@ describe("rate limits", () => {
     expect(sendMagic).toHaveBeenCalledWith(expect.objectContaining({ to: "target@example.com" }));
   });
 
-  it("limits the registration server action per IP", async () => {
+  it("limits the registration server action per IP and address", async () => {
     headerMap.ip = "2.2.2.2";
+    const withEmail = (e: string) => {
+      const f = new FormData();
+      f.set("email", e);
+      return f;
+    };
     const out = [];
-    for (let i = 0; i < 6; i++) out.push(await registerAction(null, new FormData()));
+    for (let i = 0; i < 6; i++) out.push(await registerAction(null, withEmail("same@example.com")));
     expect(processRegistration).toHaveBeenCalledTimes(5);
     expect(out[5]).toEqual({ errors: { _form: "Zbyt wiele prób. Spróbuj ponownie za minutę." } });
+  });
+
+  it("lets one shared connection register several different people", async () => {
+    headerMap.ip = "3.3.3.3";
+    for (let i = 0; i < 10; i++) {
+      const f = new FormData();
+      f.set("email", `guest${i}@example.com`);
+      await registerAction(null, f);
+    }
+    expect(processRegistration).toHaveBeenCalledTimes(10);
   });
 });
 
@@ -89,7 +104,7 @@ describe("Połącz Stripe double click", () => {
     const org = await seedOrganizer(db, { stripeAccountId: null });
     await createConnectAccountAndLink({ organizerId: org.id, organizerEmail: null, returnUrl: "r", refreshUrl: "f" });
     expect(stripe.accountsCreate).toHaveBeenCalledWith(expect.anything(), {
-      idempotencyKey: `connect-account-${org.id}`,
+      idempotencyKey: `connect-account-${org.id}-`,
     });
 
     // A second click whose Stripe call returned a different id must not overwrite it.

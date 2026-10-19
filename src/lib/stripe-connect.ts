@@ -29,7 +29,9 @@ export async function createConnectAccountAndLink(params: {
       settings: { payouts: { schedule: { interval: "manual" } } },
       metadata: { organizer_id: params.organizerId },
     },
-    { idempotencyKey: `connect-account-${params.organizerId}` },
+    // The email is part of the key: if a first attempt failed on a bad email,
+    // a retry with a corrected one is a new request, not a replay of the error.
+    { idempotencyKey: `connect-account-${params.organizerId}-${params.organizerEmail ?? ""}` },
   );
 
   // Conditional write: if another request already stored an account, use it.

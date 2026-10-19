@@ -49,8 +49,23 @@ export async function createCheckoutSession(params: {
 
 export type ExistingSessionState =
   | { state: "open"; url: string; amountCents: number | null }
-  | { state: "complete" }
+  /** paid is false for a delayed-notification payment still processing or failed. */
+  | { state: "complete"; paid: boolean }
   | { state: "gone" };
+
+/**
+ * Whether an existing session forbids creating a new one for the same row.
+ * A completed, paid session does (its webhook is on the way), and so does a
+ * completed session whose delayed payment is still processing (row pending).
+ * A completed session whose delayed payment failed (row failed) does not:
+ * Stripe keeps reporting it as complete, but nothing will be charged.
+ */
+export function sessionBlocksNewCheckout(
+  state: ExistingSessionState,
+  rowStatus: "pending" | "succeeded" | "expired" | "failed" | "refunded",
+): boolean {
+  return state.state === "complete" && (state.paid || rowStatus === "pending");
+}
 
 export async function getCheckoutSessionState(
   stripeAccountId: string,
@@ -60,7 +75,7 @@ export async function getCheckoutSessionState(
   const s = await stripe.checkout.sessions.retrieve(sessionId, undefined, {
     stripeAccount: stripeAccountId,
   });
-  if (s.status === "complete") return { state: "complete" };
+  if (s.status === "complete") return { state: "complete", paid: s.payment_status !== "unpaid" };
   if (s.status === "open" && s.url) return { state: "open", url: s.url, amountCents: s.amount_total };
   return { state: "gone" };
 }

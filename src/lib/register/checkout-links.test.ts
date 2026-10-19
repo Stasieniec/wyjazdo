@@ -17,7 +17,10 @@ const checkout = vi.hoisted(() => ({
   getCheckoutSessionState: vi.fn(async (): Promise<State> => ({ state: "gone" })),
   closeCheckoutSession: vi.fn(async (): Promise<"closed" | "complete"> => "closed"),
 }));
-vi.mock("@/lib/stripe-checkout", () => checkout);
+vi.mock("@/lib/stripe-checkout", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/stripe-checkout")>()),
+  ...checkout,
+}));
 
 import { resetTestDb, rows, testDb } from "@/test/db-mock";
 import { seedEvent, seedOrganizer, seedRegistration, DAY } from "@/test/fixtures";
@@ -249,5 +252,55 @@ describe("concurrent checkout requests (review findings)", () => {
     const { markPendingWithoutSessionFailed } = await import("@/lib/db/queries/payments");
     await markPendingWithoutSessionFailed(r.payments[0].id!);
     expect(rows("SELECT status FROM payments")).toEqual([{ status: "pending" }]);
+  });
+});
+
+describe("retry after a failed delayed payment (review findings)", () => {
+  it("a balance whose async payment failed can be paid again", async () => {
+    const { db, org, ev } = await setup();
+    const r = await seedRegistration(db, ev.id, {
+      payments: [
+        { kind: "deposit", status: "succeeded", amountCents: 50_000 },
+        { kind: "balance", status: "failed", amountCents: 98_000, stripeSessionId: "cs_failed" },
+      ],
+    });
+    // Stripe reports an async-failed session as complete but unpaid.
+    checkout.getCheckoutSessionState.mockResolvedValueOnce({ state: "complete", paid: false } as never);
+    const url = await ensureBalancePayment({
+      participant: await fullParticipant(r.participant),
+      event: ev,
+      organizer: org,
+      origin: "https://w",
+    });
+    expect(url).toContain("/new/");
+  });
+
+  it("a first payment whose async payment failed can be paid again", async () => {
+    const { db, org, ev } = await setup();
+    const r = await seedRegistration(db, ev.id, {
+      payments: [{ status: "failed", stripeSessionId: "cs_failed" }],
+    });
+    checkout.getCheckoutSessionState.mockResolvedValueOnce({ state: "complete", paid: false } as never);
+    const url = await open(await fullParticipant(r.participant), ev, org, true);
+    expect(url).toContain("/new/");
+  });
+});
+
+describe("a request that died mid-create", () => {
+  it("blocks only briefly: a pending balance row without a session is taken over after a while", async () => {
+    const { db, org, ev } = await setup();
+    const r = await seedRegistration(db, ev.id, {
+      payments: [
+        { kind: "deposit", status: "succeeded", amountCents: 50_000 },
+        { kind: "balance", status: "pending", amountCents: 98_000, stripeSessionId: null, updatedAt: Date.now() - 10 * 60_000 },
+      ],
+    });
+    const url = await ensureBalancePayment({
+      participant: await fullParticipant(r.participant),
+      event: ev,
+      organizer: org,
+      origin: "https://w",
+    });
+    expect(url).toContain("/new/");
   });
 });

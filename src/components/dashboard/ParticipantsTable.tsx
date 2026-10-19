@@ -249,7 +249,7 @@ export default function ParticipantsTable({
                       )}
 
                       {/* Cancel — any non-terminal status */}
-                      {ds !== "cancelled" && ds !== "refunded" && (
+                      {(unpaidActive || (ds !== "cancelled" && ds !== "refunded")) && (
                         <button
                           type="button"
                           onClick={() =>
