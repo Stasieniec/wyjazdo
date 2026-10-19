@@ -2,7 +2,7 @@ import { newId } from "@/lib/ids";
 import {
   insertBalancePaymentIfAbsent,
   listPaymentsForParticipant,
-  markPaymentFailedIfPending,
+  markPendingWithoutSessionFailed,
   reopenPayment,
   setPaymentStripeSession,
 } from "@/lib/db/queries/payments";
@@ -65,6 +65,10 @@ export async function ensureBalancePayment(params: {
   const accountId = organizer.stripeAccountId;
   const expiresAt = now + PENDING_TTL_MS;
   let row = reusableBalanceRow(payments);
+  // Pending with no session yet: another request is creating its checkout.
+  if (row?.status === "pending" && !row.stripeSessionId) {
+    throw new CheckoutBlockedError("payment_in_progress");
+  }
 
   if (row?.status === "pending" && row.stripeSessionId) {
     const state = await getCheckoutSessionState(accountId, row.stripeSessionId);
@@ -94,6 +98,7 @@ export async function ensureBalancePayment(params: {
       amountCents: owed,
       expiresAt,
       allowedStatuses: ["pending", "expired", "failed"],
+      expectedSessionId: row.stripeSessionId,
     });
     if (!ok) throw new CheckoutBlockedError("payment_in_progress");
   } else {
@@ -138,7 +143,7 @@ export async function ensureBalancePayment(params: {
     await setPaymentStripeSession(row.id, session.id);
     return session.url;
   } catch (err) {
-    await markPaymentFailedIfPending(row.id, null).catch(() => {});
+    await markPendingWithoutSessionFailed(row.id).catch(() => {});
     throw err;
   }
 }

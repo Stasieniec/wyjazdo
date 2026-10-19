@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import type { NewPayment, Payment } from "@/lib/db/schema";
 import { takenSeatsSql } from "@/lib/capacity";
@@ -116,6 +116,25 @@ export async function markPaymentExpiredIfPending(paymentId: string, sessionId: 
     );
 }
 
+/**
+ * Releases a row whose checkout could not be created. Only touches a row that
+ * still has no session, so a concurrent request that already attached a live
+ * checkout to the row is left alone.
+ */
+export async function markPendingWithoutSessionFailed(paymentId: string): Promise<void> {
+  const db = getDb();
+  await db
+    .update(schema.payments)
+    .set({ status: "failed", updatedAt: Date.now() })
+    .where(
+      and(
+        eq(schema.payments.id, paymentId),
+        eq(schema.payments.status, "pending"),
+        isNull(schema.payments.stripeSessionId),
+      ),
+    );
+}
+
 export async function markPaymentFailedIfPending(paymentId: string, sessionId: string | null): Promise<void> {
   const db = getDb();
   await db
@@ -145,7 +164,8 @@ export async function recordPaymentRefund(params: {
   await db
     .update(schema.payments)
     .set({
-      refundedAmountCents: params.amountRefundedCents,
+      // Cumulative amount; events can arrive out of order, so never go down.
+      refundedAmountCents: sql`MAX(${schema.payments.refundedAmountCents}, ${params.amountRefundedCents})`,
       ...(params.fullyRefunded ? { status: "refunded" as const } : {}),
       updatedAt: Date.now(),
     })
@@ -185,6 +205,14 @@ export async function reopenPayment(params: {
   amountCents: number;
   expiresAt: number;
   allowedStatuses: Payment["status"][];
+  /**
+   * The session id the caller saw on the row. The update only happens if the
+   * row still has it, so two concurrent requests cannot both re-open the row
+   * and each create a checkout.
+   */
+  expectedSessionId: string | null;
+  /** If set, the row must still be payable (not expired) at this time. */
+  liveAt?: number;
 }): Promise<boolean> {
   const db = getDb();
   const updated = await db
@@ -201,6 +229,12 @@ export async function reopenPayment(params: {
       and(
         eq(schema.payments.id, params.paymentId),
         inArray(schema.payments.status, params.allowedStatuses),
+        params.expectedSessionId == null
+          ? isNull(schema.payments.stripeSessionId)
+          : eq(schema.payments.stripeSessionId, params.expectedSessionId),
+        params.liveAt == null
+          ? sql`1 = 1`
+          : sql`(${schema.payments.expiresAt} IS NULL OR ${schema.payments.expiresAt} > ${params.liveAt})`,
       ),
     )
     .returning({ id: schema.payments.id });
@@ -222,6 +256,8 @@ export async function reopenFirstPaymentIfRoom(params: {
   amountCents: number;
   expiresAt: number;
   nowMs: number;
+  /** Session id the caller saw; guards against two concurrent re-opens. */
+  expectedSessionId: string | null;
 }): Promise<boolean> {
   const db = getDb();
   const { participantId, nowMs } = params;
@@ -232,6 +268,7 @@ export async function reopenFirstPaymentIfRoom(params: {
       stripe_session_id = NULL, updated_at = ${nowMs}
     WHERE id = ${params.paymentId}
       AND participant_id = ${participantId}
+      AND stripe_session_id IS ${params.expectedSessionId}
       AND (status IN ('expired', 'failed')
         OR (status = 'pending' AND expires_at IS NOT NULL AND expires_at <= ${nowMs}))
       AND EXISTS (SELECT 1 FROM participants WHERE id = ${participantId} AND lifecycle_status = 'active')

@@ -116,6 +116,22 @@ describe("recordPaymentSuccess", () => {
   });
 });
 
+describe("recordPaymentSuccess retries (review findings)", () => {
+  it("a retry after a crash between recording and flagging still flags the overbooking", async () => {
+    const { db, ev } = await setup(2);
+    const late = await seedRegistration(db, ev.id, { seats: 2, payments: [{ status: "expired" }] });
+    await seedRegistration(db, ev.id, { seats: 2, payments: [{ status: "succeeded" }] });
+    // First delivery: the row was updated, then the worker died before flagging.
+    testDb().d1.sqlite
+      .prepare("UPDATE payments SET status = 'succeeded', stripe_payment_intent_id = 'pi_1' WHERE id = ?")
+      .run(late.payments[0].id);
+    await success(late.payments[0].id!, "pi_1");
+    expect(rows("SELECT attention_reason FROM participants WHERE id = ?", late.participant.id)).toEqual([
+      { attention_reason: "overbooked" },
+    ]);
+  });
+});
+
 describe("cancelRegistration", () => {
   it("closes the open checkout, releases the place, and a late payment is flagged", async () => {
     const { db, ev } = await setup();
@@ -136,6 +152,16 @@ describe("cancelRegistration", () => {
 });
 
 describe("refunds", () => {
+  it("refund events arriving out of order never lower the recorded refund", async () => {
+    const { db, ev } = await setup();
+    await seedRegistration(db, ev.id, {
+      payments: [{ status: "succeeded", amountCents: 100_000, stripePaymentIntentId: "pi_x" }],
+    });
+    await recordPaymentRefund({ paymentIntentId: "pi_x", amountRefundedCents: 60_000, fullyRefunded: false });
+    await recordPaymentRefund({ paymentIntentId: "pi_x", amountRefundedCents: 20_000, fullyRefunded: false });
+    expect(rows("SELECT refunded_amount_cents AS r FROM payments")).toEqual([{ r: 60_000 }]);
+  });
+
   it("a partial refund keeps the payment succeeded and the finance page counts only what was kept", async () => {
     const { db, org, ev } = await setup();
     await seedRegistration(db, ev.id, {

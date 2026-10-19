@@ -21,7 +21,7 @@ import {
   normalizeEmail,
   registerActiveParticipant,
 } from "@/lib/db/queries/participants";
-import { markPaymentFailedIfPending, setPaymentStripeSession } from "@/lib/db/queries/payments";
+import { markPendingWithoutSessionFailed, setPaymentStripeSession } from "@/lib/db/queries/payments";
 import { newId } from "@/lib/ids";
 import { createCheckoutSession } from "@/lib/stripe-checkout";
 import { planFirstPayment, PaymentRuleError, type FirstPaymentPlan } from "@/lib/payment-plan";
@@ -34,7 +34,7 @@ function tryPlanFirstPayment(params: Parameters<typeof planFirstPayment>[0]): Fi
     throw err;
   }
 }
-import { firstPaymentProductName } from "./first-payment";
+import { firstPaymentProductName, FIRST_PAYMENT_TTL_MS } from "./first-payment";
 import { runAfterResponse } from "@/lib/background";
 import { formatWarsawDate } from "@/lib/timezone";
 import type { PriceCalculation } from "@/lib/pricing";
@@ -46,7 +46,7 @@ import {
 import { dashboardEventParticipantsUrl, participantTripUrl, publicEventUrl } from "@/lib/urls";
 import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
 
-const PENDING_TTL_MS = 30 * 60 * 1000;
+const PENDING_TTL_MS = FIRST_PAYMENT_TTL_MS;
 const DEDUPE_WINDOW_MS = 60 * 1000;
 
 export const LEGACY_ATTENDEE_TYPE_ID = "__legacy__";
@@ -556,7 +556,7 @@ export async function processRegistration(
   } catch (err) {
     // No checkout exists, so the place must not stay held for 30 minutes.
     console.error("[process-registration] checkout session failed", { participantId, err });
-    await markPaymentFailedIfPending(paymentId, null).catch(() => {});
+    await markPendingWithoutSessionFailed(paymentId).catch(() => {});
     return { errors: { _form: "Nie udało się utworzyć sesji płatności. Spróbuj ponownie." } };
   }
 }

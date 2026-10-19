@@ -210,3 +210,44 @@ describe("ensureBalancePayment", () => {
     });
   });
 });
+
+describe("concurrent checkout requests (review findings)", () => {
+  it("two balance clicks at once create only one checkout", async () => {
+    const { db, org, ev } = await setup();
+    const r = await seedRegistration(db, ev.id, {
+      payments: [
+        { kind: "deposit", status: "succeeded", amountCents: 50_000 },
+        { kind: "balance", status: "expired", amountCents: 98_000, stripeSessionId: "cs_dead" },
+      ],
+    });
+    const p = await fullParticipant(r.participant);
+    const results = await Promise.allSettled([
+      ensureBalancePayment({ participant: p, event: ev, organizer: org, origin: "https://w" }),
+      ensureBalancePayment({ participant: p, event: ev, organizer: org, origin: "https://w" }),
+    ]);
+    expect(checkout.createCheckoutSession).toHaveBeenCalledTimes(1);
+    expect(results.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+  });
+
+  it("organizer resend and guest pay at the same moment create only one checkout", async () => {
+    const { db, org, ev } = await setup();
+    const r = await seedRegistration(db, ev.id, { payments: [{ status: "pending", stripeSessionId: "cs_old" }] });
+    checkout.getCheckoutSessionState.mockResolvedValue({ state: "gone" });
+    const p = await fullParticipant(r.participant);
+    await Promise.allSettled([open(p, ev, org, false), open(p, ev, org, true)]);
+    expect(checkout.createCheckoutSession).toHaveBeenCalledTimes(1);
+    checkout.getCheckoutSessionState.mockReset();
+    checkout.getCheckoutSessionState.mockResolvedValue({ state: "gone" });
+  });
+
+  it("a failed concurrent attempt does not fail a row another request already attached a session to", async () => {
+    const { db, org, ev } = await setup();
+    const r = await seedRegistration(db, ev.id, { payments: [{ status: "pending", stripeSessionId: "cs_old" }] });
+    const p = await fullParticipant(r.participant);
+    await open(p, ev, org, false);
+    // Simulate a stale request reaching its cleanup after the first attached a session.
+    const { markPendingWithoutSessionFailed } = await import("@/lib/db/queries/payments");
+    await markPendingWithoutSessionFailed(r.payments[0].id!);
+    expect(rows("SELECT status FROM payments")).toEqual([{ status: "pending" }]);
+  });
+});

@@ -70,29 +70,18 @@ export async function recordPaymentSuccess(params: {
         incoming: params.providerPaymentId,
       });
       await flag(ctx, "duplicate_payment", params.amountCents, params.paidAt);
+      return false;
     }
+    // A redelivery of a success already recorded. If an earlier attempt died
+    // after recording but before the follow-up below, finish it now. Flags
+    // are only raised if none is set, so a plain duplicate changes nothing.
+    if (payment.status === "succeeded") await applySuccessConsequences(ctx, payment, params.paidAt, true);
     return false;
   }
 
-  if (ctx.participant.lifecycleStatus === "cancelled") {
-    await flag(ctx, "paid_while_cancelled", payment.amountCents, params.paidAt);
-    return true;
-  }
-
-  if (ctx.participant.lifecycleStatus === "waitlisted") {
-    // Only reachable through a race with an undone promotion. They paid, so
-    // they are in; the overbooking check below catches a full event.
-    const db = getDb();
-    await db
-      .update(schema.participants)
-      .set({ lifecycleStatus: "active", updatedAt: Date.now() })
-      .where(eq(schema.participants.id, ctx.participant.id));
-  }
-
-  const taken = await countTakenSpots(ctx.event.id, Date.now());
-  if (taken > ctx.event.capacity) {
-    await flag(ctx, "overbooked", payment.amountCents, params.paidAt);
-  }
+  const outcome = await applySuccessConsequences(ctx, payment, params.paidAt, false);
+  if (outcome.cancelled) return true;
+  const taken = outcome.taken;
 
   const token = await signParticipantToken(payment.participantId, getParticipantAuthSecret());
   const myTripsUrl = `${participantTripUrl(payment.participantId)}?t=${encodeURIComponent(token)}`;
@@ -126,6 +115,40 @@ export async function recordPaymentSuccess(params: {
   }
   await Promise.allSettled(emails);
   return true;
+}
+
+/**
+ * State that follows from a recorded success: a cancelled participant is
+ * flagged, a waitlisted one becomes active, an overbooked event is flagged.
+ * Safe to run again on a retry.
+ */
+async function applySuccessConsequences(
+  ctx: NonNullable<Awaited<ReturnType<typeof getParticipantWithContext>>>,
+  payment: { amountCents: number },
+  paidAt: number,
+  isRetry: boolean,
+): Promise<{ cancelled: boolean; taken: number }> {
+  const alreadyFlagged = isRetry && ctx.participant.attentionReason != null;
+  if (ctx.participant.lifecycleStatus === "cancelled") {
+    if (!alreadyFlagged) await flag(ctx, "paid_while_cancelled", payment.amountCents, paidAt);
+    return { cancelled: true, taken: 0 };
+  }
+
+  if (ctx.participant.lifecycleStatus === "waitlisted") {
+    // Only reachable through a race with an undone promotion. They paid, so
+    // they are in; the overbooking check below catches a full event.
+    const db = getDb();
+    await db
+      .update(schema.participants)
+      .set({ lifecycleStatus: "active", updatedAt: Date.now() })
+      .where(eq(schema.participants.id, ctx.participant.id));
+  }
+
+  const taken = await countTakenSpots(ctx.event.id, Date.now());
+  if (taken > ctx.event.capacity && !alreadyFlagged) {
+    await flag(ctx, "overbooked", payment.amountCents, paidAt);
+  }
+  return { cancelled: false, taken };
 }
 
 async function flag(

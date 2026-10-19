@@ -1,7 +1,7 @@
 import type { Event, Organizer, Participant, Payment } from "@/lib/db/schema";
 import {
   listPaymentsForParticipant,
-  markPaymentFailedIfPending,
+  markPendingWithoutSessionFailed,
   reopenFirstPaymentIfRoom,
   reopenPayment,
   setPaymentStripeSession,
@@ -15,7 +15,9 @@ import {
   getCheckoutSessionState,
 } from "@/lib/stripe-checkout";
 
-export const FIRST_PAYMENT_TTL_MS = 30 * 60 * 1000;
+// Stripe requires expires_at at least 30 minutes after the session is
+// created; a minute of margin covers the time spent before the create call.
+export const FIRST_PAYMENT_TTL_MS = 31 * 60 * 1000;
 
 /** Reasons a first payment cannot be (re)opened, shown to the user. */
 export class CheckoutBlockedError extends Error {
@@ -77,6 +79,9 @@ export async function openFirstPaymentCheckout(params: {
   const accountId = organizer.stripeAccountId;
   const live = isLivePending(target, now);
 
+  // Pending with no session yet: another request is creating its checkout.
+  if (live && !target.stripeSessionId) throw new CheckoutBlockedError("payment_in_progress");
+
   if (target.stripeSessionId) {
     const state = await getCheckoutSessionState(accountId, target.stripeSessionId);
     if (state.state === "complete") throw new CheckoutBlockedError("payment_in_progress");
@@ -111,6 +116,8 @@ export async function openFirstPaymentCheckout(params: {
         amountCents: plan.amountCents,
         expiresAt,
         allowedStatuses: ["pending"],
+        expectedSessionId: target.stripeSessionId,
+        liveAt: now,
       })
     : await reopenFirstPaymentIfRoom({
         paymentId: target.id,
@@ -121,6 +128,7 @@ export async function openFirstPaymentCheckout(params: {
         amountCents: plan.amountCents,
         expiresAt,
         nowMs: now,
+        expectedSessionId: target.stripeSessionId,
       });
   if (!reopened) throw new CheckoutBlockedError(live ? "payment_in_progress" : "no_place");
 
@@ -140,7 +148,7 @@ export async function openFirstPaymentCheckout(params: {
     return session.url;
   } catch (err) {
     // No session exists for the re-opened row: release the place again.
-    await markPaymentFailedIfPending(target.id, null).catch(() => {});
+    await markPendingWithoutSessionFailed(target.id).catch(() => {});
     throw err;
   }
 }
