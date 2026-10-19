@@ -4,6 +4,16 @@
  */
 
 const BRAND_COLOR = "#1E3A5F";
+
+/** Escapes text for HTML element content and quoted attribute values. */
+export function esc(value: string | number | null | undefined): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 const ACCENT_COLOR = "#E8683A";
 
 function layout(content: string): string {
@@ -33,7 +43,7 @@ function layout(content: string): string {
 }
 
 function button(href: string, text: string): string {
-  return `<a href="${href}" style="display:inline-block;background:${ACCENT_COLOR};color:#ffffff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:8px;">${text}</a>`;
+  return `<a href="${esc(href)}" style="display:inline-block;background:${ACCENT_COLOR};color:#ffffff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:8px;">${esc(text)}</a>`;
 }
 
 // ─── Registration Confirmed ─────────────────────────────────────────────────
@@ -53,23 +63,23 @@ export function registrationConfirmedHtml(params: {
   return layout(`
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Dziękujemy za zapis!</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
-      Cześć ${params.participantName}, Twoje miejsce zostało potwierdzone.
+      Cześć ${esc(params.participantName)}, Twoje miejsce zostało potwierdzone.
     </p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:24px;">
       <tr><td>
         <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Wydarzenie</p>
-        <p style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;">${params.eventTitle}</p>
+        <p style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;">${esc(params.eventTitle)}</p>
         <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Termin</p>
-        <p style="margin:0 0 12px;font-size:15px;color:#111827;">${params.eventDate}</p>
+        <p style="margin:0 0 12px;font-size:15px;color:#111827;">${esc(params.eventDate)}</p>
         ${params.eventLocation ? `
         <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Miejsce</p>
-        <p style="margin:0;font-size:15px;color:#111827;">${params.eventLocation}</p>
+        <p style="margin:0;font-size:15px;color:#111827;">${esc(params.eventLocation)}</p>
         ` : ""}
       </td></tr>
     </table>
     ${button(params.eventUrl, "Zobacz wydarzenie")}
     <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">
-      Organizator: ${params.organizerName}
+      Organizator: ${esc(params.organizerName)}
     </p>
   `);
 }
@@ -90,13 +100,13 @@ export function waitlistConfirmedHtml(params: {
   return layout(`
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Jesteś na liście rezerwowej</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
-      Cześć ${params.participantName}, miejsca na <strong>${params.eventTitle}</strong> są
+      Cześć ${esc(params.participantName)}, miejsca na <strong>${esc(params.eventTitle)}</strong> są
       aktualnie wyprzedane. Zapisaliśmy Cię na listę rezerwową — organizator
       skontaktuje się z Tobą, jeśli zwolni się miejsce.
     </p>
     ${params.myTripsUrl ? button(params.myTripsUrl, "Sprawdź status") : button(params.eventUrl, "Zobacz wydarzenie")}
     <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">
-      Organizator: ${params.organizerName}
+      Organizator: ${esc(params.organizerName)}
     </p>
   `);
 }
@@ -120,12 +130,12 @@ export function newRegistrationHtml(params: {
       ${params.isWaitlisted ? "Nowy zapis na listę rezerwową" : "Nowy uczestnik!"}
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
-      <strong>${params.participantName}</strong> (${params.participantEmail})
+      <strong>${esc(params.participantName)}</strong> (${esc(params.participantEmail)})
       ${params.isWaitlisted ? "dołączył/a do listy rezerwowej" : "zapisał/a się na wydarzenie"}
-      <strong>${params.eventTitle}</strong>.
+      <strong>${esc(params.eventTitle)}</strong>.
     </p>
     <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">
-      Miejsca: ${params.spotsInfo}
+      Miejsca: ${esc(params.spotsInfo)}
     </p>
     ${button(params.dashboardUrl, "Zobacz listę uczestników")}
   `);
@@ -179,15 +189,15 @@ export function balanceReminderHtml(params: {
   return layout(`
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Przypomnienie o dopłacie</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
-      Cześć ${params.participantName}, do opłacenia pozostało <strong>${params.amountPln} zł</strong>
-      za <strong>${params.eventTitle}</strong>.
+      Cześć ${esc(params.participantName)}, do opłacenia pozostało <strong>${esc(params.amountPln)} zł</strong>
+      za <strong>${esc(params.eventTitle)}</strong>.
     </p>
     <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">
-      Termin dopłaty: <strong>${params.dueDate}</strong>
+      Termin dopłaty: <strong>${esc(params.dueDate)}</strong>
     </p>
     ${button(params.payUrl, "Opłać teraz")}
     <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">
-      Organizator: ${params.organizerName}
+      Organizator: ${esc(params.organizerName)}
     </p>
   `);
 }
@@ -210,28 +220,28 @@ export function waitlistPromotedHtml(params: {
   return layout(`
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Zwolniło się miejsce!</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
-      Cześć ${params.participantName}, mamy dobrą wiadomość — zwolniło się miejsce
-      na <strong>${params.eventTitle}</strong>. Aby potwierdzić udział, opłać rezerwację
+      Cześć ${esc(params.participantName)}, mamy dobrą wiadomość — zwolniło się miejsce
+      na <strong>${esc(params.eventTitle)}</strong>. Aby potwierdzić udział, opłać rezerwację
       klikając poniższy przycisk.
     </p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:24px;">
       <tr><td>
         <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Wydarzenie</p>
-        <p style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;">${params.eventTitle}</p>
+        <p style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;">${esc(params.eventTitle)}</p>
         <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Termin</p>
-        <p style="margin:0 0 12px;font-size:15px;color:#111827;">${params.eventDate}</p>
+        <p style="margin:0 0 12px;font-size:15px;color:#111827;">${esc(params.eventDate)}</p>
         ${params.eventLocation ? `
         <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Miejsce</p>
-        <p style="margin:0;font-size:15px;color:#111827;">${params.eventLocation}</p>
+        <p style="margin:0;font-size:15px;color:#111827;">${esc(params.eventLocation)}</p>
         ` : ""}
       </td></tr>
     </table>
     ${button(params.paymentUrl, "Opłać i potwierdź udział")}
     <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
-      Link ważny do: <strong>${params.expiryDate}</strong>
+      Link ważny do: <strong>${esc(params.expiryDate)}</strong>
     </p>
     <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
-      Organizator: ${params.organizerName}
+      Organizator: ${esc(params.organizerName)}
     </p>
   `);
 }
@@ -251,15 +261,15 @@ export function resendPaymentLinkHtml(params: {
   return layout(`
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Nowy link do płatności</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
-      Cześć ${params.participantName}, wygenerowaliśmy nowy link do płatności
-      za <strong>${params.eventTitle}</strong>. Kliknij poniższy przycisk, aby dokończyć płatność.
+      Cześć ${esc(params.participantName)}, wygenerowaliśmy nowy link do płatności
+      za <strong>${esc(params.eventTitle)}</strong>. Kliknij poniższy przycisk, aby dokończyć płatność.
     </p>
     ${button(params.paymentUrl, "Opłać teraz")}
     <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
       Link wygaśnie za 30 minut.
     </p>
     <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
-      Organizator: ${params.organizerName}
+      Organizator: ${esc(params.organizerName)}
     </p>
   `);
 }
@@ -286,24 +296,69 @@ export function paymentConfirmedHtml(params: {
   return layout(`
     <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Dziękujemy za ${kindLabel}!</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
-      Cześć ${params.participantName}, otrzymaliśmy Twoją ${kindLabel} w wysokości <strong>${amount} zł</strong>
-      za <strong>${params.eventTitle}</strong>.
+      Cześć ${esc(params.participantName)}, otrzymaliśmy Twoją ${kindLabel} w wysokości <strong>${esc(amount)} zł</strong>
+      za <strong>${esc(params.eventTitle)}</strong>.
     </p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:24px;">
       <tr><td>
         <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Wydarzenie</p>
-        <p style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;">${params.eventTitle}</p>
+        <p style="margin:0 0 12px;font-size:16px;font-weight:600;color:#111827;">${esc(params.eventTitle)}</p>
         <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Termin</p>
-        <p style="margin:0;font-size:15px;color:#111827;">${params.eventDate}</p>
+        <p style="margin:0;font-size:15px;color:#111827;">${esc(params.eventDate)}</p>
         ${params.eventLocation ? `
         <p style="margin:12px 0 4px;font-size:13px;color:#6b7280;">Miejsce</p>
-        <p style="margin:0;font-size:15px;color:#111827;">${params.eventLocation}</p>
+        <p style="margin:0;font-size:15px;color:#111827;">${esc(params.eventLocation)}</p>
         ` : ""}
       </td></tr>
     </table>
     ${params.myTripsUrl ? button(params.myTripsUrl, "Zarządzaj wyjazdem") : button(params.eventUrl, "Zobacz wydarzenie")}
     <p style="margin:24px 0 0;font-size:13px;color:#6b7280;">
-      Organizator: ${params.organizerName}
+      Organizator: ${esc(params.organizerName)}
     </p>
+  `);
+}
+
+// ─── Organizer: needs attention ────────────────────────────────────────────
+
+export type AttentionReason = "overbooked" | "paid_while_cancelled" | "duplicate_payment";
+
+const ATTENTION_TEXT: Record<AttentionReason, { title: string; body: string }> = {
+  overbooked: {
+    title: "Płatność ponad limit miejsc",
+    body: "wpłacił/a pieniądze po wygaśnięciu rezerwacji, a w międzyczasie miejsce zajął ktoś inny. Płatność została zapisana, ale wydarzenie ma teraz więcej uczestników niż miejsc. Zdecyduj, czy przyjmujesz tę osobę, czy zwracasz pieniądze.",
+  },
+  paid_while_cancelled: {
+    title: "Płatność od anulowanego uczestnika",
+    body: "wpłacił/a pieniądze, choć zgłoszenie było anulowane. Płatność została zapisana, a zgłoszenie pozostaje anulowane. Zwróć pieniądze albo skontaktuj się z tą osobą.",
+  },
+  duplicate_payment: {
+    title: "Podwójna płatność",
+    body: "zapłacił/a dwa razy za tę samą pozycję. Druga płatność jest widoczna w panelu Stripe. Zwróć nadpłatę.",
+  },
+};
+
+export function organizerAttentionSubject(reason: AttentionReason, eventTitle: string): string {
+  return `Wymaga uwagi: ${ATTENTION_TEXT[reason].title} (${eventTitle})`;
+}
+
+export function organizerAttentionHtml(params: {
+  reason: AttentionReason;
+  participantName: string;
+  participantEmail: string;
+  eventTitle: string;
+  amountCents: number;
+  dashboardUrl: string;
+}): string {
+  const t = ATTENTION_TEXT[params.reason];
+  return layout(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">${esc(t.title)}</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
+      <strong>${esc(params.participantName)}</strong> (${esc(params.participantEmail)}) ${esc(t.body)}
+    </p>
+    <p style="margin:0 0 24px;font-size:14px;color:#6b7280;">
+      Wydarzenie: <strong>${esc(params.eventTitle)}</strong><br>
+      Kwota: <strong>${esc((params.amountCents / 100).toFixed(2))} zł</strong>
+    </p>
+    ${button(params.dashboardUrl, "Zobacz listę uczestników")}
   `);
 }
