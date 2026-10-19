@@ -4,7 +4,7 @@ import type { RecentOrganizer } from "@/lib/db/queries/admin";
 const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl";
 
 function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString("pl-PL", {
+  return new Date(ms).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     year: "numeric",
     month: "short",
     day: "2-digit",

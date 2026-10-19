@@ -41,7 +41,7 @@ export default async function DashboardOverview() {
   ]);
 
   const firstName = organizer.displayName.split(" ")[0];
-  const today = new Date().toLocaleDateString("pl-PL", {
+  const today = new Date().toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     weekday: "long",
     day: "numeric",
     month: "long",

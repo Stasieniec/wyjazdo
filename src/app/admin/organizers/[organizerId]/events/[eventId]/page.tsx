@@ -16,7 +16,7 @@ import { formatPlnFromCents } from "@/lib/format-currency";
 
 function formatDate(ms: number | null): string {
   if (!ms) return "—";
-  return new Date(ms).toLocaleDateString("pl-PL", {
+  return new Date(ms).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     year: "numeric",
     month: "short",
     day: "2-digit",
@@ -24,7 +24,7 @@ function formatDate(ms: number | null): string {
 }
 function formatDateTime(ms: number | null): string {
   if (!ms) return "—";
-  return new Date(ms).toLocaleString("pl-PL", {
+  return new Date(ms).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw",
     year: "numeric",
     month: "short",
     day: "2-digit",

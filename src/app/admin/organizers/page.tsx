@@ -41,7 +41,7 @@ function parseDir(d: string | undefined): SortDir {
 }
 
 function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString("pl-PL", {
+  return new Date(ms).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     year: "numeric",
     month: "short",
     day: "2-digit",

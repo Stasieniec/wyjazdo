@@ -9,6 +9,7 @@ import {
   parseDdMmYyyy,
   parseTimeHm,
   toDatetimeLocalValue,
+  withIsoDateTimes,
 } from "@/lib/datetime-form";
 
 type Props = {
@@ -19,7 +20,7 @@ type Props = {
 
 export function SectionPayment({ eventId, initial, isFree }: Props) {
   const [state, action] = useActionState<SectionResult | null, FormData>(
-    saveSectionPaymentAction.bind(null, eventId),
+    (prev, fd) => saveSectionPaymentAction(eventId, prev, withIsoDateTimes(fd, ["balanceDueAt"])),
     null,
   );
   const [depositOn, setDepositOn] = useState(

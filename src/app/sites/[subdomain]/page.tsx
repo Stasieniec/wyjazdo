@@ -143,7 +143,7 @@ export default async function OrganizerProfilePage({
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {events.map((e) => {
                 const price = formatPlnFromCents(e.priceCents);
-                const dateStr = new Date(e.startsAt).toLocaleDateString("pl-PL", {
+                const dateStr = new Date(e.startsAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
                   day: "numeric",
                   month: "long",
                 });

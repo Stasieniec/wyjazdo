@@ -90,7 +90,7 @@ export default async function MyTripsIndex() {
                         <h2 className="font-semibold text-foreground">{t.eventTitle}</h2>
                         <p className="text-sm text-muted-foreground">{t.organizerName}</p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {new Date(t.eventStartsAt).toLocaleDateString("pl-PL", {
+                          {new Date(t.eventStartsAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
                             day: "numeric",
                             month: "long",
                             year: "numeric",

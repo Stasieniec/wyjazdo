@@ -79,3 +79,19 @@ export function combineLocalDateAndTime(date: Date, timeStr: string): string | n
   if (!t) return null;
   return toDatetimeLocalValue(localDateParts(date), t);
 }
+
+/**
+ * Rewrites `YYYY-MM-DDTHH:mm` fields to ISO strings with a zone, read in the
+ * browser's time zone. Same approach as the creation wizard: the server then
+ * stores exactly the instant the organizer picked, regardless of the Worker's
+ * UTC clock. Call on the client only.
+ */
+export function withIsoDateTimes(form: FormData, names: string[]): FormData {
+  for (const name of names) {
+    const raw = form.get(name);
+    if (typeof raw !== "string" || !raw) continue;
+    const ms = new Date(raw).getTime();
+    if (Number.isFinite(ms)) form.set(name, new Date(ms).toISOString());
+  }
+  return form;
+}

@@ -18,7 +18,7 @@ const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "wyjazdo.pl";
 
 function formatDate(ms: number | null): string {
   if (!ms) return "—";
-  return new Date(ms).toLocaleDateString("pl-PL", {
+  return new Date(ms).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     year: "numeric",
     month: "short",
     day: "2-digit",
@@ -26,7 +26,7 @@ function formatDate(ms: number | null): string {
 }
 function formatDateTime(ms: number | null): string {
   if (!ms) return "—";
-  return new Date(ms).toLocaleString("pl-PL", {
+  return new Date(ms).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw",
     year: "numeric",
     month: "short",
     day: "2-digit",

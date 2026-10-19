@@ -36,7 +36,7 @@ export function DashboardEventCard({
   const day = date.getDate();
   const month = MONTHS_PL[date.getMonth()];
 
-  const dateStr = date.toLocaleDateString("pl-PL", {
+  const dateStr = date.toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     weekday: "short",
     day: "numeric",
     month: "short",

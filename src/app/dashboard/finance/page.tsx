@@ -30,7 +30,7 @@ function payoutStatusLabel(status: string): string {
 }
 
 function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString("pl-PL", {
+  return new Date(ms).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -219,7 +219,7 @@ export default async function FinancePage() {
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{payoutStatusLabel(p.status)}</td>
                           <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                            {new Date(p.created * 1000).toLocaleDateString("pl-PL", {
+                            {new Date(p.created * 1000).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
                               day: "numeric",
                               month: "short",
                               year: "numeric",

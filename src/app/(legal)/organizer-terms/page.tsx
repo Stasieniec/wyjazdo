@@ -25,7 +25,7 @@ export default async function OrganizerTermsPage() {
       <div dangerouslySetInnerHTML={{ __html: markdownToHtml(doc.content) }} />
       <p className="mt-8 text-sm text-muted-foreground">
         Wersja {doc.version} — obowiązuje od{" "}
-        {new Date(doc.effectiveAt).toLocaleDateString("pl-PL")}
+        {new Date(doc.effectiveAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}
       </p>
     </article>
   );

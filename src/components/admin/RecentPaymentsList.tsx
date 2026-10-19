@@ -3,7 +3,7 @@ import { formatPlnFromCents } from "@/lib/format-currency";
 import type { RecentPayment } from "@/lib/db/queries/admin";
 
 function formatDateTime(ms: number): string {
-  return new Date(ms).toLocaleString("pl-PL", {
+  return new Date(ms).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw",
     year: "numeric",
     month: "short",
     day: "2-digit",

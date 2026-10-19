@@ -11,7 +11,7 @@ type Props = {
 };
 
 function formatPolishDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("pl-PL", {
+  return new Date(iso).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     day: "numeric",
     month: "long",
     year: "numeric",

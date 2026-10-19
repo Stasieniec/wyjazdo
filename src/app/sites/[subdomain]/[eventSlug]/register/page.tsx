@@ -47,12 +47,12 @@ export default async function RegisterPage({
 
   const brandColor = organizer.brandColor ?? "#1E3A5F";
 
-  const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", {
+  const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-  const dateEnd = new Date(event.endsAt).toLocaleDateString("pl-PL", {
+  const dateEnd = new Date(event.endsAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     day: "numeric",
     month: "long",
     year: "numeric",
