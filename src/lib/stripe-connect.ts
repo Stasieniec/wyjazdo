@@ -13,30 +13,36 @@ export async function createConnectAccountAndLink(params: {
 }): Promise<{ url: string; accountId: string }> {
   const stripe = getStripe();
 
-  const account = await stripe.accounts.create({
-    type: "express",
-    country: "PL",
-    email: params.organizerEmail ?? undefined,
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
-      blik_payments: { requested: true },
-      p24_payments: { requested: true },
+  // Idempotency key: a double click on "Połącz Stripe" sends two requests;
+  // Stripe returns the same account for both instead of creating two.
+  const account = await stripe.accounts.create(
+    {
+      type: "express",
+      country: "PL",
+      email: params.organizerEmail ?? undefined,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+        blik_payments: { requested: true },
+        p24_payments: { requested: true },
+      },
+      settings: { payouts: { schedule: { interval: "manual" } } },
+      metadata: { organizer_id: params.organizerId },
     },
-    settings: { payouts: { schedule: { interval: "manual" } } },
-    metadata: { organizer_id: params.organizerId },
-  });
+    { idempotencyKey: `connect-account-${params.organizerId}` },
+  );
 
-  await setOrganizerStripeAccountId(params.organizerId, account.id);
+  // Conditional write: if another request already stored an account, use it.
+  const accountId = await setOrganizerStripeAccountId(params.organizerId, account.id);
 
   const link = await stripe.accountLinks.create({
-    account: account.id,
+    account: accountId,
     type: "account_onboarding",
     return_url: params.returnUrl,
     refresh_url: params.refreshUrl,
   });
 
-  return { url: link.url, accountId: account.id };
+  return { url: link.url, accountId };
 }
 
 export async function refreshOnboardingLink(params: {

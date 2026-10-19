@@ -258,7 +258,7 @@ export default function MarketingPage() {
                   <div className="flex-1">
                     <p className="font-[family-name:var(--font-ibm-plex-serif)] text-base italic font-medium leading-snug text-foreground">
                       „Wreszcie mam wszystko
-                      <br />w&nbsp;jednym miejscu"
+                      <br />w&nbsp;jednym miejscu”
                     </p>
                     <p className="mt-1.5 text-sm text-muted-foreground">
                       Kasia, organizatorka wyjazdów

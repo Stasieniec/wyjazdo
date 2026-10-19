@@ -2,11 +2,8 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  signMagicLinkOneTime,
-  getParticipantAuthSecret,
-} from "@/lib/participant-auth";
-import { sendMagicLinkEmail } from "@/lib/email/send";
+import { headers } from "next/headers";
+import { requestMagicLink } from "@/lib/magic-link";
 import { WyjazdoMark } from "@/components/brand/WyjazdoMark";
 
 function origin() {
@@ -26,11 +23,10 @@ export default async function RequestLinkPage({
     "use server";
     const email = String(form.get("email") ?? "").trim().toLowerCase();
     if (!email) redirect("/my-trips/request-link");
-    const secret = getParticipantAuthSecret();
-    const now = Date.now();
-    const token = await signMagicLinkOneTime(email, now, secret);
-    const link = `${origin()}/my-trips/signin?token=${encodeURIComponent(token)}`;
-    await sendMagicLinkEmail({ to: email, link });
+    const h = await headers();
+    const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    // A rate-limited request gets the same "sent" screen to reveal nothing.
+    await requestMagicLink({ email, ip, origin: origin() });
     redirect("/my-trips/request-link?sent=1");
   }
 

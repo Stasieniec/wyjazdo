@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrganizerBySubdomain } from "@/lib/db/queries/organizers";
 import { getPublishedEventBySlug } from "@/lib/db/queries/events";
-import { getParticipantById } from "@/lib/db/queries/participants";
+import { getParticipantForEvent } from "@/lib/db/queries/participants";
 import { listPaymentsForParticipant } from "@/lib/db/queries/payments";
 import { derivedStatus } from "@/lib/participant-status";
 import { Card, SubmitButton } from "@/components/ui";
@@ -13,12 +13,12 @@ import { computeRegistrationAmountsCents } from "@/lib/register/compute-registra
 export const dynamic = "force-dynamic";
 
 function formatEventDates(event: { startsAt: number; endsAt: number }) {
-  const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", {
+  const dateStart = new Date(event.startsAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-  const dateEnd = new Date(event.endsAt).toLocaleDateString("pl-PL", {
+  const dateEnd = new Date(event.endsAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw",
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -93,7 +93,9 @@ export default async function ThanksPage({
     );
   }
 
-  const participant = pid ? await getParticipantById(pid) : null;
+  // Only show the status of a registration for this event; any other pid is
+  // treated as unknown so the page cannot be used to probe other bookings.
+  const participant = pid ? await getParticipantForEvent(pid, event.id) : null;
   const participantPayments = participant
     ? await listPaymentsForParticipant(participant.id)
     : [];
@@ -145,7 +147,7 @@ export default async function ThanksPage({
                 <p className="mt-2 text-sm text-muted-foreground">
                   Dopłata{" "}
                   {balanceDueCents > 0 ? formatPlnFromCents(balanceDueCents) : ""}{" "}
-                  do {new Date(event.balanceDueAt).toLocaleDateString("pl-PL")}.
+                  do {new Date(event.balanceDueAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}.
                   Wyślemy przypomnienie mailem.
                 </p>
               )}

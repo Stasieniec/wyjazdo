@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
+import { getOrganizerByClerkUserId, getOrganizerById } from "@/lib/db/queries/organizers";
 import {
   createConnectAccountAndLink,
   refreshOnboardingLink,
@@ -31,13 +31,16 @@ export default async function PayoutsOnboardingPage() {
   async function start() {
     "use server";
     if (!organizer) return;
+    // Re-read: the organizer captured at render time is stale if a previous
+    // click already created the account.
+    const current = (await getOrganizerById(organizer.id)) ?? organizer;
     const o = origin();
     const returnUrl = `${o}/dashboard/onboarding/payouts/return`;
     const refreshUrl = `${o}/dashboard/onboarding/payouts`;
 
-    if (organizer.stripeAccountId) {
+    if (current.stripeAccountId) {
       const link = await refreshOnboardingLink({
-        accountId: organizer.stripeAccountId,
+        accountId: current.stripeAccountId,
         returnUrl,
         refreshUrl,
       });
@@ -45,7 +48,7 @@ export default async function PayoutsOnboardingPage() {
     } else {
       const link = await createConnectAccountAndLink({
         organizerId: organizer.id,
-        organizerEmail: organizer.contactEmail,
+        organizerEmail: current.contactEmail,
         returnUrl,
         refreshUrl,
       });

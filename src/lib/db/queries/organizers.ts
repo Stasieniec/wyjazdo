@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 
 export const getOrganizerBySubdomain = cache(async function getOrganizerBySubdomain(subdomain: string) {
@@ -88,12 +88,32 @@ export async function updateOrganizer(
     .where(eq(schema.organizers.id, organizerId));
 }
 
-export async function setOrganizerStripeAccountId(organizerId: string, accountId: string) {
+/**
+ * Stores the Connect account id only if none is set yet. Returns the id that
+ * ends up stored (the existing one if another request got there first).
+ */
+export async function setOrganizerStripeAccountId(organizerId: string, accountId: string): Promise<string> {
   const db = getDb();
   await db
     .update(schema.organizers)
     .set({ stripeAccountId: accountId, stripeAccountSyncedAt: Date.now(), updatedAt: Date.now() })
-    .where(eq(schema.organizers.id, organizerId));
+    .where(and(eq(schema.organizers.id, organizerId), isNull(schema.organizers.stripeAccountId)));
+  const rows = await db
+    .select({ stripeAccountId: schema.organizers.stripeAccountId })
+    .from(schema.organizers)
+    .where(eq(schema.organizers.id, organizerId))
+    .limit(1);
+  return rows[0]?.stripeAccountId ?? accountId;
+}
+
+export async function getOrganizerById(organizerId: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(schema.organizers)
+    .where(eq(schema.organizers.id, organizerId))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function syncOrganizerStripeState(params: {
