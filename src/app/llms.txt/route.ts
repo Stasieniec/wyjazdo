@@ -20,7 +20,7 @@ export function GET() {
     "- Panel uczestnika: `wyjazdo.pl/my-trips/<id>` — uczestnik widzi status zapisu, płatności i dane wyjazdu po przejściu przez link z e-maila.",
     "",
     "## Public pages",
-    `- ${base}/ (strona główna, opis produktu i rejestracja organizatora)`,
+    `- ${base}/ (strona główna: jak działają zapisy i wpłaty, ile to kosztuje, najczęstsze pytania, prośba o kontakt)`,
     `- ${base}/pomoc (centrum pomocy)`,
     `- ${base}/regulamin`,
     `- ${base}/polityka-prywatnosci`,

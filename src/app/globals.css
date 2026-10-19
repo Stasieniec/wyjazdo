@@ -45,6 +45,29 @@
   --shadow-navy: 0 8px 40px rgba(30, 58, 95, 0.25);
 }
 
+/*
+  Countryside palette and type, used by the landing page. Other pages will move
+  to it later; until then these names must not collide with the tokens above.
+*/
+@theme {
+  --color-oat: #F3ECE1;
+  --color-cream: #FBF8F2;
+  --color-sand: #EBDFCB;
+  --color-ink: #2B2420;
+  --color-ink-body: #4A403A;
+  --color-ink-muted: #6E625A;
+  --color-terracotta: #9C4526;
+  --color-terracotta-dark: #7D3519;
+  --color-moss: #5E6B3F;
+  --color-ochre: #D9A441;
+  --color-hairline: #DCCFB9;
+  --font-heading: var(--font-young-serif), Georgia, serif;
+  --font-body: var(--font-figtree), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --shadow-phone: 0 24px 60px rgba(60, 40, 20, 0.22);
+  --shadow-card: 0 1px 0 #E0D4C0, 0 12px 32px rgba(60, 40, 20, 0.08);
+  --shadow-dialog: 0 24px 60px rgba(43, 36, 32, 0.3);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

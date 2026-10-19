@@ -19,6 +19,8 @@ import {
   organizerAttentionSubject,
   organizerAttentionHtml,
   type AttentionReason,
+  leadNotificationSubject,
+  leadNotificationHtml,
 } from "./templates";
 
 /**
@@ -202,5 +204,21 @@ export async function sendOrganizerAttention(params: {
     to: params.to,
     subject: organizerAttentionSubject(params.reason, params.eventTitle),
     html: organizerAttentionHtml(params),
+  });
+}
+
+export async function sendLeadNotification(params: {
+  to: string;
+  contact: string;
+  contactKind: "phone" | "email";
+  name: string | null;
+  createdAt: number;
+  adminUrl: string;
+}): Promise<boolean> {
+  return safeSend({
+    to: params.to,
+    subject: leadNotificationSubject(params.contact),
+    html: leadNotificationHtml(params),
+    replyTo: params.contactKind === "email" ? params.contact : null,
   });
 }

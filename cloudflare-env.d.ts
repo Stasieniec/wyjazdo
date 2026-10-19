@@ -21,6 +21,7 @@ declare namespace Cloudflare {
 		PARTICIPANT_AUTH_SECRET: string;
 		ADMIN_PASSWORD: string;
 		ADMIN_SESSION_SECRET: string;
+		LEADS_NOTIFY_EMAIL: string;
 	}
 }
 interface CloudflareEnv extends Cloudflare.Env {}

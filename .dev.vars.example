@@ -15,6 +15,9 @@ PARTICIPANT_AUTH_SECRET=replace-with-random-64-hex-chars
 
 # Email (Resend)
 RESEND_API_KEY=re_replace
+# Where "Poproś o kontakt" requests from the landing page are emailed.
+# Optional: without it leads are still stored and listed in /admin/leads.
+LEADS_NOTIFY_EMAIL=you@example.com
 
 # Misc
 NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000

@@ -362,3 +362,34 @@ export function organizerAttentionHtml(params: {
     ${button(params.dashboardUrl, "Zobacz listę uczestników")}
   `);
 }
+
+// ─── Internal: call-back request from the landing page ─────────────────────
+
+export function leadNotificationSubject(contact: string): string {
+  return `Prośba o kontakt: ${contact}`;
+}
+
+export function leadNotificationHtml(params: {
+  contact: string;
+  contactKind: "phone" | "email";
+  name: string | null;
+  createdAt: number;
+  adminUrl: string;
+}): string {
+  const when = new Date(params.createdAt).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw" });
+  const contactHtml =
+    params.contactKind === "phone"
+      ? `<a href="tel:${esc(params.contact)}" style="color:${BRAND_COLOR};">${esc(params.contact)}</a>`
+      : `<a href="mailto:${esc(params.contact)}" style="color:${BRAND_COLOR};">${esc(params.contact)}</a>`;
+  return layout(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:#111827;">Ktoś prosi o kontakt</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
+      Zgłoszenie ze strony głównej wyjazdo.pl, ${esc(when)}.
+    </p>
+    <p style="margin:0 0 24px;font-size:15px;color:#111827;">
+      ${params.contactKind === "phone" ? "Telefon" : "E-mail"}: <strong>${contactHtml}</strong><br>
+      Imię: <strong>${params.name ? esc(params.name) : "nie podano"}</strong>
+    </p>
+    ${button(params.adminUrl, "Zobacz zgłoszenia")}
+  `);
+}

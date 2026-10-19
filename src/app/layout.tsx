@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Figtree, IBM_Plex_Mono, IBM_Plex_Sans, Young_Serif } from "next/font/google";
 import { siteOrigin } from "@/lib/urls";
 import "./globals.css";
 
@@ -15,6 +15,22 @@ const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500"],
   variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
+
+// Landing page type. Exposed as CSS variables only, so pages that do not use
+// font-heading / font-body keep IBM Plex.
+const youngSerif = Young_Serif({
+  subsets: ["latin", "latin-ext"],
+  weight: "400",
+  variable: "--font-young-serif",
+  display: "swap",
+});
+
+const figtree = Figtree({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-figtree",
   display: "swap",
 });
 
@@ -118,7 +134,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         },
       }}
     >
-      <html lang="pl" className={`${ibmPlexSans.variable} ${ibmPlexMono.variable}`}>
+      <html lang="pl" className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${youngSerif.variable} ${figtree.variable}`}>
         <body className="min-h-screen bg-background font-sans text-foreground antialiased">
           {children}
         </body>

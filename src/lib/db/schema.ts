@@ -245,3 +245,23 @@ export const processedWebhookEvents = sqliteTable("processed_webhook_events", {
 
 export type ProcessedWebhookEvent = typeof processedWebhookEvents.$inferSelect;
 export type NewProcessedWebhookEvent = typeof processedWebhookEvents.$inferInsert;
+
+// Call-back requests left on the landing page ("Poproś o kontakt").
+export const leads = sqliteTable(
+  "leads",
+  {
+    id: text("id").primaryKey(),
+    contact: text("contact").notNull(),
+    name: text("name"),
+    createdAt: integer("created_at").notNull(),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    handledAt: integer("handled_at"),
+  },
+  (t) => ({
+    createdIdx: index("leads_created_idx").on(t.createdAt),
+  }),
+);
+
+export type Lead = typeof leads.$inferSelect;
+export type NewLead = typeof leads.$inferInsert;

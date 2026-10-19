@@ -9,22 +9,38 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentOrganizersList } from "@/components/admin/RecentOrganizersList";
 import { RecentPaymentsList } from "@/components/admin/RecentPaymentsList";
 import { formatPlnFromCents } from "@/lib/format-currency";
+import { countLeads } from "@/lib/db/queries/leads";
+import Link from "next/link";
 
 export const metadata = { title: "Przegląd · Wyjazdo Admin" };
 
 export default async function AdminOverviewPage() {
   await requireAdmin();
 
-  const [stats, recentOrgs, recentPays] = await Promise.all([
+  const [stats, recentOrgs, recentPays, leadCount] = await Promise.all([
     getOverviewStats(),
     getRecentOrganizers(10),
     getRecentSucceededPayments(10),
+    countLeads(),
   ]);
 
   return (
     <>
       <AdminTopBar crumbs={[{ label: "Przegląd" }]} />
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8">
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Prośby o kontakt
+          </h2>
+          <Link
+            href="/admin/leads"
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm hover:bg-muted"
+          >
+            <span className="font-semibold">{leadCount}</span>
+            <span className="text-muted-foreground">zgłoszeń · zobacz listę</span>
+          </Link>
+        </section>
+
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Organizatorzy

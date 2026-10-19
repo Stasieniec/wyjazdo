@@ -110,6 +110,7 @@ src/
 - `PARTICIPANT_AUTH_SECRET` — HMAC key for magic-link tokens (`openssl rand -hex 32`)
 - `RESEND_API_KEY`
 - `CRON_SECRET`
+- `LEADS_NOTIFY_EMAIL`: inbox for call-back requests from the landing page dialog ("Poproś o kontakt"). Optional; if unset, leads are still stored in the `leads` table (listed at `/admin/leads`) and a warning is logged.
 
 ### Public vars (in `wrangler.jsonc`)
 
