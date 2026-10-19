@@ -15,7 +15,7 @@ wrong, what changed, and a short check you can do later in Stripe test mode.
    today (see bug 15), but the code handles them if a delayed method is ever
    enabled.
 
-Test setup used below: an event with 4 places, price 1480 zł, deposit 500 zł
+Test setup used below: an event with 4 places, price 1480 PLN, deposit 500 PLN
 per person, balance due date a few weeks ahead, unless a check says otherwise.
 Stripe test card `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is
 declined. "Two-person registration" means a pair on one form.
@@ -59,7 +59,11 @@ pending, failed and expired (not refunded). If the guest had lost their
 place in the meantime they get it back; if that overbooks the event, the
 payment is still recorded, the guest still gets a confirmation, and the
 organizer gets an email and a yellow "needs attention" note on the
-participant in the dashboard ("Oznacz jako załatwione" clears it).
+participant in the dashboard (the "mark as handled" link under it clears
+it). Only the guest whose payment caused the overbooking is flagged;
+guests who already held their place are never flagged. The payment, the
+flag and any status change are written in one batch, so a crash cannot
+record the money without them.
 
 **Check:** register, pay with the declined card, then with `4242...` in the
 same checkout. The participant shows as deposit paid and a confirmation
@@ -70,17 +74,20 @@ shows paid with a "needs attention" note and the organizer gets an email.
 
 ## 3. Double charges from a second checkout
 
-**Wrong:** "Wyślij link do płatności" created a new checkout while the old
-one could still be paid, both tied to the same payment. The balance button
+**Wrong:** the dashboard's "send payment link" button created a new
+checkout while the old one could still be paid, both tied to the same payment. The balance button
 only reused an "open" checkout, so a just-paid one whose webhook had not
 arrived got a second checkout.
 
 **Changed:** before creating a new checkout the old one is expired in
 Stripe. If the old one turns out to be already paid, no new checkout is
-created and the user sees "Płatność jest w trakcie przetwarzania".
+created and the user is told the payment is being processed. The same
+guard stops two simultaneous requests (two clicks on the balance button,
+or the organizer resending while the guest pays) from creating two
+checkouts: only the first one re-opens the payment.
 
-**Check:** register, do not pay. In the dashboard click "Wyślij link do
-płatności". Open the first checkout link: Stripe says it has expired. The
+**Check:** register, do not pay. In the dashboard click the send payment
+link button. Open the first checkout link: Stripe says it has expired. The
 new link from the email works. Paying it shows deposit paid once.
 
 ## 4. A group could be counted as one seat (race)
@@ -104,11 +111,12 @@ left them active with nothing to pay.
 **Changed:** the whole party must fit; activation and the payment row
 happen in one batch; if creating the checkout fails, the participant goes
 back to the waitlist. The link expiry must be between 30 minutes and 24
-hours (Stripe's limits).
+hours (Stripe's limits). Checkout links created by the app now last 31
+minutes, so they stay above Stripe's 30 minute minimum.
 
-**Check:** capacity 3, one paid pair, a waitlisted pair. "Przenieś z listy"
-fails (no capacity). Cancel the paid pair, try again: it works and the
-promoted pair gets an email with a payment link for 2 x 500 zł.
+**Check:** capacity 3, one paid pair, a waitlisted pair. Moving the pair off
+the waitlist fails (no capacity). Cancel the paid pair, try again: it works and the
+promoted pair gets an email with a payment link for 2 x 500 PLN.
 
 ## 6. Wrong balance amount
 
@@ -122,9 +130,10 @@ registered at, so later price edits do not change what existing guests
 owe. Older registrations without a stored price fall back to the current
 price.
 
-**Check:** register a pair, pay the deposit (1000 zł). Change the deposit to
-600 and the price to 1580. On the guest's trip page click "Opłać dopłatę":
-the checkout asks for 1960 zł (2960 minus 1000).
+**Check:** register a pair, pay the deposit (1000 PLN). Change the deposit to
+600 and the price to 1580. On the guest's trip page click the pay balance
+button:
+the checkout asks for 1960 PLN (2960 minus 1000).
 
 ## 7. Registering after the balance due date only charged the deposit
 
@@ -132,7 +141,7 @@ the checkout asks for 1960 zł (2960 minus 1000).
 the full amount up front.
 
 **Check:** set the balance due date to yesterday, register: the checkout is
-for 1480 zł and is labelled with the event title, not "Zaliczka".
+for 1480 PLN and is labelled with the event title, not as a deposit.
 
 ## 8. Times shifted by 1 to 2 hours
 
@@ -173,7 +182,9 @@ address shows "[email] send rejected".
 ## 10. Cancelling did not stop payments
 
 **Changed:** cancelling a participant expires their open checkouts in
-Stripe. The balance button refuses cancelled participants. If a payment
+Stripe. The balance button refuses cancelled participants. The organizer
+can also cancel a registration whose payment lapsed (shown as "payment
+expired"), so the guest cannot revive it from their trip page. If a payment
 still arrives for a cancelled participant, it is recorded, the participant
 stays cancelled, and the organizer gets an email and a "needs attention"
 note.
@@ -188,21 +199,21 @@ becomes "refunded" when fully refunded; a partial refund keeps it paid and
 the finance page subtracts the refunded part from revenue and shows it
 under refunds. The participant keeps their place after a partial refund.
 
-**Check:** pay a 1000 zł deposit, refund 500 zł in the Stripe dashboard. The
-participant still shows deposit paid, the finance page shows 500 zł revenue
-and 500 zł refunded. Refund the rest: the participant shows refunded.
+**Check:** pay a 1000 PLN deposit, refund 500 PLN in the Stripe dashboard. The
+participant still shows deposit paid, the finance page shows 500 PLN revenue
+and 500 PLN refunded. Refund the rest: the participant shows refunded.
 
 ## 12. A pending participant had no way back to payment
 
-**Changed:** the trip page shows "Dokończ płatność" while a checkout is
-open (it reopens the same checkout) and "Opłać ponownie" after it lapsed
-(a new checkout, only if there is still room; otherwise a message says
-there are no places). The double-submit protection sends people to this
+**Changed:** the trip page shows a "finish payment" button while a
+checkout is open (it reopens the same checkout) and a "pay again" button
+after it lapsed (a new checkout, only if there is still room; otherwise a
+message says there are no places). The double-submit protection sends people to this
 page, so they can continue.
 
 **Check:** register, close Stripe, submit the same form again within a
-minute: you land on the trip page with a "Dokończ płatność" button that
-opens the checkout.
+minute: you land on the trip page with a finish payment button that opens
+the checkout.
 
 ## 13. Duplicate balance rows
 
@@ -210,18 +221,18 @@ opens the checkout.
 a new one, a guarded insert prevents two rows on a double click, and all
 readers pick the live row.
 
-**Check:** pay the deposit, click "Opłać dopłatę", close Stripe, wait for
+**Check:** pay the deposit, click the pay balance button, close Stripe, wait for
 the checkout to expire (or expire it in Stripe), click again. The database
 still has one balance row for the participant.
 
-## 14. Stripe's 2.00 zł minimum
+## 14. Stripe's 2.00 PLN minimum
 
-**Changed:** prices must be 0 (free) or at least 2 zł, deposits at least
-2 zł; the editor shows the message. At registration, a deposit or balance
-that would fall below 2 zł turns into a full payment; a total below 2 zł is
+**Changed:** prices must be 0 (free) or at least 2 PLN, deposits at least
+2 PLN; the editor shows the message. At registration, a deposit or balance
+that would fall below 2 PLN turns into a full payment; a total below 2 PLN is
 refused before anything is saved.
 
-**Check:** set a price of 1.50 zł in the editor: it is rejected with a clear
+**Check:** set a price of 1.50 PLN in the editor: it is rejected with a clear
 message.
 
 ## 15. Webhook processing
@@ -233,7 +244,10 @@ record), after which Stripe's retry was skipped.
 
 **Changed:** the event is recorded only after it was handled. All handlers
 are safe to run twice. `checkout.session.completed` only records a success
-when Stripe says it is paid, and the two async events are handled.
+when Stripe says it is paid, and the two async events are handled. If a
+delayed payment fails, the guest can start a new checkout (Stripe keeps
+calling the failed session "complete", which is no longer mistaken for a
+payment). Refunds recorded out of order never lower the refunded amount.
 
 BLIK and Przelewy24: according to Stripe's documentation, Przelewy24 gives
 immediate notification, and BLIK is confirmed in the bank app within about
@@ -248,16 +262,19 @@ event for a paid registration: nothing changes and no second email is sent.
 
 - /my-trips email lookup is case-insensitive; emails are stored lower case
   (existing rows are converted by the migration).
-- Registration and magic-link requests are rate limited (5 per minute per
-  IP; magic links also 5 per minute per address). The limiter is in memory
-  per Worker instance, so it is basic protection only.
-- "Połącz Stripe" clicked twice creates one Express account (Stripe
-  idempotency key, and the account id is only stored if none is set).
+- Registration is rate limited to 5 tries per minute per IP and email, and
+  20 per minute per IP (so one office or family connection can still
+  register several people). Magic-link requests: 5 per minute per IP and 5
+  per address. The limiter is in memory per Worker instance, so it is basic
+  protection only.
+- The connect Stripe button clicked twice creates one Express account
+  (Stripe idempotency key, and the account id is only stored if none is
+  set).
 - The thanks page only shows a status for a participant of that event.
 - Lint error on the landing page fixed.
 
 **Check:** sign in to /my-trips with your email in capital letters: your
-trips show. Double-click "Połącz Stripe" on a fresh organizer: the Stripe
+trips show. Double-click the connect Stripe button on a fresh organizer: the Stripe
 dashboard has one new connected account.
 
 ## Left open
