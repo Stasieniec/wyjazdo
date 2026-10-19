@@ -9,8 +9,10 @@ import {
   verifyMagicLinkCookie,
   getParticipantAuthSecret,
 } from "@/lib/participant-auth";
-import { derivedStatus } from "@/lib/participant-status";
-import { payBalanceAction } from "./actions";
+import { currentBalancePayment, derivedStatus } from "@/lib/participant-status";
+import { payBalanceAction, payFirstAction } from "./actions";
+import { checkoutBlockedMessage, type CheckoutBlockedError } from "@/lib/register/first-payment";
+import { formatWarsawDate, formatWarsawDateTime } from "@/lib/timezone";
 import { formatPlnFromCents } from "@/lib/format-currency";
 import { Card } from "@/components/ui";
 import { WyjazdoMark } from "@/components/brand/WyjazdoMark";
@@ -40,10 +42,10 @@ export default async function TripPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ t?: string }>;
+  searchParams: Promise<{ t?: string; err?: string }>;
 }) {
   const { id } = await params;
-  const { t } = await searchParams;
+  const { t, err } = await searchParams;
 
   const secret = getParticipantAuthSecret();
   // Server component renders once per request, so Date.now() is fine here.
@@ -69,16 +71,28 @@ export default async function TripPage({
 
   const status = derivedStatus(
     { lifecycleStatus: trip.participant.lifecycleStatus },
-    trip.payments.map((p) => ({ kind: p.kind, status: p.status, dueAt: p.dueAt })),
+    trip.payments,
     now,
   );
 
-  const deposit = trip.payments.find((p) => p.kind === "deposit");
-  const balance = trip.payments.find((p) => p.kind === "balance");
-  const full = trip.payments.find((p) => p.kind === "full");
+  const latest = (kind: "deposit" | "full") =>
+    trip.payments.filter((p) => p.kind === kind).sort((a, b) => b.createdAt - a.createdAt)[0];
+  const deposit = latest("deposit");
+  const balance = currentBalancePayment(trip.payments);
+  const full = latest("full");
   const balanceDue = balance?.dueAt ?? trip.event.balanceDueAt ?? null;
 
   const showPayBalance = status === "deposit_paid" || status === "overdue";
+  // Not paid yet: either the checkout is still open, or it lapsed and the
+  // guest may try again if there is still room.
+  const unpaidActive =
+    trip.participant.lifecycleStatus === "active" &&
+    !trip.payments.some((p) => p.status === "succeeded" || p.status === "refunded");
+  const showPayFirst = unpaidActive && (status === "pending" || status === "cancelled");
+  const lapsed = unpaidActive && status === "cancelled";
+  const errorMessage = err
+    ? checkoutBlockedMessage(err as CheckoutBlockedError["reason"]) ?? null
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,7 +117,7 @@ export default async function TripPage({
           </div>
           <p className="mt-1 text-muted-foreground">{trip.organizer.displayName}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {new Date(trip.event.startsAt).toLocaleString("pl-PL")}
+            {formatWarsawDateTime(trip.event.startsAt)}
             {trip.event.location ? ` · ${trip.event.location}` : ""}
           </p>
         </div>
@@ -132,10 +146,34 @@ export default async function TripPage({
             {balanceDue && (
               <div className="flex justify-between border-t border-border pt-2 mt-2">
                 <span className="text-muted-foreground">Termin dopłaty</span>
-                <span className="font-medium">{new Date(balanceDue).toLocaleDateString("pl-PL")}</span>
+                <span className="font-medium">{formatWarsawDate(balanceDue)}</span>
               </div>
             )}
           </div>
+
+          {errorMessage && (
+            <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              {errorMessage}
+            </p>
+          )}
+
+          {showPayFirst && (
+            <form action={payFirstAction} className="mt-4 pt-4 border-t border-border">
+              {lapsed && (
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Czas na płatność minął i rezerwacja wygasła. Jeśli są jeszcze wolne miejsca, możesz zapłacić teraz.
+                </p>
+              )}
+              <input type="hidden" name="participantId" value={trip.participant.id} />
+              <input type="hidden" name="token" value={t ?? ""} />
+              <button
+                type="submit"
+                className="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-[--shadow-warm] transition-all duration-150 hover:bg-accent/90"
+              >
+                {lapsed ? "Opłać ponownie" : "Dokończ płatność"}
+              </button>
+            </form>
+          )}
 
           {showPayBalance && (
             <form action={payBalanceAction} className="mt-4 pt-4 border-t border-border">

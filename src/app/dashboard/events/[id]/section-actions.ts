@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { parseFormDateTime } from "@/lib/timezone";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import {
   getEventForOrganizer,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/validators/event-wizard";
 import {
   attendeeTypesSchema,
+  attendeeTypesErrorMessage,
   sanitizeAttendeeCustomFields,
   type AttendeeType,
 } from "@/lib/validators/attendee-types";
@@ -105,8 +107,8 @@ export async function saveSectionDatesAction(
   const { organizer } = await authorize(eventId);
   const startsRaw = String(formData.get("startsAt") ?? "");
   const endsRaw = String(formData.get("endsAt") ?? "");
-  const startsAt = startsRaw ? new Date(startsRaw).getTime() : NaN;
-  const endsAt = endsRaw ? new Date(endsRaw).getTime() : NaN;
+  const startsAt = startsRaw ? parseFormDateTime(startsRaw) : NaN;
+  const endsAt = endsRaw ? parseFormDateTime(endsRaw) : NaN;
   if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) {
     return { errors: { startsAt: "Wybierz daty.", endsAt: "Wybierz daty." } };
   }
@@ -153,7 +155,7 @@ export async function saveSectionAttendeesAction(
     return { errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." } };
   }
   const parsed = attendeeTypesSchema.safeParse(parsedJson);
-  if (!parsed.success) return { errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." } };
+  if (!parsed.success) return { errors: { attendeeTypes: attendeeTypesErrorMessage(parsed.error) } };
   const types = parsed.data as AttendeeType[];
   await updateEvent(organizer.id, eventId, {
     attendeeTypes: JSON.stringify(types),
@@ -191,7 +193,7 @@ export async function saveSectionPaymentAction(
   const depositRaw = String(formData.get("deposit") ?? "");
   const balanceDueRaw = String(formData.get("balanceDueAt") ?? "");
   const depositCents = depositRaw ? Math.round(Number(depositRaw) * 100) : null;
-  const balanceDueAt = balanceDueRaw ? new Date(balanceDueRaw).getTime() : null;
+  const balanceDueAt = balanceDueRaw ? parseFormDateTime(balanceDueRaw) : null;
   const parsed = stepPaymentSchema.safeParse({ depositOn, depositCents, balanceDueAt });
   if (!parsed.success) return { errors: zodIssues(parsed.error.issues) };
   await updateEvent(organizer.id, eventId, {

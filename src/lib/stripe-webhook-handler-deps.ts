@@ -1,86 +1,37 @@
 import {
-  markPaymentSucceededIfPending,
   markPaymentExpiredIfPending,
   markPaymentFailedIfPending,
-  markPaymentRefunded,
-  getPaymentById,
+  recordPaymentRefund,
 } from "@/lib/db/queries/payments";
-import { getParticipantWithContext } from "@/lib/db/queries/participants";
 import { syncOrganizerStripeState } from "@/lib/db/queries/organizers";
 import {
+  isWebhookEventProcessed,
   recordProcessedWebhookEvent,
-  unrecordProcessedWebhookEvent,
 } from "@/lib/db/queries/webhook-events";
-import { sendPaymentConfirmation, sendOrganizerNewRegistration } from "@/lib/email/send";
-import { dashboardEventParticipantsUrl, publicEventUrl, participantTripUrl } from "@/lib/urls";
-import { countTakenSpots } from "@/lib/capacity";
-import { signParticipantToken, getParticipantAuthSecret } from "@/lib/participant-auth";
+import { recordPaymentSuccess } from "@/lib/register/payment-outcomes";
 import type { WebhookDeps } from "@/lib/webhook-handler";
 
 export function buildWebhookDeps(): WebhookDeps {
   return {
-    markPaymentSucceeded: async (params) => {
-      const transitioned = await markPaymentSucceededIfPending(params);
-      if (!transitioned) return false;
-      const payment = await getPaymentById(params.paymentId);
-      if (!payment) return true;
-      const ctx = await getParticipantWithContext(payment.participantId);
-      if (!ctx) return true;
-
-      const dateStr = new Date(ctx.event.startsAt).toLocaleDateString("pl-PL", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-
-      const secret = getParticipantAuthSecret();
-      const token = await signParticipantToken(payment.participantId, secret);
-      const myTripsUrl = `${participantTripUrl(payment.participantId)}?t=${encodeURIComponent(token)}`;
-
-      const emailPromises: Promise<void>[] = [
-        sendPaymentConfirmation({
-          to: ctx.participant.email,
-          participantName: ctx.participant.firstName,
-          eventTitle: ctx.event.title,
-          eventDate: dateStr,
-          eventLocation: ctx.event.location,
-          eventUrl: publicEventUrl(ctx.organizer.subdomain, ctx.event.slug),
-          organizerName: ctx.organizer.displayName,
-          paymentKind: payment.kind,
-          amountCents: payment.amountCents,
-          myTripsUrl,
-        }),
-      ];
-
-      if (ctx.organizer.contactEmail) {
-        const taken = await countTakenSpots(ctx.event.id, Date.now());
-        emailPromises.push(
-          sendOrganizerNewRegistration({
-            to: ctx.organizer.contactEmail,
-            participantName: `${ctx.participant.firstName} ${ctx.participant.lastName}`,
-            participantEmail: ctx.participant.email,
-            eventTitle: ctx.event.title,
-            spotsInfo: `${taken} / ${ctx.event.capacity}`,
-            isWaitlisted: false,
-            dashboardUrl: dashboardEventParticipantsUrl(ctx.event.id),
-          }),
-        );
-      }
-
-      await Promise.allSettled(emailPromises);
-      return true;
-    },
+    markPaymentSucceeded: (params) =>
+      recordPaymentSuccess({
+        paymentId: params.paymentId,
+        providerPaymentId: params.stripePaymentIntentId,
+        amountCents: params.amountCents,
+        paidAt: params.paidAt,
+      }),
     markPaymentExpired: markPaymentExpiredIfPending,
     markPaymentFailed: markPaymentFailedIfPending,
-    markPaymentRefunded: markPaymentRefunded,
+    recordRefund: recordPaymentRefund,
     syncOrganizerFromAccount: syncOrganizerStripeState,
-    recordProcessedEvent: async (params) =>
-      recordProcessedWebhookEvent({
+    isEventProcessed: isWebhookEventProcessed,
+    recordProcessedEvent: async (params) => {
+      await recordProcessedWebhookEvent({
         eventId: params.eventId,
         eventType: params.eventType,
         nowMs: Date.now(),
-      }),
-    unrecordProcessedEvent: unrecordProcessedWebhookEvent,
+      });
+    },
     now: () => Date.now(),
   };
 }

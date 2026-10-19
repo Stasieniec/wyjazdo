@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { isChargeableOrFree } from "@/lib/payment-plan";
+
+const MIN_PRICE_MESSAGE = "Cena musi wynosić 0 zł (bezpłatnie) albo co najmniej 2 zł.";
 
 export const attendeeCustomFieldSchema = z.object({
   id: z.string().min(1),
@@ -11,7 +14,7 @@ export type AttendeeCustomField = z.infer<typeof attendeeCustomFieldSchema>;
 
 export const graduatedPricingTierSchema = z.object({
   fromQty: z.number().int().min(2),
-  priceCents: z.number().int().nonnegative(),
+  priceCents: z.number().int().nonnegative().refine(isChargeableOrFree, MIN_PRICE_MESSAGE),
 });
 export type GraduatedPricingTier = z.infer<typeof graduatedPricingTierSchema>;
 
@@ -21,7 +24,7 @@ export const attendeeTypeSchema = z
     name: z.string().min(1).max(80),
     minQty: z.number().int().min(0).max(50),
     maxQty: z.number().int().min(1).max(50),
-    priceCents: z.number().int().nonnegative(),
+    priceCents: z.number().int().nonnegative().refine(isChargeableOrFree, MIN_PRICE_MESSAGE),
     graduatedPricing: z.array(graduatedPricingTierSchema).max(10).optional(),
     customFields: z.array(attendeeCustomFieldSchema).max(20).optional(),
   })
@@ -32,6 +35,13 @@ export const attendeeTypeSchema = z
 export type AttendeeType = z.infer<typeof attendeeTypeSchema>;
 
 export const attendeeTypesSchema = z.array(attendeeTypeSchema).min(1).max(10);
+
+/** Error text for a failed attendeeTypesSchema parse: the price rule if that was it, else generic. */
+export function attendeeTypesErrorMessage(error: z.ZodError): string {
+  return error.issues.some((i) => i.message === MIN_PRICE_MESSAGE)
+    ? MIN_PRICE_MESSAGE
+    : "Niepoprawna konfiguracja typów uczestników.";
+}
 
 /**
  * Strip empty option strings and validate each per-attendee field, dropping

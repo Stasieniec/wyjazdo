@@ -21,12 +21,14 @@ import {
 } from "@/lib/validators/event-wizard";
 import {
   attendeeTypesSchema,
+  attendeeTypesErrorMessage,
   sanitizeAttendeeCustomFields,
   type AttendeeType,
 } from "@/lib/validators/attendee-types";
 import { customQuestionSchema } from "@/lib/validators/event";
 import { consentConfigSchema } from "@/lib/validators/consent";
 import { z } from "zod";
+import { parseFormDateTime } from "@/lib/timezone";
 import { isStepIdValid, nextStepId, visibleStepsFor, type StepId } from "@/lib/wizard/event-creation-steps";
 
 export type StepResult =
@@ -193,8 +195,8 @@ export async function saveStepDatesAction(
   const ev = await requireOwnedDraft(organizer.id, eventId);
   const startsRaw = String(formData.get("startsAt") ?? "");
   const endsRaw = String(formData.get("endsAt") ?? "");
-  const startsAt = startsRaw ? new Date(startsRaw).getTime() : NaN;
-  const endsAt = endsRaw ? new Date(endsRaw).getTime() : NaN;
+  const startsAt = startsRaw ? parseFormDateTime(startsRaw) : NaN;
+  const endsAt = endsRaw ? parseFormDateTime(endsRaw) : NaN;
   if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) {
     return {
       errors: { startsAt: "Wybierz początek i koniec.", endsAt: "Wybierz początek i koniec." },
@@ -273,7 +275,7 @@ export async function saveStepAttendeesAction(
   const parsed = attendeeTypesSchema.safeParse(parsedJson);
   if (!parsed.success) {
     return {
-      errors: { attendeeTypes: "Niepoprawna konfiguracja typów uczestników." },
+      errors: { attendeeTypes: attendeeTypesErrorMessage(parsed.error) },
       values: { attendeeTypes: raw },
     };
   }
@@ -339,7 +341,7 @@ export async function saveStepPaymentAction(
   const depositRaw = String(formData.get("deposit") ?? "");
   const balanceDueRaw = String(formData.get("balanceDueAt") ?? "");
   const depositCents = depositRaw ? Math.round(Number(depositRaw) * 100) : null;
-  const balanceDueAt = balanceDueRaw ? new Date(balanceDueRaw).getTime() : null;
+  const balanceDueAt = balanceDueRaw ? parseFormDateTime(balanceDueRaw) : null;
 
   const parsed = stepPaymentSchema.safeParse({ depositOn, depositCents, balanceDueAt });
   if (!parsed.success) {

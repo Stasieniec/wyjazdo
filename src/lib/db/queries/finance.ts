@@ -1,6 +1,6 @@
 import { desc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
-import { derivedStatus } from "@/lib/participant-status";
+import { derivedStatus, netPaidCents, refundedCents } from "@/lib/participant-status";
 
 /**
  * All financial data aggregates live here. Everything scoped to a single
@@ -58,22 +58,21 @@ export async function getFinanceSummary(organizerId: string): Promise<FinanceSum
     const payments = paymentsByParticipant.get(participant.id) ?? [];
     const ds = derivedStatus(participant, payments, now);
 
-    const succeededAmount = payments
-      .filter((p) => p.status === "succeeded")
-      .reduce((sum, p) => sum + p.amountCents, 0);
+    // Partial refunds reduce revenue and count towards "refunded" without
+    // turning the whole payment into a refund.
+    const keptAmount = payments.reduce((sum, p) => sum + netPaidCents(p), 0);
+    const refundedAmount = payments.reduce((sum, p) => sum + refundedCents(p), 0);
 
-    const refundedAmount = payments
-      .filter((p) => p.status === "refunded")
-      .reduce((sum, p) => sum + p.amountCents, 0);
-
-    if (ds === "paid" || ds === "deposit_paid") {
-      summary.totalRevenueCents += succeededAmount;
+    if (ds === "paid" || ds === "deposit_paid" || ds === "overdue") {
+      summary.totalRevenueCents += keptAmount;
       summary.paidCount += 1;
+    } else if (keptAmount > 0) {
+      // Money kept from a participant who is no longer counted as paid
+      // (e.g. cancelled after paying, or paid after cancelling).
+      summary.totalRevenueCents += keptAmount;
     }
-    if (ds === "refunded") {
-      summary.refundedCents += refundedAmount;
-      summary.refundedCount += 1;
-    }
+    summary.refundedCents += refundedAmount;
+    if (refundedAmount > 0) summary.refundedCount += 1;
   }
 
   return summary;
@@ -134,11 +133,9 @@ export async function getRevenueByEvent(organizerId: string): Promise<EventReven
     for (const participant of participants) {
       const participantPayments = paymentsByParticipant.get(participant.id) ?? [];
       const ds = derivedStatus(participant, participantPayments, now);
-      if (ds === "paid" || ds === "deposit_paid") {
+      if (ds === "paid" || ds === "deposit_paid" || ds === "overdue") {
         paidCount += 1;
-        revenueCents += participantPayments
-          .filter((p) => p.status === "succeeded")
-          .reduce((sum, p) => sum + p.amountCents, 0);
+        revenueCents += participantPayments.reduce((sum, p) => sum + netPaidCents(p), 0);
       }
     }
 

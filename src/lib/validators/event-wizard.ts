@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MIN_CHARGE_CENTS } from "@/lib/payment-plan";
 
 export const stepTitleSchema = z.object({
   title: z.string().min(1).max(200),
@@ -47,4 +48,8 @@ export const stepPaymentSchema = z
       message: "Podaj zaliczkę i termin dopłaty.",
       path: ["depositCents"],
     },
-  );
+  )
+  .refine((d) => !d.depositOn || d.depositCents == null || d.depositCents >= MIN_CHARGE_CENTS, {
+    message: "Zaliczka musi wynosić co najmniej 2 zł.",
+    path: ["depositCents"],
+  });

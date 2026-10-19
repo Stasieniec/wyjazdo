@@ -1,6 +1,7 @@
 import { and, eq, isNotNull } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
-import { derivedStatus, type PaymentLike } from "@/lib/participant-status";
+import { currentBalancePayment, derivedStatus } from "@/lib/participant-status";
+import { formatWarsawDate } from "@/lib/timezone";
 import { shouldSendReminder } from "@/lib/balance-reminders";
 import { ensureBalancePayment } from "@/lib/register/ensure-balance-payment";
 import { sendBalanceReminder } from "@/lib/email/send";
@@ -51,19 +52,11 @@ export async function runBalanceReminders(): Promise<{ sent: number; considered:
   let sent = 0;
   for (const r of rows) {
     const pmts = byPid.get(r.participant.id) ?? [];
-    const status = derivedStatus(
-      { lifecycleStatus: r.participant.lifecycleStatus },
-      pmts.map((p) => ({
-        kind: p.kind as PaymentLike["kind"],
-        status: p.status as PaymentLike["status"],
-        dueAt: p.dueAt,
-      })),
-      now,
-    );
+    const status = derivedStatus({ lifecycleStatus: r.participant.lifecycleStatus }, pmts, now);
     if (status !== "deposit_paid") continue;
     if (r.event.balanceDueAt == null) continue;
 
-    const balance = pmts.find((p) => p.kind === "balance");
+    const balance = currentBalancePayment(pmts);
     const dueAtMs = balance?.dueAt ?? r.event.balanceDueAt;
     const lastReminderAt = balance?.lastReminderAt ?? null;
     if (!shouldSendReminder({ nowMs: now, dueAtMs, lastReminderAt })) continue;
@@ -78,7 +71,7 @@ export async function runBalanceReminders(): Promise<{ sent: number; considered:
 
       // After ensureBalancePayment, the balance payment row exists. Re-read:
       const refreshed = await listPaymentsForParticipants([r.participant.id]);
-      const b = refreshed.find((p) => p.kind === "balance");
+      const b = currentBalancePayment(refreshed);
       if (!b) continue;
 
       const token = await signParticipantToken(r.participant.id, secret);
@@ -89,9 +82,10 @@ export async function runBalanceReminders(): Promise<{ sent: number; considered:
         participantName: r.participant.firstName,
         eventTitle: r.event.title,
         amountPln: (b.amountCents / 100).toFixed(2),
-        dueDate: new Date(dueAtMs).toLocaleDateString("pl-PL"),
+        dueDate: formatWarsawDate(dueAtMs),
         payUrl: tripUrl,
         organizerName: r.organizer.displayName,
+        replyTo: r.organizer.contactEmail,
       });
       await setPaymentLastReminderAt(b.id, now);
       sent += 1;

@@ -1,10 +1,11 @@
 import { and, eq, gt, ne, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
-import type { NewAttendee, NewParticipant, Participant } from "@/lib/db/schema";
+import type { NewAttendee, NewParticipant, NewPayment, Participant } from "@/lib/db/schema";
+import { takenSeatsSql } from "@/lib/capacity";
+import { changesOf, conditionalInsertSql, runAtomically } from "@/lib/db/conditional-insert";
 
-export async function insertParticipant(row: NewParticipant): Promise<void> {
-  const db = getDb();
-  await db.insert(schema.participants).values(row);
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
 }
 
 export async function insertParticipantWithAttendees(
@@ -26,56 +27,84 @@ export async function insertParticipantWithAttendees(
 }
 
 /**
- * Conditional insert of a participant as 'active' only if there is capacity.
- * Capacity is defined as: sum of non-cancelled attendee rows for 'active'
- * participants of the same event, plus 1 for any 'active' participant that
- * has no non-cancelled attendee rows (legacy single-seat registrations).
+ * Registers a participant as 'active' only if the event has room, writing the
+ * participant, its attendees and its first payment row in one D1 batch (one
+ * transaction). Nothing can see a half-written registration, so a party of
+ * four always counts as four seats, and the new payment row makes the
+ * participant hold a place under the same rule the public counter uses.
  *
- * Returns true if the row was inserted (caller should then insert attendees
- * and proceed). Returns false if the event was full (caller should insert
- * this participant as 'waitlisted' instead).
- *
- * Runs in a single SQL statement so two concurrent callers cannot both pass
- * the check for the last seat — SQLite serializes writes.
+ * Returns false when the event is full; nothing is written in that case.
  */
-export async function tryInsertActiveParticipant(params: {
+export async function registerActiveParticipant(params: {
   participant: NewParticipant;
+  attendees: NewAttendee[];
+  payment: NewPayment;
   requestedSeats: number;
   capacity: number;
+  nowMs: number;
 }): Promise<boolean> {
   const db = getDb();
-  const p = params.participant;
-  const res = await db.run(sql`
-    INSERT INTO participants
-      (id, event_id, first_name, last_name, email, phone, custom_answers, lifecycle_status, created_at, updated_at)
-    SELECT
-      ${p.id}, ${p.eventId}, ${p.firstName}, ${p.lastName}, ${p.email},
-      ${p.phone ?? null}, ${p.customAnswers ?? null}, 'active',
-      ${p.createdAt}, ${p.updatedAt}
-    WHERE (
-      (SELECT COUNT(*) FROM attendees a
-        JOIN participants pa ON a.participant_id = pa.id
-        WHERE pa.event_id = ${p.eventId}
-          AND pa.lifecycle_status = 'active'
-          AND a.cancelled_at IS NULL)
-      +
-      (SELECT COUNT(*) FROM participants pa
-        WHERE pa.event_id = ${p.eventId}
-          AND pa.lifecycle_status = 'active'
-          AND NOT EXISTS (
-            SELECT 1 FROM attendees a
-            WHERE a.participant_id = pa.id AND a.cancelled_at IS NULL
-          ))
-      + ${params.requestedSeats}
-    ) <= ${params.capacity}
-  `);
-  return ((res as { meta?: { changes?: number } }).meta?.changes ?? 0) > 0;
+  const p = { ...params.participant, lifecycleStatus: "active" as const };
+  const participantExists = sql`EXISTS (SELECT 1 FROM participants WHERE id = ${p.id})`;
+  const results = await runAtomically(db, [
+    conditionalInsertSql(
+      schema.participants,
+      p,
+      sql`${takenSeatsSql(p.eventId, params.nowMs)} + ${params.requestedSeats} <= ${params.capacity}`,
+    ),
+    ...params.attendees.map((a) => conditionalInsertSql(schema.attendees, a, participantExists)),
+    conditionalInsertSql(schema.payments, params.payment, participantExists),
+  ]);
+  return changesOf(results[0]) > 0;
 }
 
-export async function insertAttendees(rows: NewAttendee[]): Promise<void> {
-  if (rows.length === 0) return;
+/**
+ * Moves a waitlisted participant to 'active' and creates their first payment
+ * row, in one batch, only if their whole party fits. Returns false if the
+ * event has no room for them (or they are no longer waitlisted).
+ */
+export async function promoteWaitlistedParticipant(params: {
+  participantId: string;
+  eventId: string;
+  capacity: number;
+  payment: NewPayment;
+  nowMs: number;
+}): Promise<boolean> {
   const db = getDb();
-  await db.insert(schema.attendees).values(rows);
+  const { participantId, nowMs } = params;
+  const ownSeats = sql`MAX(1, (SELECT COUNT(*) FROM attendees a
+    WHERE a.participant_id = ${participantId} AND a.cancelled_at IS NULL))`;
+  const results = await runAtomically(db, [
+    sql`UPDATE participants SET lifecycle_status = 'active', updated_at = ${nowMs}
+      WHERE id = ${participantId} AND lifecycle_status = 'waitlisted'
+        AND ${takenSeatsSql(params.eventId, nowMs)} + ${ownSeats} <= ${params.capacity}`,
+    conditionalInsertSql(
+      schema.payments,
+      params.payment,
+      sql`EXISTS (SELECT 1 FROM participants WHERE id = ${participantId} AND lifecycle_status = 'active')
+        AND NOT EXISTS (SELECT 1 FROM payments WHERE participant_id = ${participantId}
+          AND status IN ('pending', 'succeeded'))`,
+    ),
+  ]);
+  return changesOf(results[0]) > 0;
+}
+
+/**
+ * Undo a promotion whose checkout could not be created: the payment row is
+ * marked failed and the participant goes back to the waitlist, so the place
+ * is not left held by someone with nothing to pay.
+ */
+export async function revertPromotion(participantId: string, paymentId: string): Promise<void> {
+  const db = getDb();
+  const now = Date.now();
+  await runAtomically(db, [
+    sql`UPDATE payments SET status = 'failed', updated_at = ${now}
+      WHERE id = ${paymentId} AND status = 'pending'`,
+    sql`UPDATE participants SET lifecycle_status = 'waitlisted', updated_at = ${now}
+      WHERE id = ${participantId} AND lifecycle_status = 'active'
+        AND NOT EXISTS (SELECT 1 FROM payments WHERE participant_id = ${participantId}
+          AND status = 'succeeded')`,
+  ]);
 }
 
 /**
@@ -94,7 +123,7 @@ export async function findRecentParticipantForDedupe(params: {
     .where(
       and(
         eq(schema.participants.eventId, params.eventId),
-        eq(schema.participants.email, params.email),
+        sql`lower(${schema.participants.email}) = ${normalizeEmail(params.email)}`,
         ne(schema.participants.lifecycleStatus, "cancelled"),
         gt(schema.participants.createdAt, params.sinceMs),
       ),
@@ -113,14 +142,15 @@ export async function getParticipantById(id: string): Promise<Participant | null
   return rows[0] ?? null;
 }
 
+/** A participant, only if they belong to the given event (thanks page lookups). */
+export async function getParticipantForEvent(id: string, eventId: string): Promise<Participant | null> {
+  const p = await getParticipantById(id);
+  return p && p.eventId === eventId ? p : null;
+}
+
 export async function listParticipantsForEvent(eventId: string): Promise<Participant[]> {
   const db = getDb();
   return db.select().from(schema.participants).where(eq(schema.participants.eventId, eventId)).all();
-}
-
-export async function listParticipantsByEmail(email: string): Promise<Participant[]> {
-  const db = getDb();
-  return db.select().from(schema.participants).where(eq(schema.participants.email, email)).all();
 }
 
 export async function cancelParticipant(participantId: string): Promise<void> {
@@ -131,19 +161,24 @@ export async function cancelParticipant(participantId: string): Promise<void> {
     .where(eq(schema.participants.id, participantId));
 }
 
-export async function activateWaitlistedParticipant(participantId: string): Promise<boolean> {
+export async function setParticipantAttention(
+  participantId: string,
+  reason: NonNullable<Participant["attentionReason"]>,
+  nowMs: number,
+): Promise<void> {
   const db = getDb();
-  const updated = await db
+  await db
     .update(schema.participants)
-    .set({ lifecycleStatus: "active", updatedAt: Date.now() })
-    .where(
-      and(
-        eq(schema.participants.id, participantId),
-        eq(schema.participants.lifecycleStatus, "waitlisted"),
-      ),
-    )
-    .returning({ id: schema.participants.id });
-  return updated.length > 0;
+    .set({ attentionReason: reason, attentionAt: nowMs, updatedAt: nowMs })
+    .where(eq(schema.participants.id, participantId));
+}
+
+export async function clearParticipantAttention(participantId: string): Promise<void> {
+  const db = getDb();
+  await db
+    .update(schema.participants)
+    .set({ attentionReason: null, attentionAt: null, updatedAt: Date.now() })
+    .where(eq(schema.participants.id, participantId));
 }
 
 export async function getParticipantWithContext(participantId: string) {
@@ -177,6 +212,6 @@ export async function listTripSummariesByEmail(email: string) {
     .from(schema.participants)
     .innerJoin(schema.events, eq(schema.participants.eventId, schema.events.id))
     .innerJoin(schema.organizers, eq(schema.events.organizerId, schema.organizers.id))
-    .where(eq(schema.participants.email, email))
+    .where(sql`lower(${schema.participants.email}) = ${normalizeEmail(email)}`)
     .all();
 }

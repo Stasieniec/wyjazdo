@@ -1,13 +1,6 @@
-import { eq, isNull, and } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db/client";
-import {
-  derivedStatus,
-  type DerivedStatus,
-  type ParticipantLike,
-  type PaymentLike,
-} from "@/lib/participant-status";
-
-const TAKEN: DerivedStatus[] = ["pending", "deposit_paid", "paid", "overdue"];
+import { sql, type SQL } from "drizzle-orm";
+import { getDb } from "@/lib/db/client";
+import { holdsPlace, type ParticipantLike, type PaymentLike } from "@/lib/participant-status";
 
 export type SpotsInput = {
   participant: ParticipantLike;
@@ -16,62 +9,50 @@ export type SpotsInput = {
   activeAttendees: number;
 };
 
+/** Seats one registration takes: its active attendees, or 1 for legacy rows. */
+export function seatsFor(activeAttendees: number): number {
+  return activeAttendees > 0 ? activeAttendees : 1;
+}
+
 export function computeSpotsTaken(rows: SpotsInput[], nowMs: number): number {
   let taken = 0;
   for (const r of rows) {
-    if (!TAKEN.includes(derivedStatus(r.participant, r.payments, nowMs))) continue;
-    // Legacy registrations (no attendees row) still count as 1 spot (the registrant).
-    taken += r.activeAttendees > 0 ? r.activeAttendees : 1;
+    if (!holdsPlace(r.participant, r.payments, nowMs)) continue;
+    taken += seatsFor(r.activeAttendees);
   }
   return taken;
 }
 
+/** SQL expression: active (non-cancelled) attendee seats of participant `pa`, at least 1. */
+export const participantSeatsSql: SQL = sql`MAX(1, (SELECT COUNT(*) FROM attendees a
+  WHERE a.participant_id = pa.id AND a.cancelled_at IS NULL))`;
+
+/**
+ * SQL condition: participant `pa` holds a place. Same rule as holdsPlace() in
+ * participant-status.ts.
+ */
+export function holdsPlaceSql(nowMs: number): SQL {
+  return sql`(pa.lifecycle_status = 'active'
+    AND NOT EXISTS (SELECT 1 FROM payments py
+      WHERE py.participant_id = pa.id AND py.status = 'refunded')
+    AND EXISTS (SELECT 1 FROM payments py
+      WHERE py.participant_id = pa.id
+        AND (py.status = 'succeeded'
+          OR (py.status = 'pending' AND (py.expires_at IS NULL OR py.expires_at > ${nowMs})))))`;
+}
+
+/**
+ * SQL scalar: seats taken for an event. Used both by the public counter and
+ * inside the conditional inserts/updates that admit a registration, so the
+ * page and the admission check can never disagree.
+ */
+export function takenSeatsSql(eventId: string, nowMs: number): SQL {
+  return sql`(SELECT COALESCE(SUM(${participantSeatsSql}), 0) FROM participants pa
+    WHERE pa.event_id = ${eventId} AND ${holdsPlaceSql(nowMs)})`;
+}
+
 export async function countTakenSpots(eventId: string, nowMs: number): Promise<number> {
   const db = getDb();
-
-  const participantRows = await db
-    .select({ id: schema.participants.id, lifecycleStatus: schema.participants.lifecycleStatus })
-    .from(schema.participants)
-    .where(eq(schema.participants.eventId, eventId));
-  if (participantRows.length === 0) return 0;
-
-  const paymentRows = await db
-    .select({
-      participantId: schema.payments.participantId,
-      kind: schema.payments.kind,
-      status: schema.payments.status,
-      dueAt: schema.payments.dueAt,
-    })
-    .from(schema.payments)
-    .innerJoin(schema.participants, eq(schema.payments.participantId, schema.participants.id))
-    .where(eq(schema.participants.eventId, eventId));
-
-  const attendeeRows = await db
-    .select({ participantId: schema.attendees.participantId })
-    .from(schema.attendees)
-    .innerJoin(schema.participants, eq(schema.attendees.participantId, schema.participants.id))
-    .where(and(eq(schema.participants.eventId, eventId), isNull(schema.attendees.cancelledAt)));
-
-  const paymentsByParticipant = new Map<string, PaymentLike[]>();
-  for (const pr of paymentRows) {
-    const list = paymentsByParticipant.get(pr.participantId) ?? [];
-    list.push({
-      kind: pr.kind as PaymentLike["kind"],
-      status: pr.status as PaymentLike["status"],
-      dueAt: pr.dueAt,
-    });
-    paymentsByParticipant.set(pr.participantId, list);
-  }
-
-  const attendeeCountByParticipant = new Map<string, number>();
-  for (const a of attendeeRows) {
-    attendeeCountByParticipant.set(a.participantId, (attendeeCountByParticipant.get(a.participantId) ?? 0) + 1);
-  }
-
-  const rows: SpotsInput[] = participantRows.map((p) => ({
-    participant: { lifecycleStatus: p.lifecycleStatus as ParticipantLike["lifecycleStatus"] },
-    payments: paymentsByParticipant.get(p.id) ?? [],
-    activeAttendees: attendeeCountByParticipant.get(p.id) ?? 0,
-  }));
-  return computeSpotsTaken(rows, nowMs);
+  const rows = await db.all<{ taken: number }>(sql`SELECT ${takenSeatsSql(eventId, nowMs)} AS taken`);
+  return Number(rows[0]?.taken ?? 0);
 }

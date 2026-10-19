@@ -1,6 +1,7 @@
 import { sql, eq, and, gt, gte, desc, like, or, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import type { Organizer, Event as EventRow, Payment, Attendee } from "@/lib/db/schema";
+import { netPaidCents, refundedCents } from "@/lib/participant-status";
 
 // Timestamps in this DB are stored as Date.now() milliseconds.
 function daysAgoMs(n: number, nowMs: number = Date.now()): number {
@@ -612,15 +613,11 @@ export async function getEventDetail(eventId: string): Promise<EventDetail | nul
     waitlisted: participantsOut.filter((p) => p.lifecycleStatus === "waitlisted").length,
     cancelled: participantsOut.filter((p) => p.lifecycleStatus === "cancelled").length,
     activeAttendees: participantsOut.reduce((s, p) => s + p.activeAttendeeCount, 0),
-    succeededSumCents: payments
-      .filter((x) => x.status === "succeeded")
-      .reduce((s, x) => s + x.amountCents, 0),
+    succeededSumCents: payments.reduce((s, x) => s + netPaidCents(x), 0),
     pendingSumCents: payments
       .filter((x) => x.status === "pending")
       .reduce((s, x) => s + x.amountCents, 0),
-    refundedSumCents: payments
-      .filter((x) => x.status === "refunded")
-      .reduce((s, x) => s + x.amountCents, 0),
+    refundedSumCents: payments.reduce((s, x) => s + refundedCents(x), 0),
   };
 
   const participantById = new Map(participants.map((p) => [p.id, p]));

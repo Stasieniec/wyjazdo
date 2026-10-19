@@ -91,6 +91,10 @@ export const participants = sqliteTable(
     lifecycleStatus: text("lifecycle_status", {
       enum: ["active", "waitlisted", "cancelled"],
     }).notNull(),
+    attentionReason: text("attention_reason", {
+      enum: ["overbooked", "paid_while_cancelled", "duplicate_payment"],
+    }),
+    attentionAt: integer("attention_at"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
@@ -110,6 +114,7 @@ export const attendees = sqliteTable(
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
     customAnswers: text("custom_answers"),
+    priceCents: integer("price_cents"),
     cancelledAt: integer("cancelled_at"),
     createdAt: integer("created_at").notNull(),
   },
@@ -133,6 +138,7 @@ export const payments = sqliteTable(
     stripeSessionId: text("stripe_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeApplicationFee: integer("stripe_application_fee"),
+    refundedAmountCents: integer("refunded_amount_cents").notNull().default(0),
     lastReminderAt: integer("last_reminder_at"),
     paidAt: integer("paid_at"),
     expiresAt: integer("expires_at"),
@@ -143,6 +149,7 @@ export const payments = sqliteTable(
     participantIdx: index("payments_participant_idx").on(t.participantId),
     stripeSessionIdx: index("payments_stripe_session_idx").on(t.stripeSessionId),
     statusDueIdx: index("payments_status_due_idx").on(t.status, t.dueAt),
+    stripePiIdx: index("payments_stripe_pi_idx").on(t.stripePaymentIntentId),
   }),
 );
 

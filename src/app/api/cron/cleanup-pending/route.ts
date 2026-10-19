@@ -1,9 +1,13 @@
-import { and, eq, lt } from "drizzle-orm";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { getDb, schema } from "@/lib/db/client";
+import { expireStalePendingPayments } from "@/lib/db/queries/payments";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Marks lapsed pending payments as expired. A participant whose only payment
+ * expired stops holding a place (see holdsPlace in participant-status.ts);
+ * the capacity checks already ignore lapsed rows, this keeps the data tidy.
+ */
 export async function POST(req: Request) {
   const { env } = getCloudflareContext();
   const secret = env.CRON_SECRET;
@@ -12,11 +16,6 @@ export async function POST(req: Request) {
     return new Response("unauthorized", { status: 401 });
   }
 
-  const now = Date.now();
-  const db = getDb();
-  await db
-    .update(schema.payments)
-    .set({ status: "expired", updatedAt: now })
-    .where(and(eq(schema.payments.status, "pending"), lt(schema.payments.expiresAt, now)));
+  await expireStalePendingPayments(Date.now());
   return new Response("ok");
 }

@@ -1,6 +1,8 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import type { NewPayment, Payment } from "@/lib/db/schema";
+import { takenSeatsSql } from "@/lib/capacity";
+import { changesOf, conditionalInsertSql } from "@/lib/db/conditional-insert";
 
 export async function insertPayment(row: NewPayment): Promise<void> {
   const db = getDb();
@@ -60,7 +62,13 @@ export async function setPaymentStripeSession(paymentId: string, sessionId: stri
     .where(eq(schema.payments.id, paymentId));
 }
 
-export async function markPaymentSucceededIfPending(params: {
+/**
+ * Records a successful payment. A success wins over pending, failed and
+ * expired: money was taken, so the row must say so even if a decline or the
+ * expiry cron got there first. Refunded rows are left alone.
+ * Returns true only on the transition, so callers send emails once.
+ */
+export async function markPaymentSucceeded(params: {
   paymentId: string;
   stripePaymentIntentId: string;
   amountCents: number;
@@ -79,33 +87,74 @@ export async function markPaymentSucceededIfPending(params: {
       expiresAt: null,
       updatedAt: Date.now(),
     })
-    .where(and(eq(schema.payments.id, params.paymentId), eq(schema.payments.status, "pending")))
+    .where(
+      and(
+        eq(schema.payments.id, params.paymentId),
+        inArray(schema.payments.status, ["pending", "failed", "expired"]),
+      ),
+    )
     .returning({ id: schema.payments.id });
   return updated.length > 0;
 }
 
-export async function markPaymentExpiredIfPending(paymentId: string): Promise<void> {
+/**
+ * Expire/fail only if the row still points at the checkout session the event
+ * is about. A row that has moved on to a newer session must not be touched
+ * by the old session's expiry.
+ */
+export async function markPaymentExpiredIfPending(paymentId: string, sessionId: string | null): Promise<void> {
   const db = getDb();
   await db
     .update(schema.payments)
     .set({ status: "expired", updatedAt: Date.now() })
-    .where(and(eq(schema.payments.id, paymentId), eq(schema.payments.status, "pending")));
+    .where(
+      and(
+        eq(schema.payments.id, paymentId),
+        eq(schema.payments.status, "pending"),
+        sessionId == null ? sql`1 = 1` : eq(schema.payments.stripeSessionId, sessionId),
+      ),
+    );
 }
 
-export async function markPaymentFailedIfPending(paymentId: string): Promise<void> {
+export async function markPaymentFailedIfPending(paymentId: string, sessionId: string | null): Promise<void> {
   const db = getDb();
   await db
     .update(schema.payments)
     .set({ status: "failed", updatedAt: Date.now() })
-    .where(and(eq(schema.payments.id, paymentId), eq(schema.payments.status, "pending")));
+    .where(
+      and(
+        eq(schema.payments.id, paymentId),
+        eq(schema.payments.status, "pending"),
+        sessionId == null ? sql`1 = 1` : eq(schema.payments.stripeSessionId, sessionId),
+      ),
+    );
 }
 
-export async function markPaymentRefunded(paymentIntentId: string): Promise<void> {
+/**
+ * Records a refund on the payment with this PaymentIntent. `amountRefundedCents`
+ * is cumulative (Stripe's charge.amount_refunded). The row only becomes
+ * 'refunded' once fully refunded; a partial refund keeps it 'succeeded' with
+ * the refunded part recorded.
+ */
+export async function recordPaymentRefund(params: {
+  paymentIntentId: string;
+  amountRefundedCents: number;
+  fullyRefunded: boolean;
+}): Promise<void> {
   const db = getDb();
   await db
     .update(schema.payments)
-    .set({ status: "refunded", updatedAt: Date.now() })
-    .where(eq(schema.payments.stripePaymentIntentId, paymentIntentId));
+    .set({
+      refundedAmountCents: params.amountRefundedCents,
+      ...(params.fullyRefunded ? { status: "refunded" as const } : {}),
+      updatedAt: Date.now(),
+    })
+    .where(
+      and(
+        eq(schema.payments.stripePaymentIntentId, params.paymentIntentId),
+        inArray(schema.payments.status, ["succeeded", "refunded"]),
+      ),
+    );
 }
 
 export async function setPaymentLastReminderAt(paymentId: string, at: number): Promise<void> {
@@ -124,17 +173,106 @@ export async function setBalanceDueAtForPayment(paymentId: string, at: number): 
     .where(eq(schema.payments.id, paymentId));
 }
 
-export async function resetPaymentToPending(paymentId: string, expiresAt: number): Promise<boolean> {
+/**
+ * Re-opens a payment row for a new checkout with a fresh amount. Used for a
+ * balance row (reuse instead of inserting a second one) and for a first
+ * payment that is still pending. Clears the session id so a late expiry of
+ * the old session cannot flip the row.
+ */
+export async function reopenPayment(params: {
+  paymentId: string;
+  kind: Payment["kind"];
+  amountCents: number;
+  expiresAt: number;
+  allowedStatuses: Payment["status"][];
+}): Promise<boolean> {
   const db = getDb();
   const updated = await db
     .update(schema.payments)
-    .set({ status: "pending", expiresAt, updatedAt: Date.now() })
+    .set({
+      status: "pending",
+      kind: params.kind,
+      amountCents: params.amountCents,
+      expiresAt: params.expiresAt,
+      stripeSessionId: null,
+      updatedAt: Date.now(),
+    })
     .where(
       and(
-        eq(schema.payments.id, paymentId),
-        inArray(schema.payments.status, ["pending", "expired"]),
+        eq(schema.payments.id, params.paymentId),
+        inArray(schema.payments.status, params.allowedStatuses),
       ),
     )
     .returning({ id: schema.payments.id });
   return updated.length > 0;
+}
+
+/**
+ * Re-opens an expired/failed first payment, but only if the participant's
+ * party still fits: the participant stopped holding a place when the payment
+ * lapsed, so re-opening it takes a place again and needs the same capacity
+ * check as a new registration.
+ */
+export async function reopenFirstPaymentIfRoom(params: {
+  paymentId: string;
+  participantId: string;
+  eventId: string;
+  capacity: number;
+  kind: Payment["kind"];
+  amountCents: number;
+  expiresAt: number;
+  nowMs: number;
+}): Promise<boolean> {
+  const db = getDb();
+  const { participantId, nowMs } = params;
+  const ownSeats = sql`MAX(1, (SELECT COUNT(*) FROM attendees a
+    WHERE a.participant_id = ${participantId} AND a.cancelled_at IS NULL))`;
+  const res = await db.run(sql`UPDATE payments SET status = 'pending', kind = ${params.kind},
+      amount_cents = ${params.amountCents}, expires_at = ${params.expiresAt},
+      stripe_session_id = NULL, updated_at = ${nowMs}
+    WHERE id = ${params.paymentId}
+      AND participant_id = ${participantId}
+      AND (status IN ('expired', 'failed')
+        OR (status = 'pending' AND expires_at IS NOT NULL AND expires_at <= ${nowMs}))
+      AND EXISTS (SELECT 1 FROM participants WHERE id = ${participantId} AND lifecycle_status = 'active')
+      AND NOT EXISTS (SELECT 1 FROM payments o WHERE o.participant_id = ${participantId}
+        AND (o.status IN ('succeeded', 'refunded')
+          OR (o.status = 'pending' AND (o.expires_at IS NULL OR o.expires_at > ${nowMs}))))
+      AND ${takenSeatsSql(params.eventId, nowMs)} + ${ownSeats} <= ${params.capacity}`);
+  return changesOf(res) > 0;
+}
+
+/**
+ * Inserts a balance row unless the participant already has one that is not
+ * refunded. Keeps at most one live balance row even under double clicks.
+ */
+export async function insertBalancePaymentIfAbsent(row: NewPayment): Promise<boolean> {
+  const db = getDb();
+  const res = await db.run(
+    conditionalInsertSql(
+      schema.payments,
+      row,
+      sql`NOT EXISTS (SELECT 1 FROM payments WHERE participant_id = ${row.participantId}
+        AND kind = 'balance' AND status != 'refunded')`,
+    ),
+  );
+  return changesOf(res) > 0;
+}
+
+/** Marks every pending payment of a participant expired (used on cancel). */
+export async function expirePendingPaymentsForParticipant(participantId: string): Promise<void> {
+  const db = getDb();
+  await db
+    .update(schema.payments)
+    .set({ status: "expired", updatedAt: Date.now() })
+    .where(
+      and(eq(schema.payments.participantId, participantId), eq(schema.payments.status, "pending")),
+    );
+}
+
+/** Used by the cleanup cron: pending rows past their expiry become expired. */
+export async function expireStalePendingPayments(nowMs: number): Promise<void> {
+  const db = getDb();
+  await db.run(sql`UPDATE payments SET status = 'expired', updated_at = ${nowMs}
+    WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at < ${nowMs}`);
 }

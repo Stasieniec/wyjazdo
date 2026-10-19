@@ -17,13 +17,27 @@ import { getPublishedEventBySlug } from "@/lib/db/queries/events";
 import { countTakenSpots } from "@/lib/capacity";
 import {
   findRecentParticipantForDedupe,
-  insertAttendees,
   insertParticipantWithAttendees,
-  tryInsertActiveParticipant,
+  normalizeEmail,
+  registerActiveParticipant,
 } from "@/lib/db/queries/participants";
-import { insertPayment, setPaymentStripeSession } from "@/lib/db/queries/payments";
+import { markPaymentFailedIfPending, setPaymentStripeSession } from "@/lib/db/queries/payments";
 import { newId } from "@/lib/ids";
-import { getStripe } from "@/lib/stripe";
+import { createCheckoutSession } from "@/lib/stripe-checkout";
+import { planFirstPayment, PaymentRuleError, type FirstPaymentPlan } from "@/lib/payment-plan";
+
+function tryPlanFirstPayment(params: Parameters<typeof planFirstPayment>[0]): FirstPaymentPlan | null {
+  try {
+    return planFirstPayment(params);
+  } catch (err) {
+    if (err instanceof PaymentRuleError) return null;
+    throw err;
+  }
+}
+import { firstPaymentProductName } from "./first-payment";
+import { runAfterResponse } from "@/lib/background";
+import { formatWarsawDate } from "@/lib/timezone";
+import type { PriceCalculation } from "@/lib/pricing";
 import {
   sendWaitlistConfirmation,
   sendOrganizerNewRegistration,
@@ -37,18 +51,34 @@ const DEDUPE_WINDOW_MS = 60 * 1000;
 
 export const LEGACY_ATTENDEE_TYPE_ID = "__legacy__";
 
+/**
+ * Price of each attendee row (same order as the rows), from the graduated
+ * pricing breakdown: the n-th attendee of a type gets that type's n-th price.
+ */
+function attendeePrices(rows: AttendeeFormRow[], pricing: PriceCalculation): number[] {
+  const seen = new Map<string, number>();
+  return rows.map((r) => {
+    const pos = (seen.get(r.attendeeTypeId) ?? 0) + 1;
+    seen.set(r.attendeeTypeId, pos);
+    const breakdown = pricing.perType.find((t) => t.typeId === r.attendeeTypeId)?.breakdown ?? [];
+    return breakdown[pos - 1]?.priceCents ?? 0;
+  });
+}
+
 function buildAttendeeInserts(
   attendeeRows: AttendeeFormRow[],
   participantId: string,
   now: number,
+  prices: number[],
 ): NewAttendee[] {
-  return attendeeRows.map((r) => ({
+  return attendeeRows.map((r, i) => ({
     id: newId(),
     participantId,
     attendeeTypeId: r.attendeeTypeId,
     firstName: r.firstName,
     lastName: r.lastName,
     customAnswers: JSON.stringify(r.customAnswers ?? {}),
+    priceCents: prices[i],
     cancelledAt: null,
     createdAt: now,
   }));
@@ -110,6 +140,20 @@ async function recordParticipantConsents(
   }
 
   await insertParticipantConsents(participantId, consentRows, ip);
+}
+
+/** Consent records are legal evidence: write them before responding, log failures. */
+async function recordConsentsLogged(
+  participantId: string,
+  form: FormData,
+  eventConsents: ConsentConfigItem[],
+  ip: string | null,
+) {
+  try {
+    await recordParticipantConsents(participantId, form, eventConsents, ip);
+  } catch (err) {
+    console.error("[consent-recording] Failed to record consents for participant", participantId, err);
+  }
 }
 
 /**
@@ -212,8 +256,9 @@ export async function processRegistration(
   const organizer = await getOrganizerBySubdomain(subdomain);
   if (!organizer) return { errors: { _form: "Nie znaleziono organizatora." } };
 
+  const stripeAccountId = organizer.stripeAccountId;
   if (
-    !organizer.stripeAccountId ||
+    !stripeAccountId ||
     organizer.stripeOnboardingComplete !== 1 ||
     organizer.stripePayoutsEnabled !== 1
   ) {
@@ -321,18 +366,34 @@ export async function processRegistration(
   for (const r of attendeeRows) {
     quantities[r.attendeeTypeId] = (quantities[r.attendeeTypeId] ?? 0) + 1;
   }
-  const totalCents = calculateTotal(attendeeTypes, quantities).total;
+  const pricing = calculateTotal(attendeeTypes, quantities);
+  const totalCents = pricing.total;
   const requestedSpots = attendeeRows.length;
+  const email = normalizeEmail(parsedRegistrant.data.email);
 
   const now = Date.now();
   const origin = await eventSiteOrigin(subdomain, requestProtocol);
 
+  const planned = tryPlanFirstPayment({
+    totalCents,
+    depositPerPersonCents: event.depositCents,
+    attendeeCount: attendeeRows.length,
+    balanceDueAt: event.balanceDueAt,
+    nowMs: now,
+  });
+  if (!planned) {
+    console.error("[process-registration] total below minimum charge", { eventId: event.id, totalCents });
+    return { errors: { _form: "Nie można przyjąć płatności za to wydarzenie. Skontaktuj się z organizatorem." } };
+  }
+  const plan = planned;
+
   // Duplicate-submit dedupe: if the same email+eventId registered in the
   // dedupe window and isn't cancelled, bounce them to their trip page rather
-  // than creating a second participant + Stripe session.
+  // than creating a second participant + Stripe session. The trip page lets
+  // a pending registration go back to its checkout.
   const existingDup = await findRecentParticipantForDedupe({
     eventId: event.id,
-    email: parsedRegistrant.data.email,
+    email,
     sinceMs: now - DEDUPE_WINDOW_MS,
   });
   if (existingDup) {
@@ -346,217 +407,156 @@ export async function processRegistration(
   const participantId = newId();
   const attendeeInserts = isLegacyMode
     ? []
-    : buildAttendeeInserts(attendeeRows, participantId, now);
-
-  // Capacity check + active insert in a single atomic SQL statement.
-  // If it returns false the event is full — fall through to waitlist.
-  const admittedActive = await tryInsertActiveParticipant({
-    participant: {
-      id: participantId,
-      eventId: event.id,
-      firstName: parsedRegistrant.data.firstName,
-      lastName: parsedRegistrant.data.lastName,
-      email: parsedRegistrant.data.email,
-      phone: parsedRegistrant.data.phone ?? null,
-      customAnswers: JSON.stringify(answers),
-      lifecycleStatus: "active",
-      createdAt: now,
-      updatedAt: now,
-    },
-    requestedSeats: requestedSpots,
-    capacity: event.capacity,
-  });
-
-  if (!admittedActive) {
-    await insertParticipantWithAttendees(
-      {
-        id: participantId,
-        eventId: event.id,
-        firstName: parsedRegistrant.data.firstName,
-        lastName: parsedRegistrant.data.lastName,
-        email: parsedRegistrant.data.email,
-        phone: parsedRegistrant.data.phone ?? null,
-        customAnswers: JSON.stringify(answers),
-        lifecycleStatus: "waitlisted",
-        createdAt: now,
-        updatedAt: now,
-      },
-      attendeeInserts,
-    );
-
-    const h = await headers();
-    const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-    recordParticipantConsents(participantId, form, consents, ip).catch((err) => {
-      console.error("[consent-recording] Failed to record consents for participant", participantId, err);
-    });
-
-    const emailPromises: Promise<void>[] = [
-      (async () => {
-        const secret = getParticipantAuthSecret();
-        const token = await signParticipantToken(participantId, secret);
-        const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
-        await sendWaitlistConfirmation({
-          to: parsedRegistrant.data.email,
-          participantName: parsedRegistrant.data.firstName,
-          eventTitle: event.title,
-          eventUrl: `${origin}/${slug}`,
-          organizerName: organizer.displayName,
-          myTripsUrl,
-        });
-      })(),
-    ];
-    if (organizer.contactEmail) {
-      const takenAfter = await countTakenSpots(event.id, Date.now());
-      emailPromises.push(
-        sendOrganizerNewRegistration({
-          to: organizer.contactEmail,
-          participantName: `${parsedRegistrant.data.firstName} ${parsedRegistrant.data.lastName}`,
-          participantEmail: parsedRegistrant.data.email,
-          eventTitle: event.title,
-          spotsInfo: `${takenAfter} / ${event.capacity} (pełne)`,
-          isWaitlisted: true,
-          dashboardUrl: dashboardEventParticipantsUrl(event.id),
-        }),
-      );
-    }
-    Promise.allSettled(emailPromises).catch(() => {});
-
-    return { redirectUrl: `${origin}/${slug}/thanks?waitlisted=1` };
-  }
-
-  await insertAttendees(attendeeInserts);
-
+    : buildAttendeeInserts(attendeeRows, participantId, now, attendeePrices(attendeeRows, pricing));
+  const participantRow = {
+    id: participantId,
+    eventId: event.id,
+    firstName: parsedRegistrant.data.firstName,
+    lastName: parsedRegistrant.data.lastName,
+    email,
+    phone: parsedRegistrant.data.phone ?? null,
+    customAnswers: JSON.stringify(answers),
+    createdAt: now,
+    updatedAt: now,
+  };
+  const replyTo = organizer.contactEmail;
   const h = await headers();
   const ip = h.get("cf-connecting-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-  recordParticipantConsents(participantId, form, consents, ip).catch((err) => {
-    console.error("[consent-recording] Failed to record consents for participant", participantId, err);
-  });
 
-  if (totalCents === 0) {
-    // Free registration — skip Stripe entirely, mark as paid.
-    const paymentId = newId();
-    await insertPayment({
+  const paymentId = newId();
+  const isFree = plan.kind === "free";
+
+  // Capacity check, participant, attendees and first payment in one batch.
+  // If it returns false the event is full: fall through to the waitlist.
+  const admittedActive = await registerActiveParticipant({
+    participant: { ...participantRow, lifecycleStatus: "active" },
+    attendees: attendeeInserts,
+    payment: {
       id: paymentId,
       participantId,
-      kind: "full",
-      amountCents: 0,
+      kind: plan.kind === "free" ? "full" : plan.kind,
+      amountCents: plan.amountCents,
       currency: "PLN",
-      status: "succeeded",
+      status: isFree ? "succeeded" : "pending",
       dueAt: null,
       stripeSessionId: null,
       stripePaymentIntentId: null,
       stripeApplicationFee: null,
       lastReminderAt: null,
-      paidAt: now,
-      expiresAt: null,
+      paidAt: isFree ? now : null,
+      expiresAt: isFree ? null : now + PENDING_TTL_MS,
       createdAt: now,
       updatedAt: now,
-    });
+    },
+    requestedSeats: requestedSpots,
+    capacity: event.capacity,
+    nowMs: now,
+  });
 
-    // Mirror the notifications the Stripe webhook would normally send
-    // on successful payment (participant confirmation + organizer alert).
-    const dateStr = new Date(event.startsAt).toLocaleDateString("pl-PL", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-    const secret = getParticipantAuthSecret();
-    const token = await signParticipantToken(participantId, secret);
-    const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
+  if (!admittedActive) {
+    await insertParticipantWithAttendees(
+      { ...participantRow, lifecycleStatus: "waitlisted" },
+      attendeeInserts,
+    );
+    await recordConsentsLogged(participantId, form, consents, ip);
 
-    const emailPromises: Promise<void>[] = [
-      sendPaymentConfirmation({
-        to: parsedRegistrant.data.email,
-        participantName: parsedRegistrant.data.firstName,
-        eventTitle: event.title,
-        eventDate: dateStr,
-        eventLocation: event.location,
-        eventUrl: publicEventUrl(subdomain, slug),
-        organizerName: organizer.displayName,
-        paymentKind: "full",
-        amountCents: 0,
-        myTripsUrl,
-      }),
-    ];
-    if (organizer.contactEmail) {
-      const takenAfter = await countTakenSpots(event.id, Date.now());
-      emailPromises.push(
-        sendOrganizerNewRegistration({
-          to: organizer.contactEmail,
-          participantName: `${parsedRegistrant.data.firstName} ${parsedRegistrant.data.lastName}`,
-          participantEmail: parsedRegistrant.data.email,
+    const organizerEmail = organizer.contactEmail;
+    runAfterResponse("waitlist emails", async () => {
+      const token = await signParticipantToken(participantId, getParticipantAuthSecret());
+      const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
+      const emails: Promise<void>[] = [
+        sendWaitlistConfirmation({
+          to: email,
+          participantName: parsedRegistrant.data.firstName,
           eventTitle: event.title,
-          spotsInfo: `${takenAfter} / ${event.capacity}`,
-          isWaitlisted: false,
-          dashboardUrl: dashboardEventParticipantsUrl(event.id),
+          eventUrl: `${origin}/${slug}`,
+          organizerName: organizer.displayName,
+          myTripsUrl,
+          replyTo,
         }),
-      );
-    }
-    Promise.allSettled(emailPromises).catch(() => {});
+      ];
+      if (organizerEmail) {
+        const takenAfter = await countTakenSpots(event.id, Date.now());
+        emails.push(
+          sendOrganizerNewRegistration({
+            to: organizerEmail,
+            participantName: `${parsedRegistrant.data.firstName} ${parsedRegistrant.data.lastName}`,
+            participantEmail: email,
+            eventTitle: event.title,
+            spotsInfo: `${takenAfter} / ${event.capacity} (pełne)`,
+            isWaitlisted: true,
+            dashboardUrl: dashboardEventParticipantsUrl(event.id),
+          }),
+        );
+      }
+      await Promise.allSettled(emails);
+    });
+
+    return { redirectUrl: `${origin}/${slug}/thanks?waitlisted=1` };
+  }
+
+  await recordConsentsLogged(participantId, form, consents, ip);
+
+  if (isFree) {
+    // Free registration: no checkout. Mirror the notifications the Stripe
+    // webhook would send on payment (participant confirmation + organizer).
+    const organizerEmail = organizer.contactEmail;
+    runAfterResponse("free registration emails", async () => {
+      const token = await signParticipantToken(participantId, getParticipantAuthSecret());
+      const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
+      const emails: Promise<void>[] = [
+        sendPaymentConfirmation({
+          to: email,
+          participantName: parsedRegistrant.data.firstName,
+          eventTitle: event.title,
+          eventDate: formatWarsawDate(event.startsAt),
+          eventLocation: event.location,
+          eventUrl: publicEventUrl(subdomain, slug),
+          organizerName: organizer.displayName,
+          paymentKind: "full",
+          amountCents: 0,
+          myTripsUrl,
+          replyTo,
+        }),
+      ];
+      if (organizerEmail) {
+        const takenAfter = await countTakenSpots(event.id, Date.now());
+        emails.push(
+          sendOrganizerNewRegistration({
+            to: organizerEmail,
+            participantName: `${parsedRegistrant.data.firstName} ${parsedRegistrant.data.lastName}`,
+            participantEmail: email,
+            eventTitle: event.title,
+            spotsInfo: `${takenAfter} / ${event.capacity}`,
+            isWaitlisted: false,
+            dashboardUrl: dashboardEventParticipantsUrl(event.id),
+          }),
+        );
+      }
+      await Promise.allSettled(emails);
+    });
 
     return { redirectUrl: `${origin}/${slug}/thanks?pid=${participantId}` };
   }
 
-  const depositPerPerson = event.depositCents ?? 0;
-  const requestedDeposit = depositPerPerson * attendeeRows.length;
-  const effectiveDeposit = Math.min(requestedDeposit, totalCents);
-  const depositMode = effectiveDeposit > 0 && effectiveDeposit < totalCents;
-  const paymentId = newId();
-  const paymentKind: "deposit" | "full" = depositMode ? "deposit" : "full";
-  const paymentAmount = depositMode ? effectiveDeposit : totalCents;
-
-  await insertPayment({
-    id: paymentId,
-    participantId,
-    kind: paymentKind,
-    amountCents: paymentAmount,
-    currency: "PLN",
-    status: "pending",
-    dueAt: null,
-    stripeSessionId: null,
-    stripePaymentIntentId: null,
-    stripeApplicationFee: null,
-    lastReminderAt: null,
-    paidAt: null,
-    expiresAt: now + PENDING_TTL_MS,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  const stripe = getStripe();
-  const session = await stripe.checkout.sessions.create(
-    {
-      mode: "payment",
-      payment_method_types: ["card", "blik", "p24"],
-      customer_email: parsedRegistrant.data.email,
-      line_items: [
-        {
-          price_data: {
-            currency: "pln",
-            unit_amount: paymentAmount,
-            product_data: {
-              name: depositMode ? `Zaliczka — ${event.title}` : event.title,
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: { payment_id: paymentId, participant_id: participantId },
-      payment_intent_data: {
-        application_fee_amount: 0,
-        metadata: { payment_id: paymentId, participant_id: participantId },
-      },
-      success_url: `${origin}/${slug}/thanks?pid=${participantId}`,
-      cancel_url: `${origin}/${slug}/register`,
-      expires_at: Math.floor((now + PENDING_TTL_MS) / 1000),
-    },
-    { stripeAccount: organizer.stripeAccountId },
-  );
-
-  await setPaymentStripeSession(paymentId, session.id);
-
-  if (!session.url) {
-    return { errors: { _form: "Nie udało się utworzyć sesji płatności." } };
+  try {
+    const session = await createCheckoutSession({
+      stripeAccountId,
+      customerEmail: email,
+      amountCents: plan.amountCents,
+      productName: firstPaymentProductName(plan.kind, event.title),
+      paymentId,
+      participantId,
+      successUrl: `${origin}/${slug}/thanks?pid=${participantId}`,
+      cancelUrl: `${origin}/${slug}/register`,
+      expiresAtMs: now + PENDING_TTL_MS,
+    });
+    await setPaymentStripeSession(paymentId, session.id);
+    return { redirectUrl: session.url };
+  } catch (err) {
+    // No checkout exists, so the place must not stay held for 30 minutes.
+    console.error("[process-registration] checkout session failed", { participantId, err });
+    await markPaymentFailedIfPending(paymentId, null).catch(() => {});
+    return { errors: { _form: "Nie udało się utworzyć sesji płatności. Spróbuj ponownie." } };
   }
-  return { redirectUrl: session.url };
 }

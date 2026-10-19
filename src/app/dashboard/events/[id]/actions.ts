@@ -6,12 +6,27 @@ import { z } from "zod";
 import { getOrganizerByClerkUserId } from "@/lib/db/queries/organizers";
 import { getEventForOrganizer, updateEvent } from "@/lib/db/queries/events-dashboard";
 import { getEventById } from "@/lib/db/queries/events";
-import { getPaymentById, setBalanceDueAtForPayment, insertPayment, setPaymentStripeSession, listPaymentsForParticipant, resetPaymentToPending } from "@/lib/db/queries/payments";
-import { getParticipantById, cancelParticipant, activateWaitlistedParticipant } from "@/lib/db/queries/participants";
+import { getPaymentById, setBalanceDueAtForPayment, setPaymentStripeSession, listPaymentsForParticipant } from "@/lib/db/queries/payments";
+import {
+  getParticipantById,
+  promoteWaitlistedParticipant,
+  revertPromotion,
+  clearParticipantAttention,
+} from "@/lib/db/queries/participants";
 import { softCancelAttendee, listActiveAttendeesForParticipant } from "@/lib/db/queries/attendees";
 import { countTakenSpots } from "@/lib/capacity";
-import { getStripe } from "@/lib/stripe";
 import { newId } from "@/lib/ids";
+import { createCheckoutSession } from "@/lib/stripe-checkout";
+import { planFirstPayment, PaymentRuleError } from "@/lib/payment-plan";
+import {
+  openFirstPaymentCheckout,
+  firstPaymentProductName,
+  CheckoutBlockedError,
+  checkoutBlockedMessage,
+} from "@/lib/register/first-payment";
+import { cancelRegistration } from "@/lib/register/payment-outcomes";
+import { runAfterResponse } from "@/lib/background";
+import { parseFormDateTime, formatWarsawDate, formatWarsawDateTime } from "@/lib/timezone";
 import {
   sendWaitlistPromoted,
   sendResendPaymentLink,
@@ -60,7 +75,7 @@ export async function extendBalanceDeadlineAction(form: FormData): Promise<void>
   const paymentId = String(form.get("paymentId") ?? "");
   const newDueStr = String(form.get("dueAt") ?? "");
   if (!paymentId || !newDueStr) throw new Error("missing fields");
-  const newDue = new Date(newDueStr).getTime();
+  const newDue = parseFormDateTime(newDueStr);
   if (!Number.isFinite(newDue) || newDue <= Date.now()) throw new Error("invalid date");
 
   const payment = await getPaymentById(paymentId);
@@ -86,7 +101,22 @@ export async function cancelParticipantAction(form: FormData): Promise<void> {
   const event = await getEventById(participant.eventId);
   if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
 
-  await cancelParticipant(participantId);
+  await cancelRegistration({ participantId, stripeAccountId: organizer.stripeAccountId });
+  revalidatePath(`/dashboard/events/${event.id}`);
+}
+
+/** Organizer has dealt with a flagged participant (overbooking, payment after cancel). */
+export async function acknowledgeAttentionAction(form: FormData): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("unauthorized");
+  const organizer = await getOrganizerByClerkUserId(userId);
+  if (!organizer) throw new Error("no organizer");
+  const participantId = String(form.get("participantId") ?? "");
+  const participant = await getParticipantById(participantId);
+  if (!participant) throw new Error("no participant");
+  const event = await getEventById(participant.eventId);
+  if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
+  await clearParticipantAttention(participantId);
   revalidatePath(`/dashboard/events/${event.id}`);
 }
 
@@ -125,13 +155,18 @@ export async function promoteFromWaitlistAction(form: FormData): Promise<void> {
   const expiresAtStr = String(form.get("expiresAt") ?? "");
   if (!participantId || !expiresAtStr) throw new Error("missing fields");
 
-  const expiresAtMs = new Date(expiresAtStr).getTime();
+  const expiresAtMs = parseFormDateTime(expiresAtStr);
   const MAX_STRIPE_EXPIRY_MS = 24 * 60 * 60 * 1000;
-  if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+  const MIN_STRIPE_EXPIRY_MS = 30 * 60 * 1000;
+  const now = Date.now();
+  if (!Number.isFinite(expiresAtMs) || expiresAtMs <= now) {
     throw new Error("invalid expiry date");
   }
-  if (expiresAtMs > Date.now() + MAX_STRIPE_EXPIRY_MS) {
+  if (expiresAtMs > now + MAX_STRIPE_EXPIRY_MS) {
     throw new Error("expiry too far in the future (max 24h)");
+  }
+  if (expiresAtMs < now + MIN_STRIPE_EXPIRY_MS) {
+    throw new Error("expiry too soon (min 30 minutes)");
   }
 
   const participant = await getParticipantById(participantId);
@@ -139,160 +174,134 @@ export async function promoteFromWaitlistAction(form: FormData): Promise<void> {
   const event = await getEventById(participant.eventId);
   if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
   if (participant.lifecycleStatus !== "waitlisted") throw new Error("not waitlisted");
+  const stripeAccountId = organizer.stripeAccountId;
 
-  // Capacity check
-  const taken = await countTakenSpots(event.id, Date.now());
-  if (taken >= event.capacity) throw new Error("no capacity");
+  // What they will pay, decided before taking the place.
+  const amounts = await computeRegistrationAmountsCents(participantId, event);
+  let plan;
+  try {
+    plan = planFirstPayment({
+      totalCents: amounts.totalCents,
+      depositPerPersonCents: event.depositCents,
+      attendeeCount: amounts.attendeeCount,
+      balanceDueAt: event.balanceDueAt,
+      nowMs: now,
+    });
+  } catch (err) {
+    if (err instanceof PaymentRuleError) throw new Error("amount below minimum charge (2 zł)");
+    throw err;
+  }
+  const isFree = plan.kind === "free";
+  const paymentId = newId();
 
-  const activated = await activateWaitlistedParticipant(participantId);
-  if (!activated) throw new Error("activation failed");
-
-  // Compute authoritative total from the participant's active attendees.
-  const { totalCents, effectiveDepositCents, depositMode } =
-    await computeRegistrationAmountsCents(participantId, event);
-  const paymentKind: "deposit" | "full" = depositMode ? "deposit" : "full";
-  const paymentAmount = depositMode ? effectiveDepositCents : totalCents;
-
-  const now = Date.now();
-  const eventDate = new Date(event.startsAt).toLocaleDateString("pl-PL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
-  // Free registration: skip Stripe, mark paid, fire emails, done.
-  if (totalCents === 0) {
-    const paymentId = newId();
-    await insertPayment({
+  // Capacity check (whole party), activation and the payment row in one batch.
+  const promoted = await promoteWaitlistedParticipant({
+    participantId,
+    eventId: event.id,
+    capacity: event.capacity,
+    nowMs: now,
+    payment: {
       id: paymentId,
       participantId,
-      kind: "full",
-      amountCents: 0,
+      kind: plan.kind === "free" ? "full" : plan.kind,
+      amountCents: plan.amountCents,
       currency: "PLN",
-      status: "succeeded",
+      status: isFree ? "succeeded" : "pending",
       dueAt: null,
       stripeSessionId: null,
       stripePaymentIntentId: null,
       stripeApplicationFee: null,
       lastReminderAt: null,
-      paidAt: now,
-      expiresAt: null,
+      paidAt: isFree ? now : null,
+      expiresAt: isFree ? null : expiresAtMs,
       createdAt: now,
       updatedAt: now,
-    });
+    },
+  });
+  if (!promoted) throw new Error("no capacity");
 
-    const secret = getParticipantAuthSecret();
-    const token = await signParticipantToken(participantId, secret);
-    const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
-    const emailPromises: Promise<void>[] = [
-      sendPaymentConfirmation({
-        to: participant.email,
-        participantName: participant.firstName,
-        eventTitle: event.title,
-        eventDate,
-        eventLocation: event.location,
-        eventUrl: publicEventUrl(organizer.subdomain, event.slug),
-        organizerName: organizer.displayName,
-        paymentKind: "full",
-        amountCents: 0,
-        myTripsUrl,
-      }),
-    ];
-    if (organizer.contactEmail) {
-      const takenAfter = await countTakenSpots(event.id, Date.now());
-      emailPromises.push(
-        sendOrganizerNewRegistration({
-          to: organizer.contactEmail,
-          participantName: `${participant.firstName} ${participant.lastName}`,
-          participantEmail: participant.email,
+  const eventDate = formatWarsawDate(event.startsAt);
+  const replyTo = organizer.contactEmail;
+
+  if (plan.kind === "free") {
+    runAfterResponse("promotion emails (free)", async () => {
+      const token = await signParticipantToken(participantId, getParticipantAuthSecret());
+      const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
+      const emails: Promise<void>[] = [
+        sendPaymentConfirmation({
+          to: participant.email,
+          participantName: participant.firstName,
           eventTitle: event.title,
-          spotsInfo: `${takenAfter} / ${event.capacity}`,
-          isWaitlisted: false,
-          dashboardUrl: dashboardEventParticipantsUrl(event.id),
+          eventDate,
+          eventLocation: event.location,
+          eventUrl: publicEventUrl(organizer.subdomain, event.slug),
+          organizerName: organizer.displayName,
+          paymentKind: "full",
+          amountCents: 0,
+          myTripsUrl,
+          replyTo,
         }),
-      );
-    }
-    Promise.allSettled(emailPromises).catch(() => {});
-
+      ];
+      if (organizer.contactEmail) {
+        const takenAfter = await countTakenSpots(event.id, Date.now());
+        emails.push(
+          sendOrganizerNewRegistration({
+            to: organizer.contactEmail,
+            participantName: `${participant.firstName} ${participant.lastName}`,
+            participantEmail: participant.email,
+            eventTitle: event.title,
+            spotsInfo: `${takenAfter} / ${event.capacity}`,
+            isWaitlisted: false,
+            dashboardUrl: dashboardEventParticipantsUrl(event.id),
+          }),
+        );
+      }
+      await Promise.allSettled(emails);
+    });
     revalidatePath(`/dashboard/events/${event.id}`);
     return;
   }
 
-  const paymentId = newId();
-  await insertPayment({
-    id: paymentId,
-    participantId,
-    kind: paymentKind,
-    amountCents: paymentAmount,
-    currency: "PLN",
-    status: "pending",
-    dueAt: null,
-    stripeSessionId: null,
-    stripePaymentIntentId: null,
-    stripeApplicationFee: null,
-    lastReminderAt: null,
-    paidAt: null,
-    expiresAt: expiresAtMs,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  const stripe = getStripe();
   const eventUrl = publicEventUrl(organizer.subdomain, event.slug);
-  const session = await stripe.checkout.sessions.create(
-    {
-      mode: "payment",
-      payment_method_types: ["card", "blik", "p24"],
-      customer_email: participant.email,
-      line_items: [
-        {
-          price_data: {
-            currency: "pln",
-            unit_amount: paymentAmount,
-            product_data: {
-              name: depositMode ? `Zaliczka — ${event.title}` : event.title,
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: { payment_id: paymentId, participant_id: participantId },
-      payment_intent_data: {
-        application_fee_amount: 0,
-        metadata: { payment_id: paymentId, participant_id: participantId },
-      },
-      success_url: `${eventUrl}/thanks?pid=${participantId}`,
-      cancel_url: eventUrl,
-      expires_at: Math.floor(expiresAtMs / 1000),
-    },
-    { stripeAccount: organizer.stripeAccountId },
+  let sessionUrl: string;
+  try {
+    const session = await createCheckoutSession({
+      stripeAccountId,
+      customerEmail: participant.email,
+      amountCents: plan.amountCents,
+      productName: firstPaymentProductName(plan.kind, event.title),
+      paymentId,
+      participantId,
+      successUrl: `${eventUrl}/thanks?pid=${participantId}`,
+      cancelUrl: eventUrl,
+      expiresAtMs,
+    });
+    await setPaymentStripeSession(paymentId, session.id);
+    sessionUrl = session.url;
+  } catch (err) {
+    // Without a checkout the promotion is undone: back to the waitlist.
+    await revertPromotion(participantId, paymentId);
+    throw err;
+  }
+
+  const expiryDate = formatWarsawDateTime(expiresAtMs);
+  runAfterResponse("waitlist promoted email", () =>
+    sendWaitlistPromoted({
+      to: participant.email,
+      participantName: participant.firstName,
+      eventTitle: event.title,
+      paymentUrl: sessionUrl,
+      expiryDate,
+      eventDate,
+      eventLocation: event.location,
+      organizerName: organizer.displayName,
+      replyTo,
+    }),
   );
-
-  await setPaymentStripeSession(paymentId, session.id);
-
-  // Send email (fire-and-forget)
-  const expiryDate = new Date(expiresAtMs).toLocaleString("pl-PL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  sendWaitlistPromoted({
-    to: participant.email,
-    participantName: participant.firstName,
-    eventTitle: event.title,
-    paymentUrl: session.url!,
-    expiryDate,
-    eventDate,
-    eventLocation: event.location,
-    organizerName: organizer.displayName,
-  }).catch(() => {});
 
   revalidatePath(`/dashboard/events/${event.id}`);
 }
 
-const PENDING_TTL_MS = 30 * 60 * 1000;
 
 export async function resendPaymentLinkAction(form: FormData): Promise<void> {
   const { userId } = await auth();
@@ -310,68 +319,35 @@ export async function resendPaymentLinkAction(form: FormData): Promise<void> {
   const event = await getEventById(participant.eventId);
   if (!event || event.organizerId !== organizer.id) throw new Error("forbidden");
 
-  const payments = await listPaymentsForParticipant(participantId);
-  // Find the payment that needs a fresh session: pending or expired, not succeeded
-  const target = payments.find(
-    (p) => (p.status === "pending" || p.status === "expired") && p.kind !== "balance",
-  ) ?? payments.find(
-    (p) => (p.status === "pending" || p.status === "expired"),
-  );
-
-  if (!target) throw new Error("no payment to resend");
-
-  const now = Date.now();
-  const expiresAt = now + PENDING_TTL_MS;
-
-  // Reset expired payment back to pending
-  if (target.status === "expired") {
-    const reset = await resetPaymentToPending(target.id, expiresAt);
-    if (!reset) throw new Error("payment status changed concurrently");
+  const eventUrl = publicEventUrl(organizer.subdomain, event.slug);
+  let url: string;
+  try {
+    // Expires the old session first (no two payable links for one row) and
+    // refuses if the old one was already paid. A lapsed hold only comes back
+    // if the party still fits.
+    url = await openFirstPaymentCheckout({
+      participant,
+      event,
+      organizer,
+      successUrl: `${eventUrl}/thanks?pid=${participantId}`,
+      cancelUrl: eventUrl,
+      reuseOpen: false,
+    });
+  } catch (err) {
+    if (err instanceof CheckoutBlockedError) throw new Error(checkoutBlockedMessage(err.reason));
+    throw err;
   }
 
-  const stripe = getStripe();
-  const eventUrl = publicEventUrl(organizer.subdomain, event.slug);
-  const depositMode = target.kind === "deposit";
-
-  const session = await stripe.checkout.sessions.create(
-    {
-      mode: "payment",
-      payment_method_types: ["card", "blik", "p24"],
-      customer_email: participant.email,
-      line_items: [
-        {
-          price_data: {
-            currency: "pln",
-            unit_amount: target.amountCents,
-            product_data: {
-              name: depositMode ? `Zaliczka — ${event.title}` : event.title,
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: { payment_id: target.id, participant_id: participantId },
-      payment_intent_data: {
-        application_fee_amount: 0,
-        metadata: { payment_id: target.id, participant_id: participantId },
-      },
-      success_url: `${eventUrl}/thanks?pid=${participantId}`,
-      cancel_url: eventUrl,
-      expires_at: Math.floor(expiresAt / 1000),
-    },
-    { stripeAccount: organizer.stripeAccountId },
+  runAfterResponse("resend payment link email", () =>
+    sendResendPaymentLink({
+      to: participant.email,
+      participantName: participant.firstName,
+      eventTitle: event.title,
+      paymentUrl: url,
+      organizerName: organizer.displayName,
+      replyTo: organizer.contactEmail,
+    }),
   );
-
-  await setPaymentStripeSession(target.id, session.id);
-
-  // Send email (fire-and-forget)
-  sendResendPaymentLink({
-    to: participant.email,
-    participantName: participant.firstName,
-    eventTitle: event.title,
-    paymentUrl: session.url!,
-    organizerName: organizer.displayName,
-  }).catch(() => {});
 
   revalidatePath(`/dashboard/events/${event.id}`);
 }
@@ -402,11 +378,7 @@ export async function resendPaymentConfirmationAction(form: FormData): Promise<v
   // Prefer the most-recently-paid one.
   const target = succeeded.reduce((a, b) => ((a.paidAt ?? 0) > (b.paidAt ?? 0) ? a : b));
 
-  const dateStr = new Date(event.startsAt).toLocaleDateString("pl-PL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const dateStr = formatWarsawDate(event.startsAt);
   const secret = getParticipantAuthSecret();
   const token = await signParticipantToken(participantId, secret);
   const myTripsUrl = `${participantTripUrl(participantId)}?t=${encodeURIComponent(token)}`;
@@ -422,6 +394,7 @@ export async function resendPaymentConfirmationAction(form: FormData): Promise<v
     paymentKind: target.kind,
     amountCents: target.amountCents,
     myTripsUrl,
+    replyTo: organizer.contactEmail,
   });
 
   revalidatePath(`/dashboard/events/${event.id}`);

@@ -3,7 +3,12 @@
 import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Attendee, Participant, Payment, ParticipantConsent } from "@/lib/db/schema";
-import { derivedStatus, type DerivedStatus } from "@/lib/participant-status";
+import {
+  currentBalancePayment,
+  derivedStatus,
+  totalNetPaidCents,
+  type DerivedStatus,
+} from "@/lib/participant-status";
 import type { CustomQuestion } from "@/lib/validators/event";
 import type { AttendeeType } from "@/lib/validators/attendee-types";
 import {
@@ -13,6 +18,7 @@ import {
   resendPaymentLinkAction,
   resendPaymentConfirmationAction,
   removeAttendeeAction,
+  acknowledgeAttentionAction,
 } from "@/app/dashboard/events/[id]/actions";
 import { formatPlnFromCents } from "@/lib/format-currency";
 import { pluralOsoby } from "@/lib/plural";
@@ -149,10 +155,11 @@ export default function ParticipantsTable({
               : {};
             const participantPayments = paymentsByParticipant.get(p.id) ?? [];
             const ds = derivedStatus(p, participantPayments, now);
-            const totalPaidCents = participantPayments
-              .filter((pay) => pay.status === "succeeded")
-              .reduce((sum, pay) => sum + pay.amountCents, 0);
-            const balancePayment = participantPayments.find((pay) => pay.kind === "balance");
+            const totalPaidCents = totalNetPaidCents(participantPayments);
+            const balancePayment = currentBalancePayment(participantPayments);
+            const unpaidActive =
+              p.lifecycleStatus === "active" &&
+              !participantPayments.some((pay) => pay.status === "succeeded" || pay.status === "refunded");
             const participantConsents = consentsByParticipant.get(p.id) ?? [];
 
             const allAttendees = attendeesByParticipant[p.id] ?? [];
@@ -189,8 +196,19 @@ export default function ParticipantsTable({
                   </td>
                   <td className="py-2 pr-4">
                     <span className={`rounded-full px-2 py-0.5 text-xs ${statusColor(ds)}`}>
-                      {statusLabel(ds)}
+                      {unpaidActive && ds === "cancelled" ? "Płatność wygasła" : statusLabel(ds)}
                     </span>
+                    {p.attentionReason && (
+                      <div className="mt-1 max-w-[14rem] rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                        <p className="font-medium">{attentionLabel(p.attentionReason)}</p>
+                        <form action={acknowledgeAttentionAction} className="mt-1">
+                          <input type="hidden" name="participantId" value={p.id} />
+                          <button type="submit" className="underline underline-offset-2">
+                            Oznacz jako załatwione
+                          </button>
+                        </form>
+                      </div>
+                    )}
                   </td>
                   <td className="py-2 pr-4">
                     <span>{p.firstName} {p.lastName}</span>
@@ -211,7 +229,7 @@ export default function ParticipantsTable({
                     </td>
                   ))}
                   <td className="py-2 pr-4">
-                    {new Date(p.createdAt).toLocaleString("pl-PL")}
+                    {new Date(p.createdAt).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw" })}
                   </td>
                   <td className="py-2 pr-4">
                     <div className="flex flex-col gap-2">
@@ -288,8 +306,8 @@ export default function ParticipantsTable({
                         </form>
                       )}
 
-                      {/* Resend payment link — active lifecycle, no succeeded payments */}
-                      {p.lifecycleStatus === "active" && !participantPayments.some((pay) => pay.status === "succeeded") && ds !== "cancelled" && (
+                      {/* Resend payment link: active, nothing paid yet (pending or lapsed) */}
+                      {unpaidActive && (
                         <form
                           action={resendPaymentLinkAction}
                           onSubmit={(e) => {
@@ -380,7 +398,7 @@ export default function ParticipantsTable({
                             )}
                             <span>{c.consentLabel}</span>
                             <span className="ml-auto text-xs text-muted-foreground">
-                              {new Date(c.acceptedAt).toLocaleDateString("pl-PL")}
+                              {new Date(c.acceptedAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}
                             </span>
                           </li>
                         ))}
@@ -422,6 +440,17 @@ export default function ParticipantsTable({
       )}
     </div>
   );
+}
+
+function attentionLabel(reason: NonNullable<Participant["attentionReason"]>): string {
+  switch (reason) {
+    case "overbooked":
+      return "Zapłacono po wygaśnięciu rezerwacji: wydarzenie jest przepełnione.";
+    case "paid_while_cancelled":
+      return "Zapłacono mimo anulowania zgłoszenia. Zwróć pieniądze lub skontaktuj się z tą osobą.";
+    case "duplicate_payment":
+      return "Podwójna płatność. Sprawdź w Stripe i zwróć nadpłatę.";
+  }
 }
 
 function statusColor(status: DerivedStatus): string {
